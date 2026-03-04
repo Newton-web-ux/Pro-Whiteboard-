@@ -1,0 +1,1777 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Pro Whiteboard – Persistent Version</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script
+src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.11.0/dist/pptxgen.bundle.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+
+<style>
+body{
+margin:0;
+font-family:Segoe UI,Arial;
+background:#f4f4f4;
+overflow:hidden;
+}
+
+/* ================= RIBBON TABS ================= */
+
+#ribbonTabs{
+display:flex;
+background:#1f1f1f;
+}
+
+#ribbonTabs button{
+background:none;
+border:none;
+color:#fff;
+padding:12px 20px;
+cursor:pointer;
+font-size:14px;
+}
+
+#ribbonTabs button.active{
+background:#333;
+}
+
+/* ================= RIBBON PANEL ================= */
+
+.ribbonPanel{
+display:none;
+background:#fff;
+padding:8px 10px;
+border-bottom:1px solid #ccc;
+align-items:center;
+gap:25px;
+}
+
+.ribbonPanel.active{
+display:flex;
+}
+
+/* ================= TOOL GROUPS ================= */
+
+.group{
+display:flex;
+flex-direction:row;          /* ← HORIZONTAL */
+align-items:center;
+gap:8px;
+border-right:1px solid #ddd;
+padding:0 15px;
+}
+
+.group:last-child{
+border:none;
+}
+
+.group button{
+margin:0;
+padding:8px 12px;
+border:1px solid #ccc;
+background:#fff;
+cursor:pointer;
+border-radius:6px;
+transition:0.2s;
+}
+
+.group button:hover{
+background:#eee;
+}
+
+.group input[type="color"],
+.group input[type="number"]{
+height:34px;
+border:1px solid #ccc;
+border-radius:6px;
+padding:0 5px;
+}
+
+/* ================= SIDEBAR ================= */
+
+#sidebar{
+position:absolute;
+left:0;
+top:110px;
+bottom:0;
+width:120px;
+background:#2d2d2d;
+overflow:auto;
+transition:.3s;
+padding-top:5px;
+}
+
+#sidebar.hidden{
+transform:translateX(-120px);
+}
+
+.thumb{
+width:100px;
+height:70px;
+margin:5px auto;
+background:#fff;
+cursor:pointer;
+border:2px solid transparent;
+}
+
+.thumb.active{
+border-color:#4caf50;
+}
+
+/* ================= CANVAS AREA ================= */
+
+#canvasContainer{
+position:absolute;
+left:120px;
+top:110px;
+right:0;
+bottom:0;
+background:#ddd;
+overflow:auto;
+transition:.3s;
+}
+
+#canvasContainer.full{
+left:0;
+}
+
+canvas{
+display:block;
+margin:auto;
+background:#fff;
+touch-action:none;
+box-shadow:0 2px 8px rgba(0,0,0,0.2);
+}
+
+
+/* ================= SLIDESHOW CONTROLS ================= */
+
+#slideshowControls{
+display:none;
+position:fixed;
+bottom:20px;
+left:50%;
+transform:translateX(-50%);
+background:rgba(0,0,0,.7);
+padding:10px;
+border-radius:8px;
+}
+
+#slideshowControls button{
+margin:5px;
+background:#444;
+color:#fff;
+border:none;
+padding:6px 12px;
+border-radius:6px;
+cursor:pointer;
+}
+
+#slideshowControls button:hover{
+background:#666;
+}
+/* Basic Styles */
+#shapePanel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #ccc;
+  position: absolute;
+  top: 50px; /* adjust based on your toolbar */
+  left: 10px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  border-radius: 6px;
+  z-index: 100;
+}
+
+#shapePanel.hidden {
+  display: none;
+}
+
+#shapePanel button {
+  background: #f8f8f8;
+  border: 1px solid #ccc;
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+#shapeToggleBtn {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: #fff;
+  font-size: 16px;
+}
+#graphPanel{
+position:fixed;
+top:80px;
+right:40px;
+width:650px;
+height:550px;
+background:#fff;
+border-radius:10px;
+box-shadow:0 10px 30px rgba(0,0,0,0.3);
+display:flex;
+flex-direction:column;
+z-index:5000;
+}
+
+#graphPanel.hidden{
+display:none;
+}
+
+#graphHeader{
+background:#1f2937;
+color:#fff;
+padding:10px;
+display:flex;
+justify-content:space-between;
+cursor:move;
+border-radius:10px 10px 0 0;
+}
+
+#graphControls{
+display:flex;
+gap:8px;
+padding:10px;
+background:#f3f4f6;
+}
+
+#graphControls input{
+flex:1;
+padding:6px;
+}
+
+#graphContainer{
+flex:1;
+}
+
+.graphFloatingBtn{
+position:fixed;
+bottom:30px;
+right:30px;
+width:55px;
+height:55px;
+border-radius:50%;
+border:none;
+background:#22c55e;
+color:#fff;
+font-size:20px;
+cursor:pointer;
+z-index:5000;
+}
+</style>
+</head>
+<body>
+
+<!-- ================= TABS ================= -->
+
+<div id="ribbonTabs">
+<button class="tabBtn active" data-tab="drawingTab">Drawing</button>
+<button class="tabBtn" data-tab="insertTab">Insert</button>
+<button class="tabBtn" data-tab="slideshowTab">Slideshow</button>
+<button class="tabBtn" data-tab="videoTab">Video</button>
+<button class="tabBtn" data-tab="exportTab">Export</button>
+</div>
+
+<!-- ================= DRAWING TAB ================= -->
+
+<div id="drawingTab" class="ribbonPanel active">
+<div class="group">
+<button id="toggleBtn"><i class="fa fa-bars"></i></button>
+</div>
+
+<div class="group">
+<button id="penBtn"><i class="fa fa-pen"></i></button>
+<button id="eraserBtn"><i class="fa fa-eraser"></i></button>
+<button id="highlighterBtn"><i class="fas fa-highlighter"></i></button>
+<input type="color" id="colorPicker" value="#000000">
+<input type="number" id="sizePicker" value="3" min="1" max="50">
+</div>
+
+<div class="group">
+<input type="color" id="bgPicker" value="#ffffff">
+</div>
+
+<div class="group">
+<button id="undoBtn"><i class="fa fa-rotate-left"></i></button>
+<button id="redoBtn"><i class="fa fa-rotate-right"></i></button>
+</div>
+
+<div class="group">
+<button id="addPageBtn"><i class="fa fa-file-circle-plus"></i></button>
+<button id="deletePageBtn"><i class="fa fa-trash"></i></button>
+</div>
+<div class="group">
+  <button id="clearBtn" title="Clear All"><i class="fa fa-trash-can"></i></button>
+  <button id="zoomInBtn" title="Zoom In"><i class="fa fa-magnifying-glass-plus"></i></button>
+  <button id="zoomOutBtn" title="Zoom Out"><i class="fa fa-magnifying-glass-minus"></i></button>
+</div>
+<div class="group">
+  <button id="selectStrokeBtn"><i class="fa fa-mouse-pointer"></i></button>
+  <button id="cutStrokeBtn"><i class="fa fa-scissors"></i></button>
+</div>
+</div>
+
+<!-- ================= INSERT TAB ================= -->
+
+<div id="insertTab" class="ribbonPanel">
+<div class="group">
+<button id="imageBtn"><i class="fa fa-image"></i></button>
+<input type="file" id="imageInput" hidden accept="image/*">
+<button id="cutImageBtn">
+  <i class="fas fa-scissors"></i> Cut Image
+</button>
+<!-- Toggle Button to Open/Close Shape Panel -->
+<button id="shapeToggleBtn"><i class="fa-regular fa-square"></i> Shapes</button>
+
+<!-- Shape Panel -->
+<div id="shapePanel" class="hidden">
+<button id="rectBtn"><i class="fa-regular fa-square"></i></button>
+<button id="circleBtn"><i class="fa-regular fa-circle"></i></button>
+
+<button id="lineBtn"><i class="fa-solid fa-slash"></i></button>
+<button id="arrowBtn"><i class="fa-solid fa-arrow-right"></i></button>
+
+<button id="paraBtn"><i class="fa-solid fa-diamond"></i></button>
+<button id="rhombusBtn"><i class="fa-regular fa-gem"></i></button>
+<button id="trapBtn"><i class="fa-solid fa-up-down"></i></button>
+
+<button id="cubeBtn"><i class="fa-solid fa-cube"></i></button>
+<button id="cylinderBtn"><i class="fa-solid fa-database"></i></button>
+<button id="sphereBtn"><i class="fa-solid fa-circle-dot"></i></button>
+<button id="coneBtn"><i class="fa-solid fa-ice-cream"></i></button>
+<button id="pyramidBtn"><i class="fa-solid fa-mountain"></i></button>
+</div>
+<button id="deleteShapeBtn"><i class="fa fa-xmark"></i></button>
+</div>
+</div>
+<div id="graphPanel" class="hidden">
+  <div id="graphHeader">
+    <span>Advanced Graph Panel</span>
+    <button id="closeGraphBtn">✖</button>
+  </div>
+
+  <div id="graphControls">
+    <input id="functionInput" placeholder="Enter function: x^2, sin(x), x^3-2*x">
+    <button id="plotBtn">Plot</button>
+    <button id="clearGraphBtn">Clear</button>
+    <button id="themeBtn">Dark</button>
+    <button id="exportGraphBtn">Export</button>
+<button id="insertGraphBtn">Insert to Canvas</button>
+  </div>
+
+  <div id="graphContainer"></div>
+</div>
+
+<button id="openGraphBtn" class="graphFloatingBtn">
+  📈
+</button>
+
+<!-- ================= SLIDESHOW TAB ================= -->
+
+<div id="slideshowTab" class="ribbonPanel">
+<div class="group">
+<button id="slideshowBtn"><i class="fa fa-play"></i></button>
+</div>
+</div>
+
+<!-- ================= VIDEO TAB ================= -->
+
+<div id="videoTab" class="ribbonPanel">
+<div class="group">
+<button id="startRecordBtn"><i class="fa fa-circle"></i></button>
+<button id="stopRecordBtn" disabled><i class="fa fa-stop"></i></button>
+</div>
+</div>
+
+<!-- ================= EXPORT TAB ================= -->
+
+<div id="exportTab" class="ribbonPanel">
+<div class="group">
+<button id="pngBtn"><i class="fa fa-file-image"></i></button>
+<button id="pdfBtn"><i class="fa fa-file-pdf"></i></button>
+<button id="pptBtn"><i class="fa fa-file-powerpoint"></i></button>
+<button id="backupBtn" title="Download Backup">
+  <i class="fa fa-database"></i>
+</button>
+</div>
+</div>
+
+<!-- ================= SIDEBAR ================= -->
+
+<div id="sidebar"></div>
+
+<!-- ================= CANVAS ================= -->
+
+<div id="canvasContainer">
+<canvas id="board" width="1600" height="2000"></canvas>
+</div>
+
+<!-- ================= SLIDESHOW CONTROLS ================= -->
+
+<div id="slideshowControls">
+<button id="prevSlide">Prev</button>
+<button id="nextSlide">Next</button>
+<button id="exitSlide">Exit</button>
+</div>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<div id="g_id_onload"
+     data-client_id="104112968849-oehrp6bnkkqvei19vu2v2krbjbscf84p.apps.googleusercontent.com"
+     data-callback="handleCredentialResponse">
+</div>
+
+<div class="g_id_signin" data-type="standard"></div>
+<script>
+/* BOARD ID SYSTEM */
+const params = new URLSearchParams(window.location.search);
+const boardID = params.get("board") || "default";
+const storageKey = "whiteboardData_" + boardID;
+/* TAB SWITCHING */
+document.querySelectorAll(".tabBtn").forEach(btn=>{
+btn.onclick=()=>{
+document.querySelectorAll(".tabBtn").forEach(b=>b.classList.remove("active"));
+document.querySelectorAll(".ribbonPanel").forEach(p=>p.classList.remove("active"));
+btn.classList.add("active");
+document.getElementById(btn.dataset.tab).classList.add("active");
+};
+});
+
+const canvas=document.getElementById("board");
+const ctx=canvas.getContext("2d");
+let tool="pen";
+let pages=[];
+let current=0;
+let drawing=false,currentStroke=null;
+let selectedImage=null,dragging=false,resizing=false,offsetX=0,offsetY=0;
+let mediaRecorder=null,recordedChunks=[],audioStream=null;
+let selectedShape=null;
+let shapeDragging=false;
+let shapeResizing=false;
+let shapeOffsetX=0,shapeOffsetY=0;
+let shapeTool=null;
+// ===== STROKE SELECTION SYSTEM =====
+let selectedStrokes = [];
+let selectingStroke = false;
+let selectionBox = null;
+
+let movingStrokes = false;
+let moveStartX = 0;
+let moveStartY = 0;
+
+/* LOCAL STORAGE – PER BOARD */
+
+function saveToLocalStorage(){
+let data = pages.map(p => ({
+bg: p.bg,
+strokes: p.strokes,
+images: p.images.map(img => ({
+src: img.img.src,
+x: img.x,
+y: img.y,
+w: img.w,
+h: img.h
+})),
+shapes: p.shapes || []   // ✅ ADD THIS
+}));
+
+localStorage.setItem(storageKey, JSON.stringify({
+pages: data,
+current: current
+}));
+}
+
+function loadFromLocalStorage(){
+let saved = localStorage.getItem(storageKey);
+
+if(!saved){
+pages = [{bg:"#ffffff",strokes:[],images:[],shapes:[],undo:[],redo:[]}];
+return;
+}
+
+let parsed = JSON.parse(saved);
+
+pages = parsed.pages.map(p => {
+let images = [];
+
+p.images.forEach(imgData => {
+let img = new Image();
+img.src = imgData.src;
+
+images.push({
+img: img,
+x: imgData.x,
+y: imgData.y,
+w: imgData.w,
+h: imgData.h
+});
+});
+
+return {
+bg: p.bg,
+strokes: p.strokes || [],
+images: images,
+shapes: p.shapes || [],   // ✅ ADD THIS
+undo: [],
+redo: []
+};
+});
+
+current = parsed.current || 0;
+}
+/* SAVE STATE FOR UNDO */
+function saveState(){
+let p = pages[current];
+
+p.undo.push(JSON.stringify({
+strokes: p.strokes,
+images: p.images.map(img => ({
+src: img.img.src,
+x: img.x,
+y: img.y,
+w: img.w,
+h: img.h
+})),
+shapes: p.shapes
+}));
+
+p.redo = [];
+}
+
+/* REDRAW */
+function redraw(){
+
+const p = pages[current];
+
+ctx.clearRect(0,0,canvas.width,canvas.height);
+if(selectedStrokes.length){
+  highlightSelectedStrokes();
+}
+/* ===== BACKGROUND ===== */
+ctx.fillStyle = p.bg;
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+
+/* =====================================================
+   =============== DRAW SHAPES FIRST ===================
+   ===================================================== */
+
+(p.shapes || []).forEach(s=>{
+ctx.strokeStyle = s.color || "#000";
+ctx.fillStyle   = s.color || "#000";
+ctx.lineWidth   = 2;
+
+
+/* ---------- RECTANGLE ---------- */
+if(s.type==="rect"){
+ctx.strokeRect(s.x,s.y,s.w,s.h);
+}
+
+
+/* ---------- CIRCLE ---------- */
+if(s.type==="circle"){
+ctx.beginPath();
+ctx.ellipse(
+s.x + s.w/2,
+s.y + s.h/2,
+Math.abs(s.w/2),
+Math.abs(s.h/2),
+0,0,Math.PI*2
+);
+ctx.stroke();
+}
+
+
+/* ---------- LINE ---------- */
+if(s.type==="line"){
+ctx.beginPath();
+ctx.moveTo(s.x,s.y);
+ctx.lineTo(s.x+s.w,s.y+s.h);
+ctx.stroke();
+}
+
+
+/* ---------- ARROW ---------- */
+if(s.type==="arrow"){
+
+let x1=s.x, y1=s.y;
+let x2=s.x+s.w, y2=s.y+s.h;
+
+ctx.beginPath();
+ctx.moveTo(x1,y1);
+ctx.lineTo(x2,y2);
+ctx.stroke();
+
+/* arrow head */
+let angle=Math.atan2(y2-y1,x2-x1);
+let head=15;
+
+ctx.beginPath();
+ctx.moveTo(x2,y2);
+ctx.lineTo(
+x2-head*Math.cos(angle-Math.PI/6),
+y2-head*Math.sin(angle-Math.PI/6)
+);
+ctx.lineTo(
+x2-head*Math.cos(angle+Math.PI/6),
+y2-head*Math.sin(angle+Math.PI/6)
+);
+ctx.closePath();
+ctx.fill();
+}
+
+
+/* ---------- PARALLELOGRAM ---------- */
+if(s.type==="para"){
+ctx.beginPath();
+ctx.moveTo(s.x+30,s.y);
+ctx.lineTo(s.x+s.w,s.y);
+ctx.lineTo(s.x+s.w-30,s.y+s.h);
+ctx.lineTo(s.x,s.y+s.h);
+ctx.closePath();
+ctx.stroke();
+}
+
+
+/* ---------- RHOMBUS ---------- */
+if(s.type==="rhombus"){
+ctx.beginPath();
+ctx.moveTo(s.x+s.w/2,s.y);
+ctx.lineTo(s.x+s.w,s.y+s.h/2);
+ctx.lineTo(s.x+s.w/2,s.y+s.h);
+ctx.lineTo(s.x,s.y+s.h/2);
+ctx.closePath();
+ctx.stroke();
+}
+
+
+/* ---------- TRAPEZIUM ---------- */
+if(s.type==="trapezium"){
+ctx.beginPath();
+ctx.moveTo(s.x+30,s.y);
+ctx.lineTo(s.x+s.w-30,s.y);
+ctx.lineTo(s.x+s.w,s.y+s.h);
+ctx.lineTo(s.x,s.y+s.h);
+ctx.closePath();
+ctx.stroke();
+}
+
+
+/* ---------- CUBE ---------- */
+if(s.type==="cube"){
+let offset=20;
+
+ctx.strokeRect(s.x,s.y,s.w,s.h);
+ctx.strokeRect(s.x+offset,s.y-offset,s.w,s.h);
+
+ctx.beginPath();
+ctx.moveTo(s.x,s.y);
+ctx.lineTo(s.x+offset,s.y-offset);
+
+ctx.moveTo(s.x+s.w,s.y);
+ctx.lineTo(s.x+s.w+offset,s.y-offset);
+
+ctx.moveTo(s.x,s.y+s.h);
+ctx.lineTo(s.x+offset,s.y+s.h-offset);
+
+ctx.moveTo(s.x+s.w,s.y+s.h);
+ctx.lineTo(s.x+s.w+offset,s.y+s.h-offset);
+ctx.stroke();
+}
+
+
+/* ---------- CYLINDER ---------- */
+if(s.type==="cylinder"){
+
+ctx.beginPath();
+ctx.ellipse(s.x+s.w/2,s.y,s.w/2,20,0,0,Math.PI*2);
+ctx.stroke();
+
+ctx.strokeRect(s.x,s.y,s.w,s.h);
+
+ctx.beginPath();
+ctx.ellipse(s.x+s.w/2,s.y+s.h,s.w/2,20,0,0,Math.PI);
+ctx.stroke();
+}
+
+
+/* ---------- SPHERE ---------- */
+if(s.type==="sphere"){
+
+ctx.beginPath();
+ctx.arc(
+s.x+s.w/2,
+s.y+s.h/2,
+Math.abs(s.w/2),
+0,Math.PI*2
+);
+ctx.stroke();
+
+/* horizontal curve */
+ctx.beginPath();
+ctx.ellipse(
+s.x+s.w/2,
+s.y+s.h/2,
+s.w/2,
+15,
+0,0,Math.PI*2
+);
+ctx.stroke();
+}
+
+
+/* ---------- CONE ---------- */
+if(s.type==="cone"){
+
+ctx.beginPath();
+ctx.moveTo(s.x+s.w/2,s.y);
+ctx.lineTo(s.x,s.y+s.h);
+ctx.lineTo(s.x+s.w,s.y+s.h);
+ctx.closePath();
+ctx.stroke();
+
+ctx.beginPath();
+ctx.ellipse(
+s.x+s.w/2,
+s.y+s.h,
+s.w/2,
+15,
+0,0,Math.PI
+);
+ctx.stroke();
+}
+
+
+/* ---------- PYRAMID ---------- */
+if(s.type==="pyramid"){
+
+ctx.beginPath();
+ctx.moveTo(s.x+s.w/2,s.y);
+ctx.lineTo(s.x,s.y+s.h);
+ctx.lineTo(s.x+s.w,s.y+s.h);
+ctx.closePath();
+ctx.stroke();
+
+ctx.beginPath();
+ctx.moveTo(s.x+s.w/2,s.y);
+ctx.lineTo(s.x+s.w/2,s.y+s.h);
+ctx.stroke();
+}
+
+
+/* ---------- SELECTION OUTLINE ---------- */
+if(s===selectedShape){
+
+ctx.strokeStyle="blue";
+ctx.lineWidth=2;
+
+ctx.strokeRect(s.x,s.y,s.w,s.h);
+
+/* resize handle */
+ctx.fillStyle="blue";
+ctx.fillRect(s.x+s.w-10,s.y+s.h-10,10,10);
+}
+
+});
+
+/* ===== DRAW IMAGES ===== */
+p.images.forEach(img=>{
+ctx.drawImage(img.img,img.x,img.y,img.w,img.h);
+
+if(img===selectedImage){
+ctx.strokeStyle="blue";
+ctx.strokeRect(img.x,img.y,img.w,img.h);
+ctx.fillRect(img.x+img.w-10,img.y+img.h-10,10,10);
+}
+});
+
+/* ===== DRAW STROKES ===== */
+p.strokes.forEach(s=>{
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = s.size;
+    ctx.lineCap = "round";
+
+    // highlighter alpha
+    if(s.type === "highlighter"){
+        ctx.globalAlpha = s.alpha || 0.3;
+    } else {
+        ctx.globalAlpha = 1;
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(s.points[0].x, s.points[0].y);
+    for(let i=1;i<s.points.length;i++)
+        ctx.lineTo(s.points[i].x,s.points[i].y);
+    ctx.stroke();
+
+    ctx.globalAlpha = 1; // reset for next element
+});
+
+updateThumbs();
+}
+
+/* POINTER EVENTS */
+function pos(e){
+  const r = canvas.getBoundingClientRect();
+
+  return {
+    x: (e.clientX - r.left) / scale,
+    y: (e.clientY - r.top) / scale
+  };
+}
+canvas.onpointerdown=e=>{
+const p=pos(e);
+
+selectedImage=null;
+selectedShape=null;
+
+/* ===== SHAPE SELECTION FIRST ===== */
+for(let i=pages[current].shapes.length-1;i>=0;i--){
+let s=pages[current].shapes[i];
+
+if(p.x>s.x && p.x<s.x+s.w &&
+   p.y>s.y && p.y<s.y+s.h){
+
+selectedShape=s;
+
+if(p.x>s.x+s.w-10 && p.y>s.y+s.h-10){
+shapeResizing=true;
+}else{
+shapeDragging=true;
+shapeOffsetX=p.x-s.x;
+shapeOffsetY=p.y-s.y;
+}
+
+redraw();
+return;
+}
+}
+
+/* ===== IMAGE SELECTION ===== */
+for(let i=pages[current].images.length-1;i>=0;i--){
+let img=pages[current].images[i];
+
+if(p.x>img.x&&p.x<img.x+img.w&&p.y>img.y&&p.y<img.y+img.h){
+
+selectedImage=img;
+
+if(p.x>img.x+img.w-10&&p.y>img.y+img.h-10){
+resizing=true;
+}else{
+dragging=true;
+offsetX=p.x-img.x;
+offsetY=p.y-img.y;
+}
+
+redraw();
+return;
+}
+}
+
+/* ===== STROKE SELECTION MODE ===== */
+if(tool === "selectStroke"){
+
+  // check if clicking on already selected stroke (for move)
+  const hit = selectedStrokes.some(stroke =>
+    stroke.points.some(pt =>
+      Math.abs(pt.x - p.x) < 8 &&
+      Math.abs(pt.y - p.y) < 8
+    )
+  );
+
+  if(hit){
+    movingStrokes = true;
+    moveStartX = p.x;
+    moveStartY = p.y;
+    return;
+  }
+
+  // otherwise start selection box
+  selectedStrokes = [];
+  selectingStroke = true;
+  selectionBox = {
+    x: p.x,
+    y: p.y,
+    w: 0,
+    h: 0
+  };
+
+  return;
+}
+/* ===== CREATE NEW SHAPE ===== */
+if(tool==="shape" && shapeTool){
+saveState();
+
+let newShape={
+type:shapeTool,
+x:p.x,
+y:p.y,
+w:0,
+h:0,
+color:colorPicker.value
+};
+
+pages[current].shapes.push(newShape);
+selectedShape=newShape;
+shapeResizing=true;
+return;
+}
+
+/* ===== ERASER ===== */
+if(tool==="eraser"){
+eraseAt(p);
+return;
+}
+
+/* ===== DRAW STROKE ===== */
+drawing = true;
+saveState();
+
+currentStroke = {
+    color: colorPicker.value,
+    size: +sizePicker.value,
+    points: [],
+    type: tool // add type property
+};
+
+// If highlighter, override color & alpha
+if(tool === "highlighter"){
+    currentStroke.color = colorPicker.value || "#ffff00"; // default yellow
+    currentStroke.alpha = 0.3; // semi-transparent
+}
+
+currentStroke.points.push(p);
+pages[current].strokes.push(currentStroke);
+};
+
+canvas.onpointermove=e=>{
+const p=pos(e);
+/* ===== DRAW SELECTION BOX ===== */
+if(selectingStroke && selectionBox){
+  selectionBox.w = p.x - selectionBox.x;
+  selectionBox.h = p.y - selectionBox.y;
+  redraw();
+  drawSelectionBox();
+  return;
+}
+
+/* ===== MOVE SELECTED STROKES ===== */
+if(movingStrokes){
+  const dx = p.x - moveStartX;
+  const dy = p.y - moveStartY;
+
+  selectedStrokes.forEach(stroke=>{
+    stroke.points.forEach(pt=>{
+      pt.x += dx;
+      pt.y += dy;
+    });
+  });
+
+  moveStartX = p.x;
+  moveStartY = p.y;
+
+  redraw();
+  return;
+}
+
+/* ===== SHAPE RESIZE ===== */
+if(shapeResizing && selectedShape){
+selectedShape.w=p.x-selectedShape.x;
+selectedShape.h=p.y-selectedShape.y;
+redraw();
+return;
+}
+
+/* ===== SHAPE DRAG ===== */
+if(shapeDragging && selectedShape){
+selectedShape.x=p.x-shapeOffsetX;
+selectedShape.y=p.y-shapeOffsetY;
+redraw();
+return;
+}
+
+/* ===== IMAGE RESIZE ===== */
+if(resizing && selectedImage){
+selectedImage.w=p.x-selectedImage.x;
+selectedImage.h=p.y-selectedImage.y;
+redraw();
+return;
+}
+
+/* ===== IMAGE DRAG ===== */
+if(dragging && selectedImage){
+selectedImage.x=p.x-offsetX;
+selectedImage.y=p.y-offsetY;
+redraw();
+return;
+}
+
+/* ===== DRAWING ===== */
+if(drawing){
+if(tool==="eraser"){
+eraseAt(p);
+return;
+}
+currentStroke.points.push(p);
+redraw();
+}
+};
+
+canvas.onpointerup = () => {
+
+  /* ===== FINISH STROKE SELECTION ===== */
+  if(selectingStroke && selectionBox){
+
+    selectingStroke = false;
+
+    const box = normalizeBox(selectionBox);
+
+    selectedStrokes = pages[current].strokes.filter(stroke =>
+      stroke.points.some(pt =>
+        pt.x >= box.x &&
+        pt.x <= box.x + box.w &&
+        pt.y >= box.y &&
+        pt.y <= box.y + box.h
+      )
+    );
+
+    selectionBox = null;
+
+    redraw();
+    highlightSelectedStrokes();
+    return;
+  }
+
+  /* ===== STOP MOVING STROKES ===== */
+  if(movingStrokes){
+    movingStrokes = false;
+    saveToLocalStorage();
+    return;
+  }
+
+  /* ===== STOP DRAWING ===== */
+  drawing = false;
+
+  /* ===== STOP IMAGE DRAG / RESIZE ===== */
+  dragging = false;
+  resizing = false;
+
+  /* ===== STOP SHAPE DRAG / RESIZE ===== */
+  shapeDragging = false;
+  shapeResizing = false;
+
+  /* ===== SAVE AFTER NORMAL ACTION ===== */
+  saveToLocalStorage();
+};
+/* ERASER */
+function eraseAt(p){
+saveState();
+pages[current].strokes=pages[current].strokes.filter(st=>{
+return !st.points.some(pt=>{
+let dx=pt.x-p.x,dy=pt.y-p.y;
+return dx*dx+dy*dy<(st.size+5)**2;
+});
+});
+redraw();
+saveToLocalStorage();
+}
+
+/* BUTTONS */
+penBtn.onclick=()=>tool="pen";
+eraserBtn.onclick=()=>tool="eraser";
+const highlighterBtn = document.getElementById("highlighterBtn");
+
+highlighterBtn.onclick = () => {
+    tool = "highlighter";
+};
+
+bgPicker.oninput=e=>{
+pages[current].bg=e.target.value;
+redraw();saveToLocalStorage();
+};
+
+undoBtn.onclick = ()=>{
+let p = pages[current];
+
+if(p.undo.length){
+
+p.redo.push(JSON.stringify({
+strokes:p.strokes,
+images:p.images.map(img => ({
+src: img.img.src,
+x: img.x,
+y: img.y,
+w: img.w,
+h: img.h
+})),
+shapes:p.shapes
+}));
+
+let state = JSON.parse(p.undo.pop());
+
+p.strokes = state.strokes;
+p.shapes  = state.shapes || [];
+
+/* Rebuild images properly */
+p.images = state.images.map(imgData=>{
+let img = new Image();
+img.src = imgData.src;
+
+return {
+img: img,
+x: imgData.x,
+y: imgData.y,
+w: imgData.w,
+h: imgData.h
+};
+});
+
+redraw();
+saveToLocalStorage();
+}
+};
+
+redoBtn.onclick = ()=>{
+let p = pages[current];
+
+if(p.redo.length){
+
+p.undo.push(JSON.stringify({
+strokes:p.strokes,
+images:p.images.map(img => ({
+src: img.img.src,
+x: img.x,
+y: img.y,
+w: img.w,
+h: img.h
+})),
+shapes:p.shapes
+}));
+
+let state = JSON.parse(p.redo.pop());
+
+p.strokes = state.strokes;
+p.shapes  = state.shapes || [];
+
+p.images = state.images.map(imgData=>{
+let img = new Image();
+img.src = imgData.src;
+
+return {
+img: img,
+x: imgData.x,
+y: imgData.y,
+w: imgData.w,
+h: imgData.h
+};
+});
+
+redraw();
+saveToLocalStorage();
+}
+};
+addPageBtn.onclick = () => {
+
+pages.push({
+    bg: "#ffffff",
+    strokes: [],
+    images: [],
+    shapes: [],   // ✅ ADD THIS
+    undo: [],
+    redo: []
+});
+
+current = pages.length - 1;
+
+redraw();
+saveToLocalStorage();
+};
+
+deletePageBtn.onclick=()=>{
+if(pages.length>1){
+pages.splice(current,1);
+current=Math.max(0,current-1);
+redraw();saveToLocalStorage();
+}
+};
+
+/* IMAGE */
+imageBtn.onclick=()=>imageInput.click();
+imageInput.onchange=e=>{
+const file=e.target.files[0];
+const reader=new FileReader();
+reader.onload=()=>{
+const img=new Image();
+img.onload=()=>{
+saveState();
+pages[current].images.push({img:img,x:200,y:200,w:img.width/2,h:img.height/2});
+redraw();saveToLocalStorage();
+};
+img.src=reader.result;
+};
+reader.readAsDataURL(file);
+};
+
+/* SLIDESHOW */
+slideshowBtn.onclick=()=>{
+document.getElementById("slideshowControls").style.display="block";
+sidebar.style.display="none";
+canvas.requestFullscreen();
+};
+exitSlide.onclick=()=>{
+document.getElementById("slideshowControls").style.display="none";
+sidebar.style.display="block";
+document.exitFullscreen();
+};
+nextSlide.onclick=()=>{if(current<pages.length-1){current++;redraw();}};
+prevSlide.onclick=()=>{if(current>0){current--;redraw();}};
+
+/* RECORDING */
+startRecordBtn.onclick=async()=>{
+const stream=canvas.captureStream(30);
+audioStream=await navigator.mediaDevices.getUserMedia({audio:true});
+const combined=new MediaStream([...stream.getTracks(),...audioStream.getTracks()]);
+mediaRecorder=new MediaRecorder(combined);
+recordedChunks=[];
+mediaRecorder.ondataavailable=e=>recordedChunks.push(e.data);
+mediaRecorder.onstop=()=>{
+const blob=new Blob(recordedChunks,{type:"video/webm"});
+const a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="recording.webm";
+a.click();
+};
+mediaRecorder.start();
+startRecordBtn.disabled=true;stopRecordBtn.disabled=false;
+};
+stopRecordBtn.onclick=()=>{
+mediaRecorder.stop();
+audioStream.getTracks().forEach(t=>t.stop());
+startRecordBtn.disabled=false;stopRecordBtn.disabled=true;
+};
+
+/* EXPORT */
+pngBtn.onclick=()=>{let a=document.createElement("a");a.href=canvas.toDataURL();a.download="page.png";a.click();};
+
+pdfBtn.onclick=()=>{
+const {jsPDF}=window.jspdf;
+const pdf=new jsPDF("portrait","px",[canvas.width,canvas.height]);
+pages.forEach((p,i)=>{
+current=i;redraw();
+if(i>0)pdf.addPage();
+pdf.addImage(canvas.toDataURL(),"PNG",0,0,canvas.width,canvas.height);
+});
+pdf.save("whiteboard.pdf");
+};
+
+pptBtn.onclick=()=>{
+const ppt=new PptxGenJS();
+pages.forEach((p,i)=>{
+current=i;redraw();
+const slide=ppt.addSlide();
+slide.addImage({data:canvas.toDataURL(),x:0,y:0,w:ppt.width,h:ppt.height});
+});
+ppt.writeFile("whiteboard.pptx");
+};
+
+/* THUMBNAILS */
+function updateThumbs(){
+sidebar.innerHTML="";
+
+pages.forEach((p,i)=>{
+
+const t=document.createElement("canvas");
+t.width=100;
+t.height=70;
+
+const tc=t.getContext("2d");
+
+/* Background */
+tc.fillStyle=p.bg;
+tc.fillRect(0,0,100,70);
+
+/* Scale */
+tc.save();
+tc.scale(100/canvas.width,70/canvas.height);
+
+/* ===== DRAW SHAPES FIRST ===== */
+p.shapes?.forEach(s=>{
+tc.strokeStyle=s.color || "#000";
+tc.lineWidth=2;
+
+if(s.type==="rect"){
+tc.strokeRect(s.x,s.y,s.w,s.h);
+}
+
+if(s.type==="circle"){
+tc.beginPath();
+tc.ellipse(
+s.x+s.w/2,
+s.y+s.h/2,
+Math.abs(s.w/2),
+Math.abs(s.h/2),
+0,0,Math.PI*2
+);
+tc.stroke();
+}
+});
+
+/* ===== DRAW IMAGES ===== */
+p.images.forEach(img=>{
+tc.drawImage(img.img,img.x,img.y,img.w,img.h);
+});
+
+/* ===== DRAW STROKES ===== */
+p.strokes.forEach(s=>{
+tc.strokeStyle=s.color;
+tc.lineWidth=s.size;
+tc.beginPath();
+tc.moveTo(s.points[0].x,s.points[0].y);
+for(let j=1;j<s.points.length;j++){
+tc.lineTo(s.points[j].x,s.points[j].y);
+}
+tc.stroke();
+});
+
+tc.restore();
+
+/* UI */
+t.className="thumb"+(i===current?" active":"");
+t.onclick=()=>{current=i;redraw();};
+sidebar.appendChild(t);
+
+});
+}
+
+/* INIT */
+loadFromLocalStorage();
+redraw();
+rectBtn.onclick=()=>{shapeTool="rect";tool="shape";}
+circleBtn.onclick=()=>{shapeTool="circle";tool="shape";}
+lineBtn.onclick=()=>{shapeTool="line";tool="shape";}
+arrowBtn.onclick=()=>{shapeTool="arrow";tool="shape";}
+paraBtn.onclick=()=>{shapeTool="para";tool="shape";}
+rhombusBtn.onclick=()=>{shapeTool="rhombus";tool="shape";}
+trapBtn.onclick=()=>{shapeTool="trapezium";tool="shape";}
+cubeBtn.onclick=()=>{shapeTool="cube";tool="shape";}
+cylinderBtn.onclick=()=>{shapeTool="cylinder";tool="shape";}
+sphereBtn.onclick=()=>{shapeTool="sphere";tool="shape";}
+coneBtn.onclick=()=>{shapeTool="cone";tool="shape";}
+pyramidBtn.onclick=()=>{shapeTool="pyramid";tool="shape";}
+deleteShapeBtn.onclick=()=>{
+if(selectedShape){
+pages[current].shapes=
+pages[current].shapes.filter(s=>s!==selectedShape);
+selectedShape=null;
+redraw();
+saveToLocalStorage();
+}
+};
+// Toggle Shape Panel
+const toggleBtn = document.getElementById("shapeToggleBtn");
+const shapePanel = document.getElementById("shapePanel");
+
+toggleBtn.addEventListener("click", () => {
+  shapePanel.classList.toggle("hidden");
+});
+/* ================= ADVANCED GRAPH PANEL ================= */
+
+const graphPanel = document.getElementById("graphPanel");
+const openGraphBtn = document.getElementById("openGraphBtn");
+const closeGraphBtn = document.getElementById("closeGraphBtn");
+const plotBtn = document.getElementById("plotBtn");
+const clearGraphBtn = document.getElementById("clearGraphBtn");
+const themeBtn = document.getElementById("themeBtn");
+const exportGraphBtn = document.getElementById("exportGraphBtn");
+const functionInput = document.getElementById("functionInput");
+
+let darkMode = false;
+let graphInitialized = false;
+
+/* OPEN */
+openGraphBtn.onclick = () => {
+  graphPanel.classList.remove("hidden");
+
+  if(!graphInitialized){
+    initGraph();
+    graphInitialized = true;
+  }
+};
+
+/* CLOSE */
+closeGraphBtn.onclick = () => {
+  graphPanel.classList.add("hidden");
+};
+
+function createLayout(){
+return {
+margin:{t:20},
+xaxis:{
+title:"X",
+zeroline:true,
+gridcolor: darkMode ? "#444" : "#ddd",
+color: darkMode ? "#fff" : "#000"
+},
+yaxis:{
+title:"Y",
+zeroline:true,
+gridcolor: darkMode ? "#444" : "#ddd",
+color: darkMode ? "#fff" : "#000"
+},
+paper_bgcolor: darkMode ? "#111827" : "#ffffff",
+plot_bgcolor: darkMode ? "#111827" : "#ffffff",
+showlegend:true
+};
+}
+
+function initGraph(){
+Plotly.newPlot("graphContainer", [], createLayout(), {responsive:true});
+}
+
+/* PLOT FUNCTION */
+plotBtn.onclick = () => {
+
+let expr = functionInput.value.trim();
+if(!expr) return;
+
+try{
+
+let compiled = math.compile(expr);
+
+let xValues = [];
+let yValues = [];
+
+for(let x=-20; x<=20; x+=0.05){
+let y = compiled.evaluate({x:x});
+if(typeof y === "number" && isFinite(y)){
+xValues.push(x);
+yValues.push(y);
+}
+}
+
+Plotly.addTraces("graphContainer", {
+x:xValues,
+y:yValues,
+mode:"lines",
+name:expr
+});
+
+}catch(err){
+alert("Invalid function.");
+}
+};
+
+/* CLEAR */
+clearGraphBtn.onclick = () => {
+Plotly.react("graphContainer", [], createLayout());
+};
+
+/* DARK MODE */
+themeBtn.onclick = () => {
+darkMode = !darkMode;
+Plotly.react(
+"graphContainer",
+document.getElementById("graphContainer").data || [],
+createLayout()
+);
+};
+
+/* EXPORT */
+exportGraphBtn.onclick = () => {
+Plotly.downloadImage("graphContainer",{
+format:'png',
+filename:'graph',
+width:1000,
+height:700
+});
+};
+const insertGraphBtn = document.getElementById("insertGraphBtn");
+
+insertGraphBtn.onclick = async () => {
+
+try{
+
+// Convert Plotly graph to image
+const dataUrl = await Plotly.toImage("graphContainer", {
+format: "png",
+width: 1000,
+height: 700
+});
+
+// Create image object
+const img = new Image();
+
+img.onload = () => {
+
+saveState(); // for undo
+
+// Add into existing image system
+pages[current].images.push({
+img: img,
+x: 150,
+y: 150,
+w: 500,
+h: 350
+});
+
+redraw();
+saveToLocalStorage();
+};
+
+img.src = dataUrl;
+
+}catch(err){
+alert("No graph to insert.");
+}
+
+};
+</script>
+<script>
+// ====== CONFIG ======
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyKgtQiWECio4XrBM508RCy1pzQMUfbY91trqw0MDgpJEpmlXz1CQTpxHkCY-zXEZSOjw/exec";
+
+let userEmail = "";
+let userName = "";
+let enterTime = null;
+let lastHeartbeat = null;
+
+function getBoardIdFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("board") || "DefaultBoard";
+}
+
+const boardId = getBoardIdFromURL();
+
+function handleCredentialResponse(response) {
+  const data = parseJwt(response.credential);
+  userEmail = data.email;
+  userName = data.name;
+
+  enterTime = new Date();
+  lastHeartbeat = new Date();
+
+  logBoard("enter");
+  startHeartbeat();
+  setupExitLog();
+}
+
+function parseJwt(token) {
+  const base64Url = token.split('.')[1];
+  const base64 = base64Url.replace(/-/g,'+').replace(/_/g,'/');
+  const jsonPayload = decodeURIComponent(atob(base64).split('').map(c =>
+    '%' + ('00'+c.charCodeAt(0).toString(16)).slice(-2)
+  ).join(''));
+  return JSON.parse(jsonPayload);
+}
+
+function logBoard(action, duration = "") {
+  if(!userEmail || !userName) return;
+
+  fetch(GAS_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      email: userEmail,
+      name: userName,
+      boardId: boardId,
+      action: action,
+      duration: duration
+    }),
+    headers: {"Content-Type":"application/json"}
+  });
+}
+
+let heartbeatInterval;
+function startHeartbeat(){
+  heartbeatInterval = setInterval(()=>{
+    lastHeartbeat = new Date();
+    logBoard("heartbeat");
+  },30000);
+}
+
+function setupExitLog(){
+  window.addEventListener("beforeunload", ()=>{
+    if(userEmail && userName && enterTime){
+
+      const exitTime = new Date();
+
+      const durationMinutes = Math.max(
+        (exitTime.getTime() - enterTime.getTime()) / 60000,
+        0.01
+      ).toFixed(2);
+
+      navigator.sendBeacon(GAS_URL, JSON.stringify({
+        email: userEmail,
+        name: userName,
+        boardId: boardId,
+        action: "exit",
+        duration: durationMinutes
+      }));
+
+      clearInterval(heartbeatInterval);
+    }
+  });
+}
+</script>
+<script>
+let scale = 1;
+const scaleFactor = 1.2;
+
+// ===== CLEAR ALL =====
+document.getElementById('clearBtn').addEventListener('click', () => {
+    const p = pages[current];
+
+    // Clear everything on current page
+    p.strokes = [];
+    p.shapes  = [];
+    p.images  = [];
+    p.undo   = [];
+    p.redo   = [];
+
+    // Reset zoom
+    scale = 1;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    // Update localStorage and redraw
+    saveToLocalStorage();
+    redraw();
+});
+
+// ===== ZOOM IN =====
+document.getElementById('zoomInBtn').addEventListener('click', () => {
+    scale *= scaleFactor;
+    applyZoom();
+});
+
+// ===== ZOOM OUT =====
+document.getElementById('zoomOutBtn').addEventListener('click', () => {
+    scale /= scaleFactor;
+    applyZoom();
+});
+
+// ===== APPLY ZOOM =====
+function applyZoom() {
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    redraw(); // redraw all strokes, shapes, and images with the new scale
+}
+</script>
+<script>
+selectStrokeBtn.onclick = () => {
+  tool = "selectStroke";
+};
+
+penBtn.onclick = () => {
+  tool = "pen";
+};
+function normalizeBox(box){
+  return {
+    x: Math.min(box.x, box.x + box.w),
+    y: Math.min(box.y, box.y + box.h),
+    w: Math.abs(box.w),
+    h: Math.abs(box.h)
+  };
+}
+
+function drawSelectionBox(){
+  if(!selectionBox) return;
+
+  ctx.save();
+  ctx.strokeStyle = "blue";
+  ctx.setLineDash([6]);
+  ctx.strokeRect(
+    selectionBox.x,
+    selectionBox.y,
+    selectionBox.w,
+    selectionBox.h
+  );
+  ctx.restore();
+}
+
+function highlightSelectedStrokes(){
+
+  selectedStrokes.forEach(stroke=>{
+    ctx.save();
+    ctx.strokeStyle = "blue";
+    ctx.lineWidth = stroke.size + 2;
+    ctx.setLineDash([4]);
+
+    ctx.beginPath();
+    ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+
+    for(let i=1;i<stroke.points.length;i++){
+      ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+    }
+
+    ctx.stroke();
+    ctx.restore();
+  });
+}
+cutStrokeBtn.onclick = ()=>{
+
+  if(!selectedStrokes.length) return;
+
+  saveState();
+
+  pages[current].strokes =
+    pages[current].strokes.filter(st =>
+      !selectedStrokes.includes(st)
+    );
+
+  selectedStrokes = [];
+
+  redraw();
+  saveToLocalStorage();
+};
+</script>
+<script>
+function downloadBoardData() {
+    const data = localStorage.getItem(storageKey);
+
+    const blob = new Blob([data], { type: "application/json" });
+    const link = document.createElement("a");
+
+    link.href = URL.createObjectURL(blob);
+    link.download = "whiteboard_backup_" + boardID + ".json";
+    link.click();
+}
+</script>
+<script>
+const sidebarToggleBtn = document.getElementById("toggleBtn");
+const sidebar = document.getElementById("sidebar");
+const canvasContainer = document.getElementById("canvasContainer");
+
+sidebarToggleBtn.addEventListener("click", () => {
+  sidebar.classList.toggle("hidden");
+  canvasContainer.classList.toggle("full");
+});
+</script>
+<script>
+const cutImageBtn = document.getElementById("cutImageBtn");
+
+cutImageBtn.onclick = () => {
+
+  if(!selectedImage) return;
+
+  saveState(); // for undo support
+
+  // Remove selected image from page
+  pages[current].images =
+    pages[current].images.filter(img => img !== selectedImage);
+
+  selectedImage = null;
+
+  redraw();
+  saveToLocalStorage();
+};
+</script>
+</body>
+</html>
