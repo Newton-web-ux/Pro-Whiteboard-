@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Pro Whiteboard – Dashboard</title>
+
+<meta name="description" content="Pro Whiteboard is a professional online whiteboard for teachers, students, and teams to draw, teach, collaborate, and record lessons.">
+
+<meta name="theme-color" content="#1976d2">
+
+<link rel="icon" href="icon-192.png">
+
+<link rel="manifest" href="manifest.json">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<style>
+/* ============ RESET & BODY ============ */
+body{
+  margin:0;
+  font-family:'Segoe UI',sans-serif;
+  background:#f4f6f9;
+  color:#333;
+  display:flex;
+  height:100vh;
+  overflow:hidden;
+}
+
+/* ============ SIDEBAR ============ */
+#sidebar{
+  width:280px;
+  background:#ffffff;
+  border-right:1px solid #ddd;
+  padding:20px;
+  overflow-y:auto;
+  box-shadow:2px 0 8px rgba(0,0,0,0.05);
+}
+
+#sidebar h2{
+  margin-top:0;
+  font-size:18px;
+  color:#1976d2;
+  margin-bottom:15px;
+}
+
+#sidebar button{
+  background:#1976d2;
+  border:none;
+  padding:10px 16px;
+  border-radius:8px;
+  color:white;
+  cursor:pointer;
+  margin:6px 0;
+  width:100%;
+  font-size:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  transition:0.2s;
+}
+
+#sidebar button:hover{
+  background:#1565c0;
+}
+
+#sidebar hr{
+  margin:20px 0;
+  border:0;
+  border-top:1px solid #ddd;
+}
+
+/* ============ USER INFO ============ */
+#userInfo{
+  display:flex;
+  align-items:center;
+  margin-top:15px;
+  justify-content:space-between;
+}
+
+#userInfo img{
+  width:35px;
+  height:35px;
+  border-radius:50%;
+  vertical-align:middle;
+  margin-right:10px;
+  object-fit:cover;
+}
+
+/* ============ MAIN AREA ============ */
+#main{
+  flex:1;
+  padding:30px 50px;
+  overflow:auto;
+  position:relative;
+}
+
+#main h1{
+  margin-top:0;
+  font-size:28px;
+  color:#1976d2;
+}
+
+#main p{
+  font-size:15px;
+  margin-bottom:20px;
+}
+
+/* ============ TREE ITEMS ============ */
+.item{
+  padding:10px 12px;
+  margin:4px 0;
+  background:#fff;
+  border:1px solid #e0e0e0;
+  border-radius:8px;
+  cursor:pointer;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  transition:.2s;
+}
+
+.item:hover{
+  background:#f0f7ff;
+  border-color:#1976d2;
+  box-shadow:0 2px 8px rgba(0,0,0,0.05);
+}
+
+.children{
+  margin-left:20px;
+}
+
+/* ============ TRASH & FORM PANEL ============ */
+.trash-panel{
+  position:fixed;
+  right:-400px; /* hidden initially */
+  top:0;
+  width:360px;
+  height:100%;
+  background:#fff;
+  border-left:1px solid #ddd;
+  padding:20px;
+  overflow:auto;
+  box-shadow:-4px 0 15px rgba(0,0,0,0.1);
+  border-radius:8px 0 0 8px;
+  transition: right 0.3s ease;
+  z-index:1000;
+}
+
+.trash-panel.show{
+  right:0;
+}
+
+.trash-panel h2{
+  margin-top:0;
+  font-size:20px;
+  color:#1976d2;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.trash-item{
+  background:#fafafa;
+  padding:12px;
+  margin:10px 0;
+  border:1px solid #eee;
+  border-radius:8px;
+  font-size:14px;
+}
+
+.small-btn{
+  padding:6px 10px;
+  font-size:12px;
+  margin-top:5px;
+  border-radius:5px;
+  cursor:pointer;
+  border:none;
+  background:#1976d2;
+  color:white;
+  transition:0.2s;
+}
+
+.small-btn:hover{
+  background:#1565c0;
+}
+
+/* ============ FORM IFRAME ============ */
+#formPanel iframe{
+  width:100%;
+  height:80vh;
+  border:0;
+  border-radius:6px;
+}
+
+/* ============ SCROLLBAR STYLING ============ */
+#sidebar::-webkit-scrollbar, .trash-panel::-webkit-scrollbar{
+  width:8px;
+}
+
+#sidebar::-webkit-scrollbar-thumb, .trash-panel::-webkit-scrollbar-thumb{
+  background:rgba(0,0,0,0.2);
+  border-radius:4px;
+}
+
+#sidebar::-webkit-scrollbar-track, .trash-panel::-webkit-scrollbar-track{
+  background:transparent;
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <h2><i class="fa fa-folder"></i> Explorer</h2>
+
+  <button id="newFolderBtn" onclick="createFolder()"><i class="fa fa-plus"></i> New Folder</button>
+  <button id="newBoardBtn" onclick="createBoard()"><i class="fa fa-columns"></i> New Board</button>
+  <button class="secondary-btn" onclick="toggleTrash()"><i class="fa fa-trash"></i> Trash</button>
+  <button class="secondary-btn" onclick="toggleFormPanel()"><i class="fa fa-file-alt"></i> Feedback</button>
+
+  <hr>
+
+  <div id="gSignInDiv"></div>
+  <div id="userInfo" style="display:none;">
+    <div style="display:flex; align-items:center;">
+      <img id="userPic">
+      <span id="userName"></span>
+    </div>
+    <button onclick="signOut()">Sign Out</button>
+  </div>
+
+  <hr>
+  <div id="tree"></div>
+</div>
+
+<!-- MAIN AREA -->
+<div id="main">
+  <h1>Pro Whiteboard Dashboard</h1>
+  <p>Select or create boards and folders from the left panel.</p>
+</div>
+
+<!-- TRASH PANEL -->
+<div id="trashPanel" class="trash-panel">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <h2><i class="fa fa-trash"></i> Trash</h2>
+    <span style="font-size:22px; cursor:pointer;" onclick="toggleTrash()">×</span>
+  </div>
+  <div id="trashList"></div>
+</div>
+
+<!-- FORM PANEL -->
+<div id="formPanel" class="trash-panel">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <h2><i class="fa fa-file-alt"></i> Feedback / Registration Form</h2>
+    <span style="font-size:22px; cursor:pointer;" onclick="toggleFormPanel()">×</span>
+  </div>
+  <iframe 
+    src="https://docs.google.com/forms/d/e/1FAIpQLSea6fWKaZFJ1p46Nn2DBJFlVCqpFp6vtpAVTVC-Sbf0gnR7gQ/viewform?embedded=true" 
+    marginheight="0" marginwidth="0">Loading…</iframe>
+</div>
+<!-- USER GUIDE TOGGLE BUTTON -->
+<button id="guideToggleBtn" class="secondary-btn" style="margin-top:10px;" onclick="toggleGuidePanel()">
+  <i class="fa fa-book"></i> User Guide
+</button>
+<!-- USER GUIDE PANEL -->
+<div id="userGuidePanel" class="trash-panel">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <h2><i class="fa fa-book"></i> User Guide</h2>
+    <span style="font-size:22px; cursor:pointer;" onclick="toggleGuidePanel()">×</span>
+  </div>
+  <div style="padding:10px 0; max-height:calc(100% - 60px); overflow:auto; line-height:1.6; font-size:14px;">
+    
+    <h3>1. Drawing Tab</h3>
+    <ul>
+      <li>Click Pen and select your appropriate thickness and colour.</li>
+      <li>Draw on the canvas with your finger or stylus pen.</li>
+      <li>To erase, click eraser icon and drag over the portion of the drawing that you want to erase. You can control the eraser thickness by the same size control box of pen.</li>
+      <li>You can use Undo-redo by clicking once.</li>
+      <li>To add page, click add page icon next after redo button.</li>
+      <li>To delete page, select the page and click the delete page icon next to the add page.</li>
+<li>To move and cut stokes, click on the select icon next to the zoom out button and then select your stokes that you want to move or cut by selecting it through rectangular selecting box. After that, move your stokes as you want and to cut, click the cut button after selecting stokes.</li>
+<li> To hide left sidebar, click the first button in Drawing Tab.</li>
+    </ul>
+    
+    <h3>2. Insert Tab</h3>
+    <ul>
+      <li>To add image/file, go to Insert tab and click on the first button (Image icon) and go to your browser and select the image/file and click select. The selected image/file will upload on the canvas. To move and resize, drag the corner handle and move/resize the image/file.</li>
+      <li>To add shapes, go to the insert tab and click shape icon which will open a shape panel from which you can select your required shape. After selecting the specific shape, drag over the canvas with your appropriate direction and orientation.</li>
+      <li>To delete a shape, select the shape first and then click delete button next after the shapes button in insert tab.</li>
+    </ul>
+    
+    <h3>3. Slideshow Tab</h3>
+    <ul>
+      <li>To work in slideshow/preview mode, go to Slideshow tab and click the start icon and then click on the back button on your device and then you will see Prev, Next, Exit buttons. To exit from slideshow, click Exit button.</li>
+    </ul>
+    
+    <h3>4. Video Tab</h3>
+    <ul>
+      <li>To record your work as a video with audio, go to Video Tab and click the first button and then click the next button successively. It will give you a video which is basically a trial. Delete it from browser and do the same process again which will give you a proper video with audio as recording.</li>
+    </ul>
+    
+    <h3>5. Export Tab</h3>
+    <ul>
+      <li>To Export your work as PNG, PDF, and PPT,JSON, go to Export Tab and select your appropriate choice of export. After exporting, it will store in your browser.</li>
+How to get Your Exported whiteboard:? 
+<li> Go to your browser where you have opened the whiteboard and click three dots and go to Downloads.</li>
+    </ul>
+
+  </div>
+</div>
+
+<script>
+// ========== GOOGLE LOGIN ==========
+let currentUser = null;
+
+function logUserToSheet(user){
+  const url="https://script.google.com/macros/s/AKfycbyH-KrPIhUpFo2lUqUshPnBVSWOzUA8Qef_d2QLXf4CT8_EH2b1WGMhQIITFn6fDmvh/exec";
+  fetch(url,{
+    method:"POST",
+    mode:"no-cors",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({sub:user.sub,name:user.name,email:user.email,picture:user.picture})
+  });
+}
+
+function handleCredentialResponse(response){
+  const jwt=response.credential;
+  const base64Url=jwt.split('.')[1];
+  const base64=base64Url.replace(/-/g,'+').replace(/_/g,'/');
+  const user=JSON.parse(decodeURIComponent(atob(base64).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+  currentUser=user;
+  localStorage.setItem("currentUser",JSON.stringify(user));
+  document.getElementById("gSignInDiv").style.display="none";
+  document.getElementById("userInfo").style.display="flex";
+  document.getElementById("userPic").src=user.picture;
+  document.getElementById("userName").textContent=user.name;
+  logUserToSheet(user);
+  loadUserData();
+}
+
+window.onload=function(){
+  google.accounts.id.initialize({
+    client_id:"104112968849-oehrp6bnkkqvei19vu2v2krbjbscf84p.apps.googleusercontent.com",
+    callback:handleCredentialResponse
+  });
+  google.accounts.id.renderButton(
+    document.getElementById("gSignInDiv"),
+    {theme:"outline",size:"large",width:"240"}
+  );
+
+  const savedUser=localStorage.getItem("currentUser");
+  if(savedUser){
+    currentUser=JSON.parse(savedUser);
+    document.getElementById("gSignInDiv").style.display="none";
+    document.getElementById("userInfo").style.display="flex";
+    document.getElementById("userPic").src=currentUser.picture;
+    document.getElementById("userName").textContent=currentUser.name;
+    loadUserData();
+  }else{
+    disableButtons(true);
+  }
+};
+
+function signOut(){
+  localStorage.removeItem("currentUser");
+  currentUser=null;
+  location.reload();
+}
+
+function disableButtons(state){
+  document.getElementById("newFolderBtn").disabled=state;
+  document.getElementById("newBoardBtn").disabled=state;
+}
+
+// ========== USER STORAGE ==========
+let data={folders:[],boards:[],trash:[]};
+
+function getKey(){
+  return "whiteboardDashboardData_"+currentUser.sub;
+}
+
+function loadUserData(){
+  const stored=localStorage.getItem(getKey());
+  data=stored?JSON.parse(stored):{folders:[],boards:[],trash:[]};
+  save();
+  disableButtons(false);
+  render();
+}
+
+function save(){
+  if(!currentUser) return;
+  localStorage.setItem(getKey(),JSON.stringify(data));
+}
+
+// ========== CORE FEATURES ==========
+function generateID(){return "id_"+Date.now()+"_"+Math.floor(Math.random()*1000);}
+
+function createFolder(parentID=null){
+  if(!currentUser){alert("Login required");return;}
+  let name=prompt("Folder name:");
+  if(!name) return;
+  data.folders.push({id:generateID(),name,parent:parentID});
+  save();render();
+}
+
+function createBoard(parentID=null){
+  if(!currentUser){alert("Login required");return;}
+  let id=generateID();
+  let name=prompt("Board name:","Untitled Board")||"Untitled Board";
+  data.boards.push({id,name,parent:parentID});
+  save();render();
+  window.location.href="whiteboard.html?board="+id;
+}
+
+function openBoard(id){window.location.href="whiteboard.html?board="+id;}
+function renameBoard(id){
+  let board=data.boards.find(b=>b.id===id);
+  if(!board) return;
+  let newName=prompt("Rename board:", board.name);
+  if(!newName) return;
+  board.name=newName;
+  save();
+  render();
+}
+function renameFolder(id){
+  let folder=data.folders.find(f=>f.id===id);
+  if(!folder) return;
+  let newName=prompt("Rename folder:", folder.name);
+  if(!newName) return;
+  folder.name=newName;
+  save();
+  render();
+}
+
+function moveToTrash(item,type){
+  data.trash.push({...item,type});
+  if(type==="folder") data.folders=data.folders.filter(f=>f.id!==item.id);
+  else data.boards=data.boards.filter(b=>b.id!==item.id);
+  save();render();renderTrash();
+}
+
+function restoreItem(item){
+  if(item.type==="folder") data.folders.push(item);
+  else data.boards.push(item);
+  data.trash=data.trash.filter(t=>t.id!==item.id);
+  save();render();renderTrash();
+}
+
+function deleteForever(item){
+  data.trash=data.trash.filter(t=>t.id!==item.id);
+  localStorage.removeItem("whiteboardData_"+item.id);
+  save();renderTrash();
+}
+
+// ========== RENDER ==========
+function render(){
+  let tree=document.getElementById("tree");
+  tree.innerHTML="";
+  renderLevel(null,tree);
+}
+
+function renderLevel(parentID,container){
+  data.folders.filter(f=>f.parent===parentID).forEach(folder=>{
+    let div=document.createElement("div");
+    div.className="item";
+    div.innerHTML=`
+    <span><i class="fa fa-folder"></i> ${folder.name}</span>
+    <span>
+      <i class="fa fa-pen" onclick="renameFolder('${folder.id}')"></i>
+      <i class="fa fa-plus" onclick="createBoard('${folder.id}')"></i>
+      <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(folder)},"folder")'></i>
+    </span>`;
+    container.appendChild(div);
+
+    let children=document.createElement("div");
+    children.className="children";
+    container.appendChild(children);
+    renderLevel(folder.id,children);
+  });
+
+  data.boards.filter(b=>b.parent===parentID).forEach(board=>{
+    let div=document.createElement("div");
+    div.className="item";
+    div.innerHTML=`
+    <span onclick="openBoard('${board.id}')">
+      <i class="fa fa-file"></i> ${board.name}
+    </span>
+    <span>
+      <i class="fa fa-folder-open" onclick="openBoard('${board.id}')"></i>
+      <i class="fa fa-pen" onclick="renameBoard('${board.id}')"></i>
+      <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(board)},"board")'></i>
+    </span>`;
+    container.appendChild(div);
+  });
+}
+
+function toggleTrash(){
+  let panel=document.getElementById("trashPanel");
+  panel.classList.toggle("show");
+}
+
+function renderTrash(){
+  let list=document.getElementById("trashList");
+  list.innerHTML="";
+  data.trash.forEach(item=>{
+    let div=document.createElement("div");
+    div.className="trash-item";
+    div.innerHTML=`
+      <b>${item.name}</b><br>
+      <button class="small-btn" onclick='restoreItem(${JSON.stringify(item)})'>Restore</button>
+      <button class="small-btn" onclick='deleteForever(${JSON.stringify(item)})'>Delete Permanently</button>`;
+    list.appendChild(div);
+  });
+}
+
+function toggleFormPanel(){
+  document.getElementById("formPanel").classList.toggle("show");
+}
+function toggleGuidePanel(){
+  document.getElementById("userGuidePanel").classList.toggle("show");
+}
+</script>
+</body>
+</html>
