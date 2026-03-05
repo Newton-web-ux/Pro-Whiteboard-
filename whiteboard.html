@@ -11,7 +11,6 @@ src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.11.0/dist/pptxgen.bundle.js"></scr
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 <style>
 body{
 margin:0;
@@ -270,41 +269,6 @@ font-size:20px;
 cursor:pointer;
 z-index:5000;
 }
-
-.qrModal{
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-background:rgba(0,0,0,0.6);
-display:none;
-align-items:center;
-justify-content:center;
-z-index:9999;
-}
-
-.qrBox{
-background:white;
-padding:30px;
-border-radius:12px;
-text-align:center;
-}
-
-.qrBox canvas{
-margin:20px 0;
-}
-
-.qrBox button{
-margin:5px;
-padding:10px 14px;
-border:none;
-background:#2563eb;
-color:white;
-border-radius:6px;
-cursor:pointer;
-}
-
 </style>
 </head>
 <body>
@@ -440,9 +404,6 @@ cursor:pointer;
 <button id="backupBtn" title="Download Backup">
   <i class="fa fa-database"></i>
 </button>
-<button id="exportQRBtn">
-<i class="fas fa-qrcode"></i> Share Board
-</button>
 </div>
 </div>
 
@@ -454,22 +415,6 @@ cursor:pointer;
 
 <div id="canvasContainer">
 <canvas id="board" width="1600" height="2000"></canvas>
-</div>
-<div id="qrModal" class="qrModal">
-
-<div class="qrBox">
-
-<h3>Share Whiteboard</h3>
-
-<canvas id="qrCanvas"></canvas>
-
-<p id="shareLink"></p>
-
-<button onclick="downloadQR()">Download QR</button>
-<button onclick="copyLink()">Copy Link</button>
-<button onclick="closeQR()">Close</button>
-
-</div>
 </div>
 
 <!-- ================= SLIDESHOW CONTROLS ================= -->
@@ -1827,101 +1772,6 @@ cutImageBtn.onclick = () => {
   redraw();
   saveToLocalStorage();
 };
-</script>
-<script>
-const exportQRBtn = document.getElementById("exportQRBtn");
-const qrModal = document.getElementById("qrModal");
-const qrCanvas = document.getElementById("qrCanvas");
-const shareLink = document.getElementById("shareLink");
-
-exportQRBtn.onclick = generateQR;
-
-function generateQR(){
-
-const params = new URLSearchParams(window.location.search);
-const boardID = params.get("board") || "default";
-
-/* SAVE CURRENT BOARD FIRST */
-saveBoard();
-
-/* CREATE SHARE LINK */
-const boardURL =
-window.location.origin +
-window.location.pathname +
-"?board=" + boardID;
-
-/* GENERATE QR */
-
-QRCode.toCanvas(qrCanvas, boardURL,{
-width:280,
-margin:2
-});
-
-/* SHOW LINK */
-
-shareLink.textContent = boardURL;
-
-qrModal.style.display="flex";
-
-}
-
-/* CLOSE MODAL */
-
-function closeQR(){
-qrModal.style.display="none";
-}
-
-/* DOWNLOAD QR */
-
-function downloadQR(){
-
-const link = document.createElement("a");
-
-link.download="whiteboard-share.png";
-
-link.href = qrCanvas.toDataURL();
-
-link.click();
-
-}
-
-/* COPY LINK */
-
-function copyLink(){
-
-navigator.clipboard.writeText(shareLink.textContent);
-
-alert("Link copied");
-
-}
-function loadBoard(){
-
-const data = localStorage.getItem(storageKey);
-
-if(data){
-
-const img = new Image();
-
-img.onload = function(){
-
-ctx.drawImage(img,0,0);
-
-}
-
-img.src = data;
-
-}
-
-}
-
-window.onload = loadBoard;
-function saveBoard(){
-
-const data = canvas.toDataURL();
-
-localStorage.setItem(storageKey,data);
-
-}
 </script>
 </body>
 </html>
