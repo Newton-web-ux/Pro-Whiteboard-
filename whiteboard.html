@@ -284,27 +284,27 @@ justify-content:center;
 z-index:9999;
 }
 
-.qrContent{
-background:#fff;
+.qrBox{
+background:white;
 padding:30px;
-border-radius:10px;
+border-radius:12px;
 text-align:center;
-box-shadow:0 10px 30px rgba(0,0,0,0.2);
 }
 
-.qrButtons{
-margin-top:20px;
+.qrBox canvas{
+margin:20px 0;
 }
 
-.qrButtons button{
-padding:10px 15px;
+.qrBox button{
 margin:5px;
+padding:10px 14px;
 border:none;
 background:#2563eb;
 color:white;
 border-radius:6px;
 cursor:pointer;
 }
+
 </style>
 </head>
 <body>
@@ -441,7 +441,7 @@ cursor:pointer;
   <i class="fa fa-database"></i>
 </button>
 <button id="exportQRBtn">
-<i class="fas fa-qrcode"></i> Export QR
+<i class="fas fa-qrcode"></i> Share Board
 </button>
 </div>
 </div>
@@ -455,20 +455,21 @@ cursor:pointer;
 <div id="canvasContainer">
 <canvas id="board" width="1600" height="2000"></canvas>
 </div>
-<!-- QR Modal -->
 <div id="qrModal" class="qrModal">
-  <div class="qrContent">
 
-    <h2>Share Board via QR</h2>
+<div class="qrBox">
 
-    <canvas id="qrCanvas"></canvas>
+<h3>Share Whiteboard</h3>
 
-    <div class="qrButtons">
-      <button onclick="downloadQR()">Download QR</button>
-      <button onclick="closeQR()">Close</button>
-    </div>
+<canvas id="qrCanvas"></canvas>
 
-  </div>
+<p id="shareLink"></p>
+
+<button onclick="downloadQR()">Download QR</button>
+<button onclick="copyLink()">Copy Link</button>
+<button onclick="closeQR()">Close</button>
+
+</div>
 </div>
 
 <!-- ================= SLIDESHOW CONTROLS ================= -->
@@ -1831,38 +1832,94 @@ cutImageBtn.onclick = () => {
 const exportQRBtn = document.getElementById("exportQRBtn");
 const qrModal = document.getElementById("qrModal");
 const qrCanvas = document.getElementById("qrCanvas");
+const shareLink = document.getElementById("shareLink");
 
 exportQRBtn.onclick = generateQR;
 
 function generateQR(){
 
-    const params = new URLSearchParams(window.location.search);
-    const boardID = params.get("board") || "default";
+const params = new URLSearchParams(window.location.search);
+const boardID = params.get("board") || "default";
 
-    const boardURL = window.location.origin + window.location.pathname + "?board=" + boardID;
+/* SAVE CURRENT BOARD FIRST */
+saveBoard();
 
-    QRCode.toCanvas(qrCanvas, boardURL, {
-        width:300,
-        margin:2,
-        color:{
-            dark:"#000000",
-            light:"#ffffff"
-        }
-    });
+/* CREATE SHARE LINK */
+const boardURL =
+window.location.origin +
+window.location.pathname +
+"?board=" + boardID;
 
-    qrModal.style.display="flex";
+/* GENERATE QR */
+
+QRCode.toCanvas(qrCanvas, boardURL,{
+width:280,
+margin:2
+});
+
+/* SHOW LINK */
+
+shareLink.textContent = boardURL;
+
+qrModal.style.display="flex";
+
 }
+
+/* CLOSE MODAL */
 
 function closeQR(){
 qrModal.style.display="none";
 }
 
+/* DOWNLOAD QR */
+
 function downloadQR(){
 
 const link = document.createElement("a");
-link.download="whiteboard-qr.png";
+
+link.download="whiteboard-share.png";
+
 link.href = qrCanvas.toDataURL();
+
 link.click();
+
+}
+
+/* COPY LINK */
+
+function copyLink(){
+
+navigator.clipboard.writeText(shareLink.textContent);
+
+alert("Link copied");
+
+}
+function loadBoard(){
+
+const data = localStorage.getItem(storageKey);
+
+if(data){
+
+const img = new Image();
+
+img.onload = function(){
+
+ctx.drawImage(img,0,0);
+
+}
+
+img.src = data;
+
+}
+
+}
+
+window.onload = loadBoard;
+function saveBoard(){
+
+const data = canvas.toDataURL();
+
+localStorage.setItem(storageKey,data);
 
 }
 </script>
