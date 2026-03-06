@@ -405,8 +405,10 @@ z-index:5000;
   <i class="fa fa-database"></i>
 </button>
 <button id="shareLinkBtn">
-<i class="fas fa-link"></i> Share Link
+<i class="fas fa-share"></i> Share Board
 </button>
+
+<input id="shareLink" readonly style="width:100%;margin-top:10px;">
 </div>
 </div>
 
@@ -420,44 +422,6 @@ z-index:5000;
 <canvas id="board" width="1600" height="2000"></canvas>
 </div>
 
-<div id="shareModal" style="
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-background:rgba(0,0,0,0.6);
-display:none;
-align-items:center;
-justify-content:center;
-z-index:9999;
-">
-
-<div style="
-background:white;
-padding:25px;
-border-radius:10px;
-width:420px;
-text-align:center;
-">
-
-<h3>Share Whiteboard</h3>
-
-<input id="shareInput" style="
-width:100%;
-padding:8px;
-margin:10px 0;
-border:1px solid #ccc;
-border-radius:6px;
-" readonly>
-
-<br>
-
-<button onclick="copyShareLink()">Copy Link</button>
-<button onclick="closeShare()">Close</button>
-
-</div>
-</div>
 <!-- ================= SLIDESHOW CONTROLS ================= -->
 
 <div id="slideshowControls">
@@ -1816,79 +1780,59 @@ cutImageBtn.onclick = () => {
 </script>
 <script>
 /* ===============================
-   SHAREABLE LINK SYSTEM
+   SHAREABLE BOARD SYSTEM
 ================================ */
 
 const shareBtn = document.getElementById("shareLinkBtn");
-const shareModal = document.getElementById("shareModal");
-const shareInput = document.getElementById("shareInput");
+const shareInput = document.getElementById("shareLink");
 
-/* ===== GENERATE LINK ===== */
-
+/* GENERATE SHARE LINK */
 shareBtn.onclick = () => {
 
-    saveToLocalStorage();
+    const boardData = {
+        pages: pages,
+        current: current
+    };
 
-    const boardData = localStorage.getItem(storageKey);
+    const encoded = encodeURIComponent(
+        btoa(JSON.stringify(boardData))
+    );
 
-    const encoded = btoa(encodeURIComponent(boardData));
-
-    const shareURL =
-        window.location.origin +
+    const url = window.location.origin +
         window.location.pathname +
-        "?board=" + boardID +
-        "&data=" + encoded;
+        "?data=" + encoded;
 
-    shareInput.value = shareURL;
+    shareInput.value = url;
 
-    shareModal.style.display = "flex";
+    shareInput.select();
+    navigator.clipboard.writeText(url);
+
+    alert("Shareable link copied!");
 };
 
-/* ===== COPY LINK ===== */
 
-function copyShareLink(){
-
-navigator.clipboard.writeText(shareInput.value);
-
-alert("Link copied!");
-
-}
-
-/* ===== CLOSE MODAL ===== */
-
-function closeShare(){
-
-shareModal.style.display = "none";
-
-}
-
-/* ===============================
-   LOAD SHARED BOARD
-================================ */
-
+/* LOAD SHARED BOARD */
 function loadSharedBoard(){
 
-const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(window.location.search);
+    const data = params.get("data");
 
-const sharedData = params.get("data");
+    if(!data) return;
 
-if(!sharedData) return;
+    try{
 
-try{
+        const decoded = JSON.parse(
+            atob(decodeURIComponent(data))
+        );
 
-const decoded = decodeURIComponent(atob(sharedData));
+        pages = decoded.pages;
+        current = decoded.current || 0;
 
-localStorage.setItem(storageKey, decoded);
+        redraw();
 
-loadFromLocalStorage();
-
-redraw();
-
-}catch(e){
-
-console.error("Shared board load error", e);
-
-}
+    }catch(e){
+        console.error("Failed to load shared board", e);
+    }
 
 }
 
