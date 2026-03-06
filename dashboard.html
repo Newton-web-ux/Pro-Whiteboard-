@@ -318,6 +318,7 @@ How to get Your Exported whiteboard:?
   </div>
 </div>
 <script>
+// ===== FIREBASE CONFIG & INIT =====
 const firebaseConfig = {
   apiKey: "AIzaSyA-5llH76O-2RPy-q58ma50HiZ0iEQA7n0",
   authDomain: "pro-dashboard-221de.firebaseapp.com",
@@ -329,230 +330,249 @@ const firebaseConfig = {
 
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
-
-// Initialize Firestore
 const db = firebase.firestore();
-</script>
-<script>
-// ========== GOOGLE LOGIN ==========
+
+// ===== GOOGLE LOGIN =====
 let currentUser = null;
 
+// Log user to Google Sheet (optional)
 function logUserToSheet(user){
-  const url="https://script.google.com/macros/s/AKfycbyH-KrPIhUpFo2lUqUshPnBVSWOzUA8Qef_d2QLXf4CT8_EH2b1WGMhQIITFn6fDmvh/exec";
+  const url = "https://script.google.com/macros/s/AKfycbyH-KrPIhUpFo2lUqUshPnBVSWOzUA8Qef_d2QLXf4CT8_EH2b1WGMhQIITFn6fDmvh/exec";
   fetch(url,{
-    method:"POST",
-    mode:"no-cors",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({sub:user.sub,name:user.name,email:user.email,picture:user.picture})
+    method: "POST",
+    mode: "no-cors",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({sub:user.sub,name:user.name,email:user.email,picture:user.picture})
   });
 }
 
+// Handle Google credential response
 function handleCredentialResponse(response){
-  const jwt=response.credential;
-  const base64Url=jwt.split('.')[1];
-  const base64=base64Url.replace(/-/g,'+').replace(/_/g,'/');
-  const user=JSON.parse(decodeURIComponent(atob(base64).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
-  currentUser=user;
-  localStorage.setItem("currentUser",JSON.stringify(user));
-  document.getElementById("gSignInDiv").style.display="none";
-  document.getElementById("userInfo").style.display="flex";
-  document.getElementById("userPic").src=user.picture;
-  document.getElementById("userName").textContent=user.name;
-  logUserToSheet(user);
-  loadUserData();
+  try {
+    const jwt = response.credential;
+    const base64Url = jwt.split('.')[1];
+    const base64 = base64Url.replace(/-/g,'+').replace(/_/g,'/');
+    const user = JSON.parse(decodeURIComponent(atob(base64).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+
+    console.log("Google Sign-In user:", user);
+
+    if(!user.sub){
+      alert("Google login failed: No user ID");
+      return;
+    }
+
+    currentUser = user;
+    localStorage.setItem("currentUser", JSON.stringify(user));
+
+    document.getElementById("gSignInDiv").style.display = "none";
+    document.getElementById("userInfo").style.display = "flex";
+    document.getElementById("userPic").src = user.picture;
+    document.getElementById("userName").textContent = user.name;
+
+    logUserToSheet(user);
+    loadUserData();
+
+  } catch(err){
+    console.error("Error parsing Google credential:", err);
+    alert("Login failed. Check console.");
+  }
 }
 
-window.onload=function(){
+// Initialize Google Sign-In button
+window.onload = function(){
   google.accounts.id.initialize({
-    client_id:"104112968849-oehrp6bnkkqvei19vu2v2krbjbscf84p.apps.googleusercontent.com",
-    callback:handleCredentialResponse
+    client_id: "104112968849-oehrp6bnkkqvei19vu2v2krbjbscf84p.apps.googleusercontent.com",
+    callback: handleCredentialResponse
   });
+
   google.accounts.id.renderButton(
     document.getElementById("gSignInDiv"),
-    {theme:"outline",size:"large",width:"240"}
+    { theme: "outline", size: "large", width: "240" }
   );
 
-  const savedUser=localStorage.getItem("currentUser");
+  // Load saved user from localStorage
+  const savedUser = localStorage.getItem("currentUser");
   if(savedUser){
-    currentUser=JSON.parse(savedUser);
-    document.getElementById("gSignInDiv").style.display="none";
-    document.getElementById("userInfo").style.display="flex";
-    document.getElementById("userPic").src=currentUser.picture;
-    document.getElementById("userName").textContent=currentUser.name;
+    currentUser = JSON.parse(savedUser);
+    console.log("Restored user from localStorage:", currentUser);
+    document.getElementById("gSignInDiv").style.display = "none";
+    document.getElementById("userInfo").style.display = "flex";
+    document.getElementById("userPic").src = currentUser.picture;
+    document.getElementById("userName").textContent = currentUser.name;
     loadUserData();
-  }else{
+  } else {
     disableButtons(true);
   }
 };
 
 function signOut(){
   localStorage.removeItem("currentUser");
-  currentUser=null;
+  currentUser = null;
   location.reload();
 }
 
 function disableButtons(state){
-  document.getElementById("newFolderBtn").disabled=state;
-  document.getElementById("newBoardBtn").disabled=state;
+  document.getElementById("newFolderBtn").disabled = state;
+  document.getElementById("newBoardBtn").disabled = state;
 }
 
-// ========== USER STORAGE ==========
-let data={folders:[],boards:[],trash:[]};
+// ===== USER DATA STORAGE =====
+let data = { folders: [], boards: [], trash: [] };
 
-function getKey(){
-  return "whiteboardDashboardData_"+currentUser.sub;
-}
+function getKey(){ return "whiteboardDashboardData_" + (currentUser?.sub || "guest"); }
 
+// Load user data from Firestore
 function loadUserData(){
+  if(!currentUser) return;
 
-db.collection("dashboardData")
-.doc(currentUser.sub)
-.get()
-.then(doc=>{
-
-if(doc.exists){
-
-data = doc.data();
-
-}else{
-
-data = {folders:[],boards:[],trash:[]};
-
+  db.collection("dashboardData").doc(currentUser.sub).get()
+    .then(doc => {
+      if(doc.exists){
+        data = doc.data();
+        console.log("Loaded user data from Firestore:", data);
+      } else {
+        data = { folders: [], boards: [], trash: [] };
+        console.log("No existing data, starting fresh.");
+        save(); // create user doc
+      }
+      render();
+      renderTrash();
+      disableButtons(false);
+    })
+    .catch(err => {
+      console.error("Error loading Firestore data:", err);
+    });
 }
 
-render();
-});
-
-}
-
+// Save user data to Firestore
 function save(){
+  if(!currentUser) return;
 
-if(!currentUser) return;
+  console.log("Saving data to Firestore:", data);
 
-db.collection("dashboardData")
-.doc(currentUser.sub)
-.set(data)
-
-.then(()=>{
-console.log("Cloud saved");
-});
-
+  db.collection("dashboardData").doc(currentUser.sub)
+    .set(data)
+    .then(() => console.log("Cloud saved successfully"))
+    .catch(err => console.error("Firestore save error:", err));
 }
 
-// ========== CORE FEATURES ==========
-function generateID(){return "id_"+Date.now()+"_"+Math.floor(Math.random()*1000);}
+// ===== CORE FEATURES =====
+function generateID(){ return "id_" + Date.now() + "_" + Math.floor(Math.random()*1000); }
 
+// CREATE FOLDER & BOARD
 function createFolder(parentID=null){
-  if(!currentUser){alert("Login required");return;}
-  let name=prompt("Folder name:");
+  if(!currentUser){ alert("Login required"); return; }
+  const name = prompt("Folder name:");
   if(!name) return;
-  data.folders.push({id:generateID(),name,parent:parentID});
-  save();render();
+  data.folders.push({id:generateID(), name, parent: parentID});
+  save(); render();
 }
 
 function createBoard(parentID=null){
-  if(!currentUser){alert("Login required");return;}
-  let id=generateID();
-  let name=prompt("Board name:","Untitled Board")||"Untitled Board";
-  data.boards.push({id,name,parent:parentID});
-  save();render();
-  window.location.href="whiteboard.html?board="+id;
+  if(!currentUser){ alert("Login required"); return; }
+  const id = generateID();
+  const name = prompt("Board name:", "Untitled Board") || "Untitled Board";
+  data.boards.push({id, name, parent: parentID});
+  save(); render();
+  window.location.href = "whiteboard.html?board=" + id;
 }
 
-function openBoard(id){window.location.href="whiteboard.html?board="+id;}
+// OPEN & RENAME
+function openBoard(id){ window.location.href = "whiteboard.html?board=" + id; }
+
 function renameBoard(id){
-  let board=data.boards.find(b=>b.id===id);
+  const board = data.boards.find(b => b.id === id);
   if(!board) return;
-  let newName=prompt("Rename board:", board.name);
+  const newName = prompt("Rename board:", board.name);
   if(!newName) return;
-  board.name=newName;
-  save();
-  render();
-}
-function renameFolder(id){
-  let folder=data.folders.find(f=>f.id===id);
-  if(!folder) return;
-  let newName=prompt("Rename folder:", folder.name);
-  if(!newName) return;
-  folder.name=newName;
-  save();
-  render();
+  board.name = newName;
+  save(); render();
 }
 
-function moveToTrash(item,type){
-  data.trash.push({...item,type});
-  if(type==="folder") data.folders=data.folders.filter(f=>f.id!==item.id);
-  else data.boards=data.boards.filter(b=>b.id!==item.id);
-  save();render();renderTrash();
+function renameFolder(id){
+  const folder = data.folders.find(f => f.id === id);
+  if(!folder) return;
+  const newName = prompt("Rename folder:", folder.name);
+  if(!newName) return;
+  folder.name = newName;
+  save(); render();
+}
+
+// ===== TRASH =====
+function moveToTrash(item, type){
+  data.trash.push({...item, type});
+  if(type === "folder") data.folders = data.folders.filter(f => f.id !== item.id);
+  else data.boards = data.boards.filter(b => b.id !== item.id);
+  save(); render(); renderTrash();
 }
 
 function restoreItem(item){
-  if(item.type==="folder") data.folders.push(item);
+  if(item.type === "folder") data.folders.push(item);
   else data.boards.push(item);
-  data.trash=data.trash.filter(t=>t.id!==item.id);
-  save();render();renderTrash();
+  data.trash = data.trash.filter(t => t.id !== item.id);
+  save(); render(); renderTrash();
 }
 
 function deleteForever(item){
-  data.trash=data.trash.filter(t=>t.id!==item.id);
-  localStorage.removeItem("whiteboardData_"+item.id);
-  save();renderTrash();
+  data.trash = data.trash.filter(t => t.id !== item.id);
+  localStorage.removeItem("whiteboardData_" + item.id);
+  save(); renderTrash();
 }
 
-// ========== RENDER ==========
+// ===== RENDER TREE =====
 function render(){
-  let tree=document.getElementById("tree");
-  tree.innerHTML="";
-  renderLevel(null,tree);
+  const tree = document.getElementById("tree");
+  tree.innerHTML = "";
+  renderLevel(null, tree);
 }
 
-function renderLevel(parentID,container){
-  data.folders.filter(f=>f.parent===parentID).forEach(folder=>{
-    let div=document.createElement("div");
-    div.className="item";
-    div.innerHTML=`
-    <span><i class="fa fa-folder"></i> ${folder.name}</span>
-    <span>
-      <i class="fa fa-pen" onclick="renameFolder('${folder.id}')"></i>
-      <i class="fa fa-plus" onclick="createBoard('${folder.id}')"></i>
-      <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(folder)},"folder")'></i>
-    </span>`;
+function renderLevel(parentID, container){
+  data.folders.filter(f => f.parent === parentID).forEach(folder => {
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <span><i class="fa fa-folder"></i> ${folder.name}</span>
+      <span>
+        <i class="fa fa-pen" onclick="renameFolder('${folder.id}')"></i>
+        <i class="fa fa-plus" onclick="createBoard('${folder.id}')"></i>
+        <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(folder)},"folder")'></i>
+      </span>`;
     container.appendChild(div);
 
-    let children=document.createElement("div");
-    children.className="children";
+    const children = document.createElement("div");
+    children.className = "children";
     container.appendChild(children);
-    renderLevel(folder.id,children);
+    renderLevel(folder.id, children);
   });
 
-  data.boards.filter(b=>b.parent===parentID).forEach(board=>{
-    let div=document.createElement("div");
-    div.className="item";
-    div.innerHTML=`
-    <span onclick="openBoard('${board.id}')">
-      <i class="fa fa-file"></i> ${board.name}
-    </span>
-    <span>
-      <i class="fa fa-folder-open" onclick="openBoard('${board.id}')"></i>
-      <i class="fa fa-pen" onclick="renameBoard('${board.id}')"></i>
-      <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(board)},"board")'></i>
-    </span>`;
+  data.boards.filter(b => b.parent === parentID).forEach(board => {
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <span onclick="openBoard('${board.id}')">
+        <i class="fa fa-file"></i> ${board.name}
+      </span>
+      <span>
+        <i class="fa fa-folder-open" onclick="openBoard('${board.id}')"></i>
+        <i class="fa fa-pen" onclick="renameBoard('${board.id}')"></i>
+        <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(board)},"board")'></i>
+      </span>`;
     container.appendChild(div);
   });
 }
 
+// ===== TRASH PANEL =====
 function toggleTrash(){
-  let panel=document.getElementById("trashPanel");
-  panel.classList.toggle("show");
+  document.getElementById("trashPanel").classList.toggle("show");
 }
 
 function renderTrash(){
-  let list=document.getElementById("trashList");
-  list.innerHTML="";
-  data.trash.forEach(item=>{
-    let div=document.createElement("div");
-    div.className="trash-item";
-    div.innerHTML=`
+  const list = document.getElementById("trashList");
+  list.innerHTML = "";
+  data.trash.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "trash-item";
+    div.innerHTML = `
       <b>${item.name}</b><br>
       <button class="small-btn" onclick='restoreItem(${JSON.stringify(item)})'>Restore</button>
       <button class="small-btn" onclick='deleteForever(${JSON.stringify(item)})'>Delete Permanently</button>`;
@@ -560,9 +580,11 @@ function renderTrash(){
   });
 }
 
+// ===== FORM & GUIDE PANELS =====
 function toggleFormPanel(){
   document.getElementById("formPanel").classList.toggle("show");
 }
+
 function toggleGuidePanel(){
   document.getElementById("userGuidePanel").classList.toggle("show");
 }
