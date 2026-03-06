@@ -412,6 +412,7 @@ z-index:5000;
 <button id="cloudLoadBtn">
 <i class="fa fa-cloud-download"></i>
 </button>
+<button id="shareBoardBtn">🔗 Share Board</button>
 </div>
 </div>
 
@@ -1915,6 +1916,19 @@ if(loadBtn) loadBtn.onclick = loadFromCloud;
 
 });
 
+</script>
+<script>
+function shareBoard(){
+
+let url = window.location.origin + window.location.pathname + "?board=" + boardID;
+
+navigator.clipboard.writeText(url);
+
+alert("Board link copied!\n\n" + url);
+
+}
+
+document.getElementById("shareBoardBtn").onclick = shareBoard;
 </script>
 </body>
 </html>
