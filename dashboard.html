@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <meta charset="UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Pro Whiteboard – Dashboard</title>
 
-<meta name="description" content="Pro Whiteboard is a Professional online whiteboard for teachers, students, and teams to draw, teach, collaborate, and record lessons.">
+<meta name="description" content="Pro Whiteboard is a professional online whiteboard for teachers, students, and teams to draw, teach, collaborate, and record lessons.">
 
 <meta name="theme-color" content="#1976d2">
 
@@ -310,11 +312,27 @@ body{
       <li>To Export your work as PNG, PDF, and PPT,JSON, go to Export Tab and select your appropriate choice of export. After exporting, it will store in your browser.</li>
 How to get Your Exported whiteboard:? 
 <li> Go to your browser where you have opened the whiteboard and click three dots and go to Downloads.</li>
+<li> To work in cloud, click save to cloud which will store everything in cloud and it will load auto when you open it next. To share your whiteboard with content, click share which will give you a sharable link of a specific board with its id and you can share it with others.Once you share they can see all changes you will do in your that board, you need not share multiple times.</li>
     </ul>
 
   </div>
 </div>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyA-5llH76O-2RPy-q58ma50HiZ0iEQA7n0",
+  authDomain: "pro-dashboard-221de.firebaseapp.com",
+  projectId: "pro-dashboard-221de",
+  storageBucket: "pro-dashboard-221de.firebasestorage.app",
+  messagingSenderId: "403400450345",
+  appId: "1:403400450345:web:008ed71d765f2a91d95738"
+};
 
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+
+// Initialize Firestore
+const db = firebase.firestore();
+</script>
 <script>
 // ========== GOOGLE LOGIN ==========
 let currentUser = null;
@@ -386,16 +404,39 @@ function getKey(){
 }
 
 function loadUserData(){
-  const stored=localStorage.getItem(getKey());
-  data=stored?JSON.parse(stored):{folders:[],boards:[],trash:[]};
-  save();
-  disableButtons(false);
-  render();
+
+db.collection("dashboardData")
+.doc(currentUser.sub)
+.get()
+.then(doc=>{
+
+if(doc.exists){
+
+data = doc.data();
+
+}else{
+
+data = {folders:[],boards:[],trash:[]};
+
+}
+
+render();
+});
+
 }
 
 function save(){
-  if(!currentUser) return;
-  localStorage.setItem(getKey(),JSON.stringify(data));
+
+if(!currentUser) return;
+
+db.collection("dashboardData")
+.doc(currentUser.sub)
+.set(data)
+
+.then(()=>{
+console.log("Cloud saved");
+});
+
 }
 
 // ========== CORE FEATURES ==========
