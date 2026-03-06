@@ -9,8 +9,9 @@
 <script
 src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.11.0/dist/pptxgen.bundle.js"></script>
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
-
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <style>
 body{
 margin:0;
@@ -404,11 +405,13 @@ z-index:5000;
 <button id="backupBtn" title="Download Backup">
   <i class="fa fa-database"></i>
 </button>
-<button id="shareLinkBtn">
-<i class="fas fa-share"></i> Share Board
+<button id="cloudSaveBtn">
+<i class="fa fa-cloud-upload"></i>
 </button>
 
-<input id="shareLink" readonly style="width:100%;margin-top:10px;">
+<button id="cloudLoadBtn">
+<i class="fa fa-cloud-download"></i>
+</button>
 </div>
 </div>
 
@@ -437,6 +440,22 @@ z-index:5000;
 </div>
 
 <div class="g_id_signin" data-type="standard"></div>
+<script>
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCtvevbs_-Wp1Wh6TNhgrN1KZp7_6f0dfs",
+  authDomain: "prowhiteboard-20dc0.firebaseapp.com",
+  projectId: "prowhiteboard-20dc0",
+  storageBucket: "prowhiteboard-20dc0.firebasestorage.app",
+  messagingSenderId: "851259077192",
+  appId: "1:851259077192:web:b2b9cf746ac898fb2d1e7d"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.firestore();
+
+</script>
 <script>
 /* BOARD ID SYSTEM */
 const params = new URLSearchParams(window.location.search);
@@ -477,6 +496,7 @@ let moveStartY = 0;
 /* LOCAL STORAGE – PER BOARD */
 
 function saveToLocalStorage(){
+
 let data = pages.map(p => ({
 bg: p.bg,
 strokes: p.strokes,
@@ -487,13 +507,19 @@ y: img.y,
 w: img.w,
 h: img.h
 })),
-shapes: p.shapes || []   // ✅ ADD THIS
+shapes: p.shapes || []
 }));
 
 localStorage.setItem(storageKey, JSON.stringify({
 pages: data,
 current: current
 }));
+
+/* OPTIONAL CLOUD SAVE */
+if(typeof saveToCloud === "function"){
+saveToCloud();
+}
+
 }
 
 function loadFromLocalStorage(){
@@ -533,6 +559,68 @@ redo: []
 });
 
 current = parsed.current || 0;
+}
+async function loadFromCloud(){
+
+try{
+
+const docRef = await db
+.collection("whiteboards")
+.doc(boardID)
+.get();
+
+if(!docRef.exists){
+
+alert("No cloud board found");
+return;
+
+}
+
+let data = docRef.data();
+
+pages = data.pages.map(p => {
+
+let images = [];
+
+(p.images || []).forEach(imgData => {
+
+let img = new Image();
+img.src = imgData.src;
+
+images.push({
+img: img,
+x: imgData.x,
+y: imgData.y,
+w: imgData.w,
+h: imgData.h
+});
+
+});
+
+return {
+bg: p.bg,
+strokes: p.strokes || [],
+images: images,
+shapes: p.shapes || [],
+undo: [],
+redo: []
+};
+
+});
+
+current = data.current || 0;
+
+redraw();
+
+alert("Cloud Load Successful ☁️");
+
+}catch(err){
+
+console.error(err);
+alert("Cloud Load Failed");
+
+}
+
 }
 /* SAVE STATE FOR UNDO */
 function saveState(){
@@ -1779,64 +1867,54 @@ cutImageBtn.onclick = () => {
 };
 </script>
 <script>
-/* ===============================
-   SHAREABLE BOARD SYSTEM
-================================ */
 
-const shareBtn = document.getElementById("shareLinkBtn");
-const shareInput = document.getElementById("shareLink");
+async function saveToCloud(){
 
-/* GENERATE SHARE LINK */
-shareBtn.onclick = () => {
-
-    const boardData = {
-        pages: pages,
-        current: current
-    };
-
-    const encoded = encodeURIComponent(
-        btoa(JSON.stringify(boardData))
-    );
-
-    const url = window.location.origin +
-        window.location.pathname +
-        "?data=" + encoded;
-
-    shareInput.value = url;
-
-    shareInput.select();
-    navigator.clipboard.writeText(url);
-
-    alert("Shareable link copied!");
+let data = {
+pages: pages.map(p => ({
+bg: p.bg,
+strokes: p.strokes,
+images: p.images.map(img => ({
+src: img.img.src,
+x: img.x,
+y: img.y,
+w: img.w,
+h: img.h
+})),
+shapes: p.shapes || []
+})),
+current: current
 };
 
+try{
 
-/* LOAD SHARED BOARD */
-function loadSharedBoard(){
+await db.collection("whiteboards")
+.doc(boardID)
+.set(data);
 
-    const params = new URLSearchParams(window.location.search);
-    const data = params.get("data");
+console.log("☁️ Cloud Save Successful");
 
-    if(!data) return;
+}catch(err){
 
-    try{
-
-        const decoded = JSON.parse(
-            atob(decodeURIComponent(data))
-        );
-
-        pages = decoded.pages;
-        current = decoded.current || 0;
-
-        redraw();
-
-    }catch(e){
-        console.error("Failed to load shared board", e);
-    }
+console.error(err);
+alert("Cloud Save Failed");
 
 }
 
-loadSharedBoard();
+}
+
+/* CONNECT BUTTONS AFTER PAGE LOAD */
+
+window.addEventListener("DOMContentLoaded",()=>{
+
+let saveBtn = document.getElementById("cloudSaveBtn");
+let loadBtn = document.getElementById("cloudLoadBtn");
+
+if(saveBtn) saveBtn.onclick = saveToCloud;
+if(loadBtn) loadBtn.onclick = loadFromCloud;
+
+});
+
 </script>
 </body>
 </html>
