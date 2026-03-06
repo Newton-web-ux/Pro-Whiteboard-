@@ -404,6 +404,9 @@ z-index:5000;
 <button id="backupBtn" title="Download Backup">
   <i class="fa fa-database"></i>
 </button>
+<button id="shareLinkBtn">
+<i class="fas fa-link"></i> Share Link
+</button>
 </div>
 </div>
 
@@ -417,6 +420,44 @@ z-index:5000;
 <canvas id="board" width="1600" height="2000"></canvas>
 </div>
 
+<div id="shareModal" style="
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+display:none;
+align-items:center;
+justify-content:center;
+z-index:9999;
+">
+
+<div style="
+background:white;
+padding:25px;
+border-radius:10px;
+width:420px;
+text-align:center;
+">
+
+<h3>Share Whiteboard</h3>
+
+<input id="shareInput" style="
+width:100%;
+padding:8px;
+margin:10px 0;
+border:1px solid #ccc;
+border-radius:6px;
+" readonly>
+
+<br>
+
+<button onclick="copyShareLink()">Copy Link</button>
+<button onclick="closeShare()">Close</button>
+
+</div>
+</div>
 <!-- ================= SLIDESHOW CONTROLS ================= -->
 
 <div id="slideshowControls">
@@ -1772,6 +1813,86 @@ cutImageBtn.onclick = () => {
   redraw();
   saveToLocalStorage();
 };
+</script>
+<script>
+/* ===============================
+   SHAREABLE LINK SYSTEM
+================================ */
+
+const shareBtn = document.getElementById("shareLinkBtn");
+const shareModal = document.getElementById("shareModal");
+const shareInput = document.getElementById("shareInput");
+
+/* ===== GENERATE LINK ===== */
+
+shareBtn.onclick = () => {
+
+    saveToLocalStorage();
+
+    const boardData = localStorage.getItem(storageKey);
+
+    const encoded = btoa(encodeURIComponent(boardData));
+
+    const shareURL =
+        window.location.origin +
+        window.location.pathname +
+        "?board=" + boardID +
+        "&data=" + encoded;
+
+    shareInput.value = shareURL;
+
+    shareModal.style.display = "flex";
+};
+
+/* ===== COPY LINK ===== */
+
+function copyShareLink(){
+
+navigator.clipboard.writeText(shareInput.value);
+
+alert("Link copied!");
+
+}
+
+/* ===== CLOSE MODAL ===== */
+
+function closeShare(){
+
+shareModal.style.display = "none";
+
+}
+
+/* ===============================
+   LOAD SHARED BOARD
+================================ */
+
+function loadSharedBoard(){
+
+const params = new URLSearchParams(window.location.search);
+
+const sharedData = params.get("data");
+
+if(!sharedData) return;
+
+try{
+
+const decoded = decodeURIComponent(atob(sharedData));
+
+localStorage.setItem(storageKey, decoded);
+
+loadFromLocalStorage();
+
+redraw();
+
+}catch(e){
+
+console.error("Shared board load error", e);
+
+}
+
+}
+
+loadSharedBoard();
 </script>
 </body>
 </html>
