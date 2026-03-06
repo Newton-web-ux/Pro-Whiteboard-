@@ -1918,17 +1918,47 @@ if(loadBtn) loadBtn.onclick = loadFromCloud;
 
 </script>
 <script>
+
+/* ===== SHARE BOARD ===== */
+
 function shareBoard(){
 
-let url = window.location.origin + window.location.pathname + "?board=" + boardID;
+let url =
+window.location.origin +
+window.location.pathname +
+"?board=" +
+boardID;
 
-navigator.clipboard.writeText(url);
+navigator.clipboard.writeText(url)
+.then(()=>{
 
 alert("Board link copied!\n\n" + url);
 
+})
+.catch(err=>{
+
+console.error(err);
+alert("Failed to copy link");
+
+});
+
 }
 
-document.getElementById("shareBoardBtn").onclick = shareBoard;
+/* ===== PAGE LOAD ===== */
+
+window.addEventListener("DOMContentLoaded",()=>{
+
+// connect share button
+let shareBtn = document.getElementById("shareBoardBtn");
+if(shareBtn){
+shareBtn.onclick = shareBoard;
+}
+
+// auto load shared board
+loadFromCloud();
+
+});
+
 </script>
 </body>
 </html>
