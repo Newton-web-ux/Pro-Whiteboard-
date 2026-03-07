@@ -271,72 +271,6 @@ font-size:20px;
 cursor:pointer;
 z-index:5000;
 }
-
-.graphFloatingBtn{
-  position:fixed;
-  bottom:30px;
-  right:30px;
-  width:55px;
-  height:55px;
-  border-radius:50%;
-  border:none;
-  color:#fff;
-  font-size:20px;
-  cursor:pointer;
-  z-index:5000;
-}
-/* Simple professional sidebar styling */
-.sidebar {
-  position: fixed;
-  right: 0;
-  top: 0;
-  width: 280px;
-  height: 100%;
-  background: #f4f4f4;
-  border-left: 1px solid #ccc;
-  box-shadow: -2px 0 5px rgba(0,0,0,0.1);
-  display: flex;
-  flex-direction: column;
-  padding: 10px;
-  transition: transform 0.3s ease;
-  transform: translateX(0);
-  z-index: 1000;
-}
-
-.sidebar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-#versionList {
-  flex: 1;
-  overflow-y: auto;
-  margin: 10px 0;
-}
-
-.version-item {
-  padding: 8px;
-  margin-bottom: 5px;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.version-item span {
-  font-size: 14px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.version-actions button {
-  margin-left: 5px;
-  font-size: 12px;
-}
 </style>
 </head>
 <body>
@@ -387,6 +321,9 @@ z-index:5000;
 <div class="group">
   <button id="selectStrokeBtn"><i class="fa fa-mouse-pointer"></i></button>
   <button id="cutStrokeBtn"><i class="fa fa-scissors"></i></button>
+<div class="group">
+  <button id="scrollModeBtn"><i class="fa fa-hand-paper"></i> Scroll</button>
+</div>
 </div>
 </div>
 
@@ -482,33 +419,6 @@ z-index:5000;
 <button id="shareBoardBtn">🔗 Share Board</button>
 </div>
 </div>
-<!-- Open Version History Button -->
-<button id="openVersionPanel" style="
-    position: fixed;
-    right: 10px;
-    top: 10px;
-    z-index: 1100;
-    padding: 6px 12px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-">Open Version History</button>
-<!-- Version History Sidebar -->
-<div id="versionPanel" class="sidebar">
-  <div class="sidebar-header">
-    <h3>Version History</h3>
-    <button id="closeVersionPanel">✖</button>
-  </div>
-  <div id="versionList">
-    <!-- Versions will be listed here dynamically -->
-  </div>
-  <div class="sidebar-footer">
-    <button id="saveVersionBtn">Save Current Version</button>
-    <button id="clearAllVersionsBtn" style="color:red;">Delete All Versions</button>
-  </div>
-</div>
 
 <!-- ================= SIDEBAR ================= -->
 
@@ -587,6 +497,7 @@ let selectionBox = null;
 let movingStrokes = false;
 let moveStartX = 0;
 let moveStartY = 0;
+
 
 /* LOCAL STORAGE – PER BOARD */
 
@@ -1018,6 +929,7 @@ function pos(e){
   };
 }
 canvas.onpointerdown=e=>{
+if(scrollMode) return;
 const p=pos(e);
 
 selectedImage=null;
@@ -2055,106 +1967,76 @@ loadFromCloud();
 
 </script>
 <script>
-const versionPanel = document.getElementById('versionPanel');
-const openVersionPanel = document.getElementById('openVersionPanel');
-const closeVersionPanel = document.getElementById('closeVersionPanel');
 
-const versionList = document.getElementById('versionList');
-const saveVersionBtn = document.getElementById('saveVersionBtn');
-const clearAllVersionsBtn = document.getElementById('clearAllVersionsBtn');
+/* ===== VARIABLES ===== */
+let scrollMode = false;
+let isPanning = false;
 
-const versionKey = 'whiteboardVersions';
-let versions = JSON.parse(localStorage.getItem(versionKey)) || [];
+let panStartX = 0;
+let panStartY = 0;
 
-// Function to get current board state (replace with your actual logic)
-function getCurrentBoardState() {
-  return { data: "currentBoardData", time: new Date().toISOString() };
-}
+let canvasOffsetX = 0;
+let canvasOffsetY = 0;
 
-// Function to load a version into the board
-function loadBoardState(state) {
-  console.log("Loading version:", state);
-  // Replace with actual board restore logic
-}
+const scrollModeBtn = document.getElementById("scrollModeBtn");
+const container = document.getElementById("canvasContainer");
 
-// Render version list
-function renderVersions() {
-  versionList.innerHTML = '';
-  versions.forEach((v, index) => {
-    const item = document.createElement('div');
-    item.className = 'version-item';
-    
-    const span = document.createElement('span');
-    span.textContent = `${index + 1}. ${v.time}`;
-    
-    const actions = document.createElement('div');
-    actions.className = 'version-actions';
-    
-    const restoreBtn = document.createElement('button');
-    restoreBtn.textContent = 'Restore';
-    restoreBtn.onclick = () => {
-      loadBoardState(v.data);
-      alert(`Version ${index + 1} restored!`);
-    };
-    
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'Delete';
-    deleteBtn.style.color = 'red';
-    deleteBtn.onclick = () => {
-      if(confirm('Are you sure you want to delete this version permanently?')){
-        versions.splice(index,1);
-        localStorage.setItem(versionKey, JSON.stringify(versions));
-        renderVersions();
-      }
-    };
-    
-    actions.appendChild(restoreBtn);
-    actions.appendChild(deleteBtn);
-    item.appendChild(span);
-    item.appendChild(actions);
-    versionList.appendChild(item);
-  });
-}
+/* ===== TOGGLE SCROLL MODE ===== */
 
-// Save current version
-saveVersionBtn.onclick = () => {
-  const current = getCurrentBoardState();
-  versions.push(current);
-  localStorage.setItem(versionKey, JSON.stringify(versions));
-  renderVersions();
+scrollModeBtn.onclick = () => {
+
+    scrollMode = !scrollMode;
+
+    scrollModeBtn.style.background =
+        scrollMode ? "#4caf50" : "#fff";
+
 };
 
-// Clear all versions
-clearAllVersionsBtn.onclick = () => {
-  if(confirm('Delete ALL versions permanently?')){
-    versions = [];
-    localStorage.setItem(versionKey, JSON.stringify(versions));
-    renderVersions();
-  }
-};
+/* ===== START PANNING ===== */
 
-// Toggle panel and Open button
-function updateOpenButton() {
-  const isClosed = versionPanel.style.transform === 'translateX(100%)';
-  openVersionPanel.style.display = isClosed ? 'block' : 'none';
-}
+container.addEventListener("pointerdown",(e)=>{
 
-// Close panel
-closeVersionPanel.onclick = () => {
-  versionPanel.style.transform = 'translateX(100%)';
-  updateOpenButton();
-};
+    if(!scrollMode) return;
 
-// Open panel
-openVersionPanel.onclick = () => {
-  versionPanel.style.transform = 'translateX(0)';
-  updateOpenButton();
-};
+    isPanning = true;
 
-// Initialize panel as closed
-versionPanel.style.transform = 'translateX(100%)';
-updateOpenButton();
-renderVersions();
+    panStartX = e.clientX - canvasOffsetX;
+    panStartY = e.clientY - canvasOffsetY;
+
+    canvas.style.cursor = "grab";
+
+});
+
+/* ===== MOVE CANVAS ===== */
+
+container.addEventListener("pointermove",(e)=>{
+
+    if(!isPanning) return;
+
+    canvasOffsetX = e.clientX - panStartX;
+    canvasOffsetY = e.clientY - panStartY;
+
+    canvas.style.transform =
+        `translate(${canvasOffsetX}px, ${canvasOffsetY}px)`;
+
+});
+
+/* ===== STOP PANNING ===== */
+
+container.addEventListener("pointerup",()=>{
+
+    isPanning = false;
+    canvas.style.cursor = "default";
+
+});
+
+container.addEventListener("pointerleave",()=>{
+
+    isPanning = false;
+    canvas.style.cursor = "default";
+
+});
+
 </script>
 </body>
 </html>
