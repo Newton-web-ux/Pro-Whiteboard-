@@ -497,7 +497,8 @@ let selectionBox = null;
 let movingStrokes = false;
 let moveStartX = 0;
 let moveStartY = 0;
-
+let worldOffsetX = 0;
+let worldOffsetY = 0;
 
 /* LOCAL STORAGE – PER BOARD */
 
@@ -652,14 +653,10 @@ function redraw(){
 
 const p = pages[current];
 
-ctx.clearRect(0,0,canvas.width,canvas.height);
-if(selectedStrokes.length){
-  highlightSelectedStrokes();
-}
-/* ===== BACKGROUND ===== */
-ctx.fillStyle = p.bg;
-ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.setTransform(scale,0,0,scale,0,0);
+ctx.translate(worldOffsetX,worldOffsetY);
 
+ctx.clearRect(-10000,-10000,20000,20000);
 
 /* =====================================================
    =============== DRAW SHAPES FIRST ===================
@@ -921,12 +918,14 @@ updateThumbs();
 
 /* POINTER EVENTS */
 function pos(e){
-  const r = canvas.getBoundingClientRect();
 
-  return {
-    x: (e.clientX - r.left) / scale,
-    y: (e.clientY - r.top) / scale
-  };
+const r = canvas.getBoundingClientRect();
+
+return {
+x: (e.clientX - r.left)/scale - worldOffsetX,
+y: (e.clientY - r.top)/scale - worldOffsetY
+};
+
 }
 canvas.onpointerdown=e=>{
 if(scrollMode) return;
@@ -2011,16 +2010,20 @@ container.addEventListener("pointerdown",(e)=>{
 
 container.addEventListener("pointermove",(e)=>{
 
-    if(!isPanning) return;
+if(!isPanning) return;
 
-    canvasOffsetX = e.clientX - panStartX;
-    canvasOffsetY = e.clientY - panStartY;
+let dx = (e.clientX - panStartX)/scale;
+let dy = (e.clientY - panStartY)/scale;
 
-    canvas.style.transform =
-        `translate(${canvasOffsetX}px, ${canvasOffsetY}px)`;
+worldOffsetX += dx;
+worldOffsetY += dy;
+
+panStartX = e.clientX;
+panStartY = e.clientY;
+
+redraw();
 
 });
-
 /* ===== STOP PANNING ===== */
 
 container.addEventListener("pointerup",()=>{
