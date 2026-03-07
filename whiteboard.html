@@ -1444,59 +1444,53 @@ nextSlide.onclick=()=>{if(current<pages.length-1){current++;redraw();}};
 prevSlide.onclick=()=>{if(current>0){current--;redraw();}};
 
 /* RECORDING */
-/* ===============================
-   TIMER
-================================ */
-
 function updateTimer(){
 
 seconds++;
 
-let m = Math.floor(seconds/60).toString().padStart(2,"0");
-let s = (seconds%60).toString().padStart(2,"0");
+let m=Math.floor(seconds/60).toString().padStart(2,"0");
+let s=(seconds%60).toString().padStart(2,"0");
 
-recordTimer.innerText = m + ":" + s;
+recordTimer.innerText=m+":"+s;
 
 }
 
-/* ===============================
-   START RECORDING
-================================ */
+/* START RECORD */
 
-startRecordBtn.onclick = async () => {
+startRecordBtn.onclick=async()=>{
 
-const canvasStream = canvas.captureStream(30);
+const canvasStream=canvas.captureStream(30);
 
-audioStream = await navigator.mediaDevices.getUserMedia({audio:true});
+audioStream=await navigator.mediaDevices.getUserMedia({audio:true});
 
-const combinedStream = new MediaStream([
+const combinedStream=new MediaStream([
 ...canvasStream.getTracks(),
 ...audioStream.getTracks()
 ]);
 
-mediaRecorder = new MediaRecorder(combinedStream);
+mediaRecorder=new MediaRecorder(combinedStream);
 
-recordedChunks = [];
+recordedChunks=[];
 
-mediaRecorder.ondataavailable = e => {
-if(e.data.size > 0) recordedChunks.push(e.data);
+mediaRecorder.ondataavailable=e=>{
+if(e.data.size>0) recordedChunks.push(e.data);
 };
 
-mediaRecorder.onstop = () => {
+mediaRecorder.onstop=()=>{
 
-const blob = new Blob(recordedChunks,{type:"video/webm"});
+const blob=new Blob(recordedChunks,{type:"video/webm"});
 
-const url = URL.createObjectURL(blob);
+const url=URL.createObjectURL(blob);
 
-let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
+let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
 
 history.push({
-id: Date.now(),
-url: url,
-date: new Date().toLocaleString()
+id:Date.now(),
+url:url,
+date:new Date().toLocaleString()
 });
 
-localStorage.setItem("recordingHistory", JSON.stringify(history));
+localStorage.setItem("recordingHistory",JSON.stringify(history));
 
 loadRecordingHistory();
 
@@ -1504,27 +1498,22 @@ loadRecordingHistory();
 
 mediaRecorder.start();
 
-/* UI */
+recordingIndicator.style.display="block";
+recordTimer.style.display="block";
 
-recordingIndicator.style.display = "block";
-recordTimer.style.display = "block";
+seconds=0;
+timerInterval=setInterval(updateTimer,1000);
 
-seconds = 0;
-
-timerInterval = setInterval(updateTimer,1000);
-
-startRecordBtn.disabled = true;
-stopRecordBtn.disabled = false;
+startRecordBtn.disabled=true;
+stopRecordBtn.disabled=false;
 
 };
 
-/* ===============================
-   PAUSE RECORDING
-================================ */
+/* PAUSE */
 
-pauseRecordBtn.onclick = () => {
+pauseRecordBtn.onclick=()=>{
 
-if(mediaRecorder && mediaRecorder.state === "recording"){
+if(mediaRecorder && mediaRecorder.state==="recording"){
 
 mediaRecorder.pause();
 
@@ -1534,127 +1523,35 @@ clearInterval(timerInterval);
 
 };
 
-/* ===============================
-   RESUME RECORDING
-================================ */
+/* RESUME */
 
-resumeRecordBtn.onclick = () => {
+resumeRecordBtn.onclick=()=>{
 
-if(mediaRecorder && mediaRecorder.state === "paused"){
+if(mediaRecorder && mediaRecorder.state==="paused"){
 
 mediaRecorder.resume();
 
-clearInterval(timerInterval);
-
-timerInterval = setInterval(updateTimer,1000);
+timerInterval=setInterval(updateTimer,1000);
 
 }
 
 };
 
-/* ===============================
-   STOP RECORDING
-================================ */
+/* STOP */
 
-stopRecordBtn.onclick = () => {
+stopRecordBtn.onclick=()=>{
 
 mediaRecorder.stop();
 
-audioStream.getTracks().forEach(t => t.stop());
+audioStream.getTracks().forEach(t=>t.stop());
 
 clearInterval(timerInterval);
 
-recordingIndicator.style.display = "none";
-recordTimer.style.display = "none";
+recordingIndicator.style.display="none";
+recordTimer.style.display="none";
 
-startRecordBtn.disabled = false;
-stopRecordBtn.disabled = true;
-
-};
-
-/* ===============================
-   LOAD RECORDING HISTORY
-================================ */
-
-function loadRecordingHistory(){
-
-let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
-
-const container = document.getElementById("recordingList");
-
-if(!container) return;
-
-container.innerHTML = "";
-
-history.reverse().forEach(r => {
-
-const div = document.createElement("div");
-
-div.className = "record-item";
-
-div.innerHTML = `
-
-<span>${r.date}</span>
-
-<button onclick="restoreRecording('${r.url}')">
-Restore
-</button>
-
-<button onclick="deleteRecording(${r.id})">
-Delete
-</button>
-
-`;
-
-container.appendChild(div);
-
-});
-
-}
-
-/* ===============================
-   RESTORE (DOWNLOAD)
-================================ */
-
-function restoreRecording(url){
-
-const a = document.createElement("a");
-
-a.href = url;
-
-a.download = "whiteboard-recording.webm";
-
-document.body.appendChild(a);
-
-a.click();
-
-a.remove();
-
-}
-
-/* ===============================
-   DELETE RECORDING
-================================ */
-
-function deleteRecording(id){
-
-let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
-
-history = history.filter(r => r.id !== id);
-
-localStorage.setItem("recordingHistory", JSON.stringify(history));
-
-loadRecordingHistory();
-
-}
-
-/* ===============================
-   LOAD HISTORY ON PAGE START
-================================ */
-
-window.onload = () => {
-
-loadRecordingHistory();
+startRecordBtn.disabled=false;
+stopRecordBtn.disabled=true;
 
 };
 /* EXPORT */
@@ -2360,9 +2257,6 @@ div.innerHTML=`
 <div>${r.date}</div>
 
 <button onclick="restoreRecording('${r.url}')">Restore</button>
-
-<button onclick="shareRecording('${r.url}')">Share</button>
-
 <button onclick="deleteRecording(${r.id})">Delete</button>
 `;
 
@@ -2405,6 +2299,12 @@ window.addEventListener("DOMContentLoaded",()=>{
 loadRecordingHistory();
 
 });
+</script>
+<script>
+if (location.pathname.endsWith(".html")) {
+  const cleanURL = location.pathname.replace(".html", "");
+  window.history.replaceState({}, "", cleanURL);
+}
 </script>
 </body>
 </html>
