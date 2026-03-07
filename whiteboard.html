@@ -1444,84 +1444,87 @@ nextSlide.onclick=()=>{if(current<pages.length-1){current++;redraw();}};
 prevSlide.onclick=()=>{if(current>0){current--;redraw();}};
 
 /* RECORDING */
+/* ===============================
+   TIMER
+================================ */
+
 function updateTimer(){
 
 seconds++;
 
-let m=Math.floor(seconds/60).toString().padStart(2,"0");
-let s=(seconds%60).toString().padStart(2,"0");
+let m = Math.floor(seconds/60).toString().padStart(2,"0");
+let s = (seconds%60).toString().padStart(2,"0");
 
-recordTimer.innerText=m+":"+s;
+recordTimer.innerText = m + ":" + s;
 
 }
 
-/* START RECORD */
+/* ===============================
+   START RECORDING
+================================ */
 
-startRecordBtn.onclick=async()=>{
+startRecordBtn.onclick = async () => {
 
-const canvasStream=canvas.captureStream(30);
+const canvasStream = canvas.captureStream(30);
 
-audioStream=await navigator.mediaDevices.getUserMedia({audio:true});
+audioStream = await navigator.mediaDevices.getUserMedia({audio:true});
 
-const combinedStream=new MediaStream([
+const combinedStream = new MediaStream([
 ...canvasStream.getTracks(),
 ...audioStream.getTracks()
 ]);
 
-mediaRecorder=new MediaRecorder(combinedStream);
+mediaRecorder = new MediaRecorder(combinedStream);
 
-recordedChunks=[];
+recordedChunks = [];
 
-mediaRecorder.ondataavailable=e=>{
-if(e.data.size>0) recordedChunks.push(e.data);
+mediaRecorder.ondataavailable = e => {
+if(e.data.size > 0) recordedChunks.push(e.data);
 };
 
-mediaRecorder.onstop = async ()=>{
+mediaRecorder.onstop = () => {
 
 const blob = new Blob(recordedChunks,{type:"video/webm"});
 
-const reader = new FileReader();
+const url = URL.createObjectURL(blob);
 
-reader.readAsDataURL(blob);
+let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
 
-reader.onloadend = async ()=>{
-
-const base64 = reader.result.split(",")[1];
-
-const form = new FormData();
-form.append("data",base64);
-
-const res = await fetch("https://script.google.com/macros/s/AKfycbxt6VZ1tJB5dFruSnpQgDfmsP8M7Q9wF-FK33E4KvVcG8w0EhdIIF7wYwIABLsVFKG5og/exec",{
-method:"POST",
-body:form
+history.push({
+id: Date.now(),
+url: url,
+date: new Date().toLocaleString()
 });
 
-const link = await res.text();
+localStorage.setItem("recordingHistory", JSON.stringify(history));
 
-alert("Recording uploaded:\n"+link);
-
-};
+loadRecordingHistory();
 
 };
 
 mediaRecorder.start();
 
-recordingIndicator.style.display="block";
-recordTimer.style.display="block";
+/* UI */
 
-seconds=0;
-timerInterval=setInterval(updateTimer,1000);
+recordingIndicator.style.display = "block";
+recordTimer.style.display = "block";
 
-startRecordBtn.disabled=true;
-stopRecordBtn.disabled=false;
+seconds = 0;
+
+timerInterval = setInterval(updateTimer,1000);
+
+startRecordBtn.disabled = true;
+stopRecordBtn.disabled = false;
 
 };
 
-/* PAUSE */
+/* ===============================
+   PAUSE RECORDING
+================================ */
 
-pauseRecordBtn.onclick=()=>{
+pauseRecordBtn.onclick = () => {
 
-if(mediaRecorder && mediaRecorder.state==="recording"){
+if(mediaRecorder && mediaRecorder.state === "recording"){
 
 mediaRecorder.pause();
 
@@ -1531,35 +1534,127 @@ clearInterval(timerInterval);
 
 };
 
-/* RESUME */
+/* ===============================
+   RESUME RECORDING
+================================ */
 
-resumeRecordBtn.onclick=()=>{
+resumeRecordBtn.onclick = () => {
 
-if(mediaRecorder && mediaRecorder.state==="paused"){
+if(mediaRecorder && mediaRecorder.state === "paused"){
 
 mediaRecorder.resume();
 
-timerInterval=setInterval(updateTimer,1000);
+clearInterval(timerInterval);
+
+timerInterval = setInterval(updateTimer,1000);
 
 }
 
 };
 
-/* STOP */
+/* ===============================
+   STOP RECORDING
+================================ */
 
-stopRecordBtn.onclick=()=>{
+stopRecordBtn.onclick = () => {
 
 mediaRecorder.stop();
 
-audioStream.getTracks().forEach(t=>t.stop());
+audioStream.getTracks().forEach(t => t.stop());
 
 clearInterval(timerInterval);
 
-recordingIndicator.style.display="none";
-recordTimer.style.display="none";
+recordingIndicator.style.display = "none";
+recordTimer.style.display = "none";
 
-startRecordBtn.disabled=false;
-stopRecordBtn.disabled=true;
+startRecordBtn.disabled = false;
+stopRecordBtn.disabled = true;
+
+};
+
+/* ===============================
+   LOAD RECORDING HISTORY
+================================ */
+
+function loadRecordingHistory(){
+
+let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
+
+const container = document.getElementById("recordingList");
+
+if(!container) return;
+
+container.innerHTML = "";
+
+history.reverse().forEach(r => {
+
+const div = document.createElement("div");
+
+div.className = "record-item";
+
+div.innerHTML = `
+
+<span>${r.date}</span>
+
+<button onclick="restoreRecording('${r.url}')">
+Restore
+</button>
+
+<button onclick="deleteRecording(${r.id})">
+Delete
+</button>
+
+`;
+
+container.appendChild(div);
+
+});
+
+}
+
+/* ===============================
+   RESTORE (DOWNLOAD)
+================================ */
+
+function restoreRecording(url){
+
+const a = document.createElement("a");
+
+a.href = url;
+
+a.download = "whiteboard-recording.webm";
+
+document.body.appendChild(a);
+
+a.click();
+
+a.remove();
+
+}
+
+/* ===============================
+   DELETE RECORDING
+================================ */
+
+function deleteRecording(id){
+
+let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
+
+history = history.filter(r => r.id !== id);
+
+localStorage.setItem("recordingHistory", JSON.stringify(history));
+
+loadRecordingHistory();
+
+}
+
+/* ===============================
+   LOAD HISTORY ON PAGE START
+================================ */
+
+window.onload = () => {
+
+loadRecordingHistory();
 
 };
 /* EXPORT */
