@@ -271,6 +271,41 @@ font-size:20px;
 cursor:pointer;
 z-index:5000;
 }
+#recordingPanel{
+position:fixed;
+top:0;
+right:0;
+width:300px;
+height:100%;
+background:#ffffff;
+box-shadow:-2px 0 10px rgba(0,0,0,0.2);
+transform:translateX(100%);
+transition:0.3s;
+z-index:9999;
+}
+
+#recordingHeader{
+padding:12px;
+background:#222;
+color:white;
+display:flex;
+justify-content:space-between;
+}
+
+#recordingList{
+padding:10px;
+overflow:auto;
+height:calc(100% - 50px);
+}
+
+.recordItem{
+border-bottom:1px solid #ddd;
+padding:10px;
+}
+
+.recordItem button{
+margin:4px;
+}
 </style>
 </head>
 <body>
@@ -393,10 +428,68 @@ z-index:5000;
 <!-- ================= VIDEO TAB ================= -->
 
 <div id="videoTab" class="ribbonPanel">
-<div class="group">
-<button id="startRecordBtn"><i class="fa fa-circle"></i></button>
-<button id="stopRecordBtn" disabled><i class="fa fa-stop"></i></button>
+
+  <div class="group">
+
+    <button id="startRecordBtn" title="Start Recording">
+      <i class="fa fa-circle"></i>
+    </button>
+
+    <button id="pauseRecordBtn" title="Pause Recording">
+      <i class="fa fa-pause"></i>
+    </button>
+
+    <button id="resumeRecordBtn" title="Resume Recording">
+      <i class="fa fa-play"></i>
+    </button>
+
+    <button id="stopRecordBtn" disabled title="Stop Recording">
+      <i class="fa fa-stop"></i>
+    </button>
+<button id="openRecordingPanel">
+<i class="fa fa-video"></i>
+</button>
+
+  </div>
+
 </div>
+
+
+<!-- ================= RECORDING INDICATOR ================= -->
+
+<div id="recordingIndicator"
+style="
+position:fixed;
+top:20px;
+right:20px;
+background:#ff0000;
+color:white;
+padding:6px 12px;
+border-radius:8px;
+font-weight:bold;
+display:none;
+z-index:9999;
+">
+🔴 Recording...
+</div>
+
+
+<!-- ================= RECORD TIMER ================= -->
+
+<div id="recordTimer"
+style="
+position:fixed;
+top:55px;
+right:20px;
+background:#000;
+color:#fff;
+padding:6px 12px;
+border-radius:8px;
+font-family:monospace;
+display:none;
+z-index:9999;
+">
+00:00
 </div>
 
 <!-- ================= EXPORT TAB ================= -->
@@ -429,7 +522,16 @@ z-index:5000;
 <div id="canvasContainer">
 <canvas id="board" width="1600" height="2000"></canvas>
 </div>
+<div id="recordingPanel">
 
+<div id="recordingHeader">
+<span>Recording History</span>
+<button id="closeRecordingPanel">✖</button>
+</div>
+
+<div id="recordingList"></div>
+
+</div>
 <!-- ================= SLIDESHOW CONTROLS ================= -->
 
 <div id="slideshowControls">
@@ -483,7 +585,12 @@ let pages=[];
 let current=0;
 let drawing=false,currentStroke=null;
 let selectedImage=null,dragging=false,resizing=false,offsetX=0,offsetY=0;
-let mediaRecorder=null,recordedChunks=[],audioStream=null;
+let mediaRecorder;
+let recordedChunks=[];
+let audioStream;
+
+let seconds=0;
+let timerInterval;
 let selectedShape=null;
 let shapeDragging=false;
 let shapeResizing=false;
@@ -1337,29 +1444,116 @@ nextSlide.onclick=()=>{if(current<pages.length-1){current++;redraw();}};
 prevSlide.onclick=()=>{if(current>0){current--;redraw();}};
 
 /* RECORDING */
+function updateTimer(){
+
+seconds++;
+
+let m=Math.floor(seconds/60).toString().padStart(2,"0");
+let s=(seconds%60).toString().padStart(2,"0");
+
+recordTimer.innerText=m+":"+s;
+
+}
+
+/* START RECORD */
+
 startRecordBtn.onclick=async()=>{
-const stream=canvas.captureStream(30);
+
+const canvasStream=canvas.captureStream(30);
+
 audioStream=await navigator.mediaDevices.getUserMedia({audio:true});
-const combined=new MediaStream([...stream.getTracks(),...audioStream.getTracks()]);
-mediaRecorder=new MediaRecorder(combined);
+
+const combinedStream=new MediaStream([
+...canvasStream.getTracks(),
+...audioStream.getTracks()
+]);
+
+mediaRecorder=new MediaRecorder(combinedStream);
+
 recordedChunks=[];
-mediaRecorder.ondataavailable=e=>recordedChunks.push(e.data);
-mediaRecorder.onstop=()=>{
-const blob=new Blob(recordedChunks,{type:"video/webm"});
-const a=document.createElement("a");
-a.href=URL.createObjectURL(blob);
-a.download="recording.webm";
-a.click();
-};
-mediaRecorder.start();
-startRecordBtn.disabled=true;stopRecordBtn.disabled=false;
-};
-stopRecordBtn.onclick=()=>{
-mediaRecorder.stop();
-audioStream.getTracks().forEach(t=>t.stop());
-startRecordBtn.disabled=false;stopRecordBtn.disabled=true;
+
+mediaRecorder.ondataavailable=e=>{
+if(e.data.size>0) recordedChunks.push(e.data);
 };
 
+mediaRecorder.onstop=()=>{
+
+const blob=new Blob(recordedChunks,{type:"video/webm"});
+
+const url=URL.createObjectURL(blob);
+
+let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
+
+history.push({
+id:Date.now(),
+url:url,
+date:new Date().toLocaleString()
+});
+
+localStorage.setItem("recordingHistory",JSON.stringify(history));
+
+loadRecordingHistory();
+
+};
+
+mediaRecorder.start();
+
+recordingIndicator.style.display="block";
+recordTimer.style.display="block";
+
+seconds=0;
+timerInterval=setInterval(updateTimer,1000);
+
+startRecordBtn.disabled=true;
+stopRecordBtn.disabled=false;
+
+};
+
+/* PAUSE */
+
+pauseRecordBtn.onclick=()=>{
+
+if(mediaRecorder && mediaRecorder.state==="recording"){
+
+mediaRecorder.pause();
+
+clearInterval(timerInterval);
+
+}
+
+};
+
+/* RESUME */
+
+resumeRecordBtn.onclick=()=>{
+
+if(mediaRecorder && mediaRecorder.state==="paused"){
+
+mediaRecorder.resume();
+
+timerInterval=setInterval(updateTimer,1000);
+
+}
+
+};
+
+/* STOP */
+
+stopRecordBtn.onclick=()=>{
+
+mediaRecorder.stop();
+
+audioStream.getTracks().forEach(t=>t.stop());
+
+clearInterval(timerInterval);
+
+recordingIndicator.style.display="none";
+recordTimer.style.display="none";
+
+startRecordBtn.disabled=false;
+stopRecordBtn.disabled=true;
+
+};
 /* EXPORT */
 pngBtn.onclick=()=>{let a=document.createElement("a");a.href=canvas.toDataURL();a.download="page.png";a.click();};
 
@@ -2037,6 +2231,77 @@ container.addEventListener("pointerleave",()=>{
 
 });
 
+</script>
+<script>
+openRecordingPanel.onclick=()=>{
+recordingPanel.style.transform="translateX(0)";
+loadRecordings();
+};
+
+closeRecordingPanel.onclick=()=>{
+recordingPanel.style.transform="translateX(100%)";
+};
+function loadRecordingHistory(){
+
+let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
+
+recordingList.innerHTML="";
+
+history.reverse().forEach(r=>{
+
+let div=document.createElement("div");
+
+div.className="recordItem";
+
+div.innerHTML=`
+<div>${r.date}</div>
+
+<button onclick="restoreRecording('${r.url}')">Restore</button>
+
+<button onclick="shareRecording('${r.url}')">Share</button>
+
+<button onclick="deleteRecording(${r.id})">Delete</button>
+`;
+
+recordingList.appendChild(div);
+
+});
+
+}
+function restoreRecording(url){
+
+const a=document.createElement("a");
+
+a.href=url;
+
+a.download="whiteboard_recording.webm";
+
+a.click();
+
+}
+function shareRecording(url){
+
+navigator.clipboard.writeText(url);
+
+alert("Recording link copied!");
+
+}
+function deleteRecording(id){
+
+let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
+
+history=history.filter(r=>r.id!==id);
+
+localStorage.setItem("recordingHistory",JSON.stringify(history));
+
+loadRecordingHistory();
+
+}
+window.addEventListener("DOMContentLoaded",()=>{
+
+loadRecordingHistory();
+
+});
 </script>
 </body>
 </html>
