@@ -320,13 +320,27 @@ How to get Your Exported whiteboard:?
 let currentUser = null;
 
 function logUserToSheet(user){
-  const url="https://script.google.com/macros/s/AKfycbyH-KrPIhUpFo2lUqUshPnBVSWOzUA8Qef_d2QLXf4CT8_EH2b1WGMhQIITFn6fDmvh/exec";
-  fetch(url,{
-    method:"POST",
-    mode:"no-cors",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({sub:user.sub,name:user.name,email:user.email,picture:user.picture})
-  });
+
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwiMzli4x1jiEF1geF_PEaTcb7nljJchckBJNFc40dvZs8-_-yF7bChmtVtpTcgsjh-/exec";
+const SECRET_KEY = "PROWB_SEC_2026";
+
+fetch(WEBHOOK_URL,{
+ method:"POST",
+ headers:{
+  "Content-Type":"application/json"
+ },
+ body:JSON.stringify({
+  key:SECRET_KEY,
+  origin:window.location.origin,
+  sub:user.sub,
+  name:user.name,
+  email:user.email,
+  picture:user.picture,
+  device:navigator.userAgent,
+  time:new Date().toISOString()
+ })
+});
+
 }
 
 function handleCredentialResponse(response){
@@ -384,48 +398,18 @@ let data={folders:[],boards:[],trash:[]};
 function getKey(){
   return "whiteboardDashboardData_"+currentUser.sub;
 }
-// Apps Script backend URL
-const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxEu2TbSfpls_SmQXI8fy_vaT0mUHHb0a_UxYS3utiZIb9LcfY5kLvenpqXAZ86WMqmUg/exec";
 
-
-// Load user data from cloud
-async function loadUserData() {
-
-  const res = await fetch(CLOUD_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      action: "loadUserData",
-      user: currentUser.sub
-    })
-  });
-
-  data = await res.json();
-
+function loadUserData(){
+  const stored=localStorage.getItem(getKey());
+  data=stored?JSON.parse(stored):{folders:[],boards:[],trash:[]};
+  save();
+  disableButtons(false);
   render();
 }
 
-
-// Save user data to cloud
-function save() {
-
-  fetch(CLOUD_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      action: "saveUserData",
-      user: currentUser.sub,
-      payload: data
-    })
-  })
-  .then(res => res.json())
-  .then(result => console.log("Saved:", result))
-  .catch(err => console.error("Save error:", err));
-
+function save(){
+  if(!currentUser) return;
+  localStorage.setItem(getKey(),JSON.stringify(data));
 }
 
 // ========== CORE FEATURES ==========
