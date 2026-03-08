@@ -383,9 +383,10 @@ let data={folders:[],boards:[],trash:[]};
 
 function getKey(){
   return "whiteboardDashboardData_"+currentUser.sub;
+}
+
 // Apps Script backend URL
 const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxEu2TbSfpls_SmQXI8fy_vaT0mUHHb0a_UxYS3utiZIb9LcfY5kLvenpqXAZ86WMqmUg/exec";
-
 
 // Load user data from cloud
 async function loadUserData() {
@@ -428,6 +429,8 @@ async function loadUserData() {
 // Save user data to cloud
 function save() {
 
+  if(!currentUser) return;
+
   fetch(CLOUD_URL, {
     method: "POST",
     headers: {
@@ -444,7 +447,6 @@ function save() {
   .catch(err => console.error("Save error:", err));
 
 }
-
 // ========== CORE FEATURES ==========
 function generateID(){return "id_"+Date.now()+"_"+Math.floor(Math.random()*1000);}
 
@@ -550,6 +552,7 @@ function renderLevel(parentID,container){
 function toggleTrash(){
   let panel=document.getElementById("trashPanel");
   panel.classList.toggle("show");
+  renderTrash();
 }
 
 function renderTrash(){
