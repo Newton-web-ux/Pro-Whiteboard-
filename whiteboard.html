@@ -400,12 +400,14 @@ z-index:5000;
 <!-- ================= VIDEO TAB ================= -->
 
 <div id="videoTab" class="ribbonPanel">
-<div class="group">
-<button id="startRecordBtn"><i class="fa fa-circle"></i></button>
-<button id="stopRecordBtn" disabled><i class="fa fa-stop"></i></button>
+  <div class="group">
+    <button id="startRecordBtn"><i class="fa fa-circle"></i> Start</button>
+    <button id="pauseRecordBtn" disabled><i class="fa fa-pause"></i> Pause</button>
+    <button id="resumeRecordBtn" disabled><i class="fa fa-play"></i> Resume</button>
+    <button id="stopRecordBtn" disabled><i class="fa fa-stop"></i> Stop</button>
+    <span id="timer">00:00</span>
+  </div>
 </div>
-</div>
-
 <!-- ================= EXPORT TAB ================= -->
 
 <div id="exportTab" class="ribbonPanel">
@@ -465,7 +467,9 @@ let pages=[];
 let current=0;
 let drawing=false,currentStroke=null;
 let selectedImage=null,dragging=false,resizing=false,offsetX=0,offsetY=0;
-let mediaRecorder=null,recordedChunks=[],audioStream=null;
+let mediaRecorder, recordedChunks = [], audioStream;
+let timerInterval, seconds = 0;
+
 let selectedShape=null;
 let shapeDragging=false;
 let shapeResizing=false;
@@ -1276,30 +1280,6 @@ document.exitFullscreen();
 nextSlide.onclick=()=>{if(current<pages.length-1){current++;redraw();}};
 prevSlide.onclick=()=>{if(current>0){current--;redraw();}};
 
-/* RECORDING */
-startRecordBtn.onclick=async()=>{
-const stream=canvas.captureStream(30);
-audioStream=await navigator.mediaDevices.getUserMedia({audio:true});
-const combined=new MediaStream([...stream.getTracks(),...audioStream.getTracks()]);
-mediaRecorder=new MediaRecorder(combined);
-recordedChunks=[];
-mediaRecorder.ondataavailable=e=>recordedChunks.push(e.data);
-mediaRecorder.onstop=()=>{
-const blob=new Blob(recordedChunks,{type:"video/webm"});
-const a=document.createElement("a");
-a.href=URL.createObjectURL(blob);
-a.download="recording.webm";
-a.click();
-};
-mediaRecorder.start();
-startRecordBtn.disabled=true;stopRecordBtn.disabled=false;
-};
-stopRecordBtn.onclick=()=>{
-mediaRecorder.stop();
-audioStream.getTracks().forEach(t=>t.stop());
-startRecordBtn.disabled=false;stopRecordBtn.disabled=true;
-};
-
 /* EXPORT */
 pngBtn.onclick=()=>{let a=document.createElement("a");a.href=canvas.toDataURL();a.download="page.png";a.click();};
 
@@ -1959,6 +1939,84 @@ async function loadBoardFromCloud(){
 
 function cloudAutoSaveTrigger(){
  saveBoardCloud();
+}
+</script>
+<script>
+function formatTime(sec){ return String(Math.floor(sec/60)).padStart(2,'0') + ":" + String(sec%60).padStart(2,'0'); }
+function startTimer(){ timerInterval = setInterval(()=>{ seconds++; document.getElementById('timer').innerText = formatTime(seconds); }, 1000); }
+function stopTimer(){ clearInterval(timerInterval); seconds=0; document.getElementById('timer').innerText = "00:00"; }
+
+const startBtn = document.getElementById('startRecordBtn');
+const pauseBtn = document.getElementById('pauseRecordBtn');
+const resumeBtn = document.getElementById('resumeRecordBtn');
+const stopBtn = document.getElementById('stopRecordBtn');
+
+startBtn.onclick = async () => {
+    const canvasStream = canvas.captureStream(30);
+    audioStream = await navigator.mediaDevices.getUserMedia({audio:true});
+    const combined = new MediaStream([...canvasStream.getTracks(), ...audioStream.getTracks()]);
+    
+    mediaRecorder = new MediaRecorder(combined);
+    recordedChunks = [];
+    
+    mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+    mediaRecorder.onstop = uploadRecording;
+    
+    mediaRecorder.start();
+    
+    startBtn.disabled = true;
+    pauseBtn.disabled = false;
+    stopBtn.disabled = false;
+    
+    startTimer();
+};
+
+pauseBtn.onclick = () => {
+    if(mediaRecorder && mediaRecorder.state === "recording"){
+        mediaRecorder.pause();
+        pauseBtn.disabled = true;
+        resumeBtn.disabled = false;
+        clearInterval(timerInterval);
+    }
+};
+
+resumeBtn.onclick = () => {
+    if(mediaRecorder && mediaRecorder.state === "paused"){
+        mediaRecorder.resume();
+        pauseBtn.disabled = false;
+        resumeBtn.disabled = true;
+        startTimer();
+    }
+};
+
+stopBtn.onclick = () => {
+    mediaRecorder.stop();
+    audioStream.getTracks().forEach(t=>t.stop());
+    startBtn.disabled = false;
+    pauseBtn.disabled = true;
+    resumeBtn.disabled = true;
+    stopBtn.disabled = true;
+    stopTimer();
+};
+
+// Upload to Google Drive via Apps Script
+async function uploadRecording(){
+    const blob = new Blob(recordedChunks, {type:"video/webm"});
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+        try {
+            const base64data = reader.result;
+            const res = await fetch("https://script.google.com/macros/s/AKfycbwzmzqfqwRdrPxHkOjHsiLNy8hpwAlq03S5Hyw386eZHdhZfGfKiTORxBB_BcDXphmqYA/exec", { 
+                method: "POST",
+                body: base64data
+            });
+            const data = await res.json();
+            alert("Upload Success!\nURL: " + data.url);
+        } catch(err){
+            alert("Upload failed: " + err);
+        }
+    };
+    reader.readAsDataURL(blob);
 }
 </script>
 </body>
