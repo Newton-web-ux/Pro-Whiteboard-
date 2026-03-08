@@ -405,10 +405,8 @@ z-index:5000;
     <button id="stopRecordBtn" disabled><i class="fa fa-stop"></i> Stop</button>
     <span id="timer">00:00</span>
   </div>
-  <div class="group">
-    <button id="previewRecordingBtn"><i class="fa fa-video"></i> Preview Last</button>
-  </div>
 </div>
+
 <!-- ================= EXPORT TAB ================= -->
 
 <div id="exportTab" class="ribbonPanel">
@@ -478,8 +476,6 @@ const startBtn = document.getElementById('startRecordBtn');
 const pauseBtn = document.getElementById('pauseRecordBtn');
 const resumeBtn = document.getElementById('resumeRecordBtn');
 const stopBtn = document.getElementById('stopRecordBtn');
-const previewBtn = document.getElementById('previewRecordingBtn');
-const timerDisplay = document.getElementById('timer');
 
 let selectedShape=null;
 let shapeDragging=false;
@@ -1953,92 +1949,108 @@ function cloudAutoSaveTrigger(){
 }
 </script>
 <script>
-/* ================= TIMER ================= */
-function formatTime(sec){ return String(Math.floor(sec/60)).padStart(2,'0')+":"+String(sec%60).padStart(2,'0'); }
-function startTimer(){ timerInterval=setInterval(()=>{seconds++; timerDisplay.innerText=formatTime(seconds);},1000); }
-function stopTimer(){ clearInterval(timerInterval); seconds=0; timerDisplay.innerText="00:00"; }
-
-/* ================= LOCAL STORAGE ================= */
-function saveRecordingLocally(blob){
-    const reader = new FileReader();
-    reader.onload = () => localStorage.setItem("lastRecording", reader.result);
-    reader.readAsDataURL(blob);
-}
-
-function loadLastRecording(){
-    const data = localStorage.getItem("lastRecording");
-    if(!data){ alert("No recording found in local storage."); return; }
-    const video = document.createElement("video");
-    video.controls = true;
-    video.src = data;
-    video.style.width = "100%";
-    video.style.marginTop = "10px";
-    document.body.appendChild(video);
-    video.play();
-}
-
-/* ================= GOOGLE DRIVE UPLOAD ================= */
-async function uploadRecording(blob){
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-        try{
-            const res = await fetch("https://script.google.com/macros/s/AKfycbwzmzqfqwRdrPxHkOjHsiLNy8hpwAlq03S5Hyw386eZHdhZfGfKiTORxBB_BcDXphmqYA/exec",{method:"POST",body:reader.result});
-            const data = await res.json();
-            alert("Upload Success!\nURL: " + data.url);
-        }catch(err){ alert("Upload failed: " + err); }
-    };
-    reader.readAsDataURL(blob);
-}
-
-/* ================= BUTTON EVENTS ================= */
 startBtn.onclick = async () => {
-    try{
-        const canvasStream = canvas.captureStream(30); // Only board
-        audioStream = await navigator.mediaDevices.getUserMedia({audio:true});
-        const combined = new MediaStream([...canvasStream.getTracks(), ...audioStream.getTracks()]);
-
-        mediaRecorder = new MediaRecorder(combined);
-        recordedChunks = [];
-
-        mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
-        mediaRecorder.onstop = () => {
-            const blob = new Blob(recordedChunks,{type:"video/webm"});
-            saveRecordingLocally(blob);  // Save locally
-            uploadRecording(blob);       // Upload to Drive
-        };
-
-        mediaRecorder.start();
-        startBtn.disabled=true; pauseBtn.disabled=false; stopBtn.disabled=false;
-        startTimer();
-    }catch(err){ alert("Error accessing canvas/audio: "+err); }
+    const canvasStream = canvas.captureStream(30); // your canvas element
+    audioStream = await navigator.mediaDevices.getUserMedia({audio:true});
+    const combined = new MediaStream([...canvasStream.getTracks(), ...audioStream.getTracks()]);
+    
+    mediaRecorder = new MediaRecorder(combined);
+    recordedChunks = [];
+    
+    mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+    mediaRecorder.onstop = handleStop;
+    
+    mediaRecorder.start();
+    
+    startBtn.disabled = true;
+    pauseBtn.disabled = false;
+    stopBtn.disabled = false;
+    
+    startTimer();
 };
 
 pauseBtn.onclick = () => {
-    if(mediaRecorder && mediaRecorder.state==="recording"){
+    if(mediaRecorder && mediaRecorder.state === "recording"){
         mediaRecorder.pause();
-        pauseBtn.disabled=true; resumeBtn.disabled=false;
+        pauseBtn.disabled = true;
+        resumeBtn.disabled = false;
         clearInterval(timerInterval);
     }
 };
 
 resumeBtn.onclick = () => {
-    if(mediaRecorder && mediaRecorder.state==="paused"){
+    if(mediaRecorder && mediaRecorder.state === "paused"){
         mediaRecorder.resume();
-        pauseBtn.disabled=false; resumeBtn.disabled=true;
+        pauseBtn.disabled = false;
+        resumeBtn.disabled = true;
         startTimer();
     }
 };
 
 stopBtn.onclick = () => {
-    if(mediaRecorder){
-        mediaRecorder.stop();
-        audioStream.getTracks().forEach(t=>t.stop());
-        startBtn.disabled=false; pauseBtn.disabled=true; resumeBtn.disabled=true; stopBtn.disabled=true;
-        stopTimer();
-    }
+    mediaRecorder.stop();
+    audioStream.getTracks().forEach(t=>t.stop());
+    startBtn.disabled = false;
+    pauseBtn.disabled = true;
+    resumeBtn.disabled = true;
+    stopBtn.disabled = true;
+    stopTimer();
 };
 
-previewBtn.onclick = loadLastRecording;
+// ---------------- Stop Handler ----------------
+function handleStop(){
+    const blob = new Blob(recordedChunks, {type:"video/webm"});
+
+    // 1️⃣ Save locally
+    saveRecordingLocally(blob);
+
+    // 2️⃣ Temporary download link
+    const tempURL = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = tempURL;
+    a.download = "recording_" + new Date().toISOString() + ".webm";
+    a.click();
+
+    // 3️⃣ Upload to Google Drive
+    uploadRecording(blob);
+}
+
+// ---------------- Upload to Apps Script ----------------
+async function uploadRecording(blob){
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+        try {
+            const base64data = reader.result;
+            const res = await fetch("https://script.google.com/macros/s/AKfycby2kLdpXNHsPPUAZ4XDh0Ix-voEwRlct6I2nyLoj6V4U4TS4PcN5wI0FfXM0_EMriKu0Q/exec", { 
+                method: "POST",
+                body: base64data
+            });
+            const data = await res.json();
+            if(data.url){
+                alert("Upload Success!\nURL: " + data.url);
+            } else {
+                alert("Upload failed: " + (data.message || "Unknown error"));
+            }
+        } catch(err){
+            alert("Upload failed: " + err);
+        }
+    };
+    reader.readAsDataURL(blob);
+}
+
+// ---------------- Optional: Preview Last Recording ----------------
+function previewLastRecording(){
+    const url = getLocalVideoURL();
+    if(url){
+        const video = document.createElement('video');
+        video.src = url;
+        video.controls = true;
+        video.autoplay = true;
+        document.body.appendChild(video);
+    } else {
+        alert("No recording found in local storage!");
+    }
+}
 </script>
 </body>
 </html>
