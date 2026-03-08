@@ -383,7 +383,6 @@ let data={folders:[],boards:[],trash:[]};
 
 function getKey(){
   return "whiteboardDashboardData_"+currentUser.sub;
-}
 // Apps Script backend URL
 const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxEu2TbSfpls_SmQXI8fy_vaT0mUHHb0a_UxYS3utiZIb9LcfY5kLvenpqXAZ86WMqmUg/exec";
 
@@ -391,20 +390,38 @@ const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxEu2TbSfpls_SmQXI8fy
 // Load user data from cloud
 async function loadUserData() {
 
-  const res = await fetch(CLOUD_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      action: "loadUserData",
-      user: currentUser.sub
-    })
-  });
+  try {
 
-  data = await res.json();
+    const res = await fetch(CLOUD_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "loadUserData",
+        user: currentUser.sub
+      })
+    });
 
-  render();
+    data = await res.json();
+
+    // safety fallback
+    if(!data){
+      data = { folders:[], boards:[], trash:[] };
+    }
+
+    render();
+
+  } catch(err){
+
+    console.error("Load error:", err);
+
+    // fallback if backend fails
+    data = { folders:[], boards:[], trash:[] };
+    render();
+
+  }
+
 }
 
 
