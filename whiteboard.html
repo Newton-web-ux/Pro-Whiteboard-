@@ -1965,5 +1965,37 @@ function cloudAutoSaveTrigger(){
 }
 
 </script>
+<script>
+document.getElementById("backupBtn").onclick = () => {
+    // Collect all pages
+    const backupData = pages.map(p => ({
+        bg: p.bg,
+        strokes: p.strokes,
+        shapes: p.shapes || [],
+        images: p.images.map(img => ({
+            src: img.img.src,
+            x: img.x,
+            y: img.y,
+            w: img.w,
+            h: img.h
+        }))
+    }));
+
+    // Convert to JSON
+    const jsonStr = JSON.stringify(backupData, null, 2);
+
+    // Create a temporary download link
+    const blob = new Blob([jsonStr], {type: "application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Whiteboard_Backup_${Date.now()}.json`;
+    a.click();
+
+    // Clean up
+    URL.revokeObjectURL(url);
+    alert("Backup downloaded successfully!");
+};
+</script>
 </body>
 </html>
