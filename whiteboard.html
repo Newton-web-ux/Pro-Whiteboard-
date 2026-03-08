@@ -280,6 +280,19 @@ z-index:5000;
 #canvasContainer.scrollMode:active {
   cursor: grabbing;
 }
+#versionSidebar{
+ position:fixed;
+ top:0;
+ right:-320px;
+ width:320px;
+ height:100%;
+ background:grey;
+ transition:right 0.3s ease;
+}
+
+#versionSidebar.open{
+ right:0;
+}
 </style>
 </head>
 <body>
@@ -289,7 +302,7 @@ z-index:5000;
 <div id="ribbonTabs">
 <button class="tabBtn active" data-tab="drawingTab">Drawing</button>
 <button class="tabBtn" data-tab="insertTab">Insert</button>
-<button class="tabBtn" data-tab="slideshowTab">Slideshow</button>
+<button class="tabBtn" data-tab="slideshowTab">Slideshow and Version</button>
 <button class="tabBtn" data-tab="videoTab">Video</button>
 <button class="tabBtn" data-tab="exportTab">Export</button>
 </div>
@@ -394,7 +407,8 @@ z-index:5000;
 <div id="slideshowTab" class="ribbonPanel">
 <div class="group">
 <button id="slideshowBtn"><i class="fa fa-play"></i></button>
-</div>
+
+<button id="versionToggleBtn">🕘</button></div>
 </div>
 
 <!-- ================= VIDEO TAB ================= -->
@@ -430,6 +444,19 @@ z-index:5000;
 <div id="canvasContainer">
 <canvas id="board" width="1600" height="2000"></canvas>
 </div>
+<div id="versionSidebar">
+
+  <div id="versionHeader">
+    <span>Version History</span>
+    <button>✕</button>
+  </div>
+
+  <button id="refreshVersions">Refresh</button>
+
+  <div id="versionPanel"></div>
+
+</div>
+
 
 <!-- ================= SLIDESHOW CONTROLS ================= -->
 
@@ -1965,6 +1992,92 @@ function cloudAutoSaveTrigger(){
  saveBoardCloud();
 }
 
+</script>
+<script>
+/* LOAD VERSION LIST */
+
+async function loadVersionList(){
+
+ let res = await fetch(https://script.google.com/macros/s/AKfycbxFQt36Kh_AM9piv-agYpfIoCGDk4GP41PJlE-K3BpSz7zBVS8Z9ZUWhM-AWcY3WRIP/exec,{
+  method:"POST",
+  body:JSON.stringify({
+   action:"listVersions",
+   userId:USER_ID
+  })
+ });
+
+ let versions = await res.json();
+
+ let panel = document.getElementById("versionPanel");
+ panel.innerHTML="";
+
+ versions.sort((a,b)=>b.time-a.time);
+
+ versions.forEach(v=>{
+
+  let btn=document.createElement("button");
+
+  let date=new Date(v.time);
+
+  btn.textContent=date.toLocaleString();
+
+  btn.onclick=()=>loadVersion(v.name);
+
+  panel.appendChild(btn);
+
+ });
+
+}
+async function loadVersion(versionName){
+
+ let res = await fetch(https://script.google.com/macros/s/AKfycbxFQt36Kh_AM9piv-agYpfIoCGDk4GP41PJlE-K3BpSz7zBVS8Z9ZUWhM-AWcY3WRIP/exec,{
+  method:"POST",
+  body:JSON.stringify({
+   action:"loadVersion",
+   userId:USER_ID,
+   version:versionName
+  })
+ });
+
+ let data = await res.json();
+
+ if(!data.pages) return;
+
+ pages=data.pages;
+
+ current=data.current||0;
+
+ redraw();
+
+}
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+
+  const toggleBtn = document.getElementById("versionToggleBtn");
+  const closeBtn = document.querySelector("#versionHeader button");
+  const panel = document.getElementById("versionSidebar");
+
+  function toggleVersionPanel(){
+
+    panel.classList.toggle("open");
+
+    // Optional: load versions when panel opens
+    if(panel.classList.contains("open")){
+      if(typeof loadVersionList === "function"){
+        loadVersionList();
+      }
+    }
+
+  }
+
+  // Toggle button
+  toggleBtn.addEventListener("click", toggleVersionPanel);
+
+  // Close button
+  closeBtn.addEventListener("click", toggleVersionPanel);
+
+});
 </script>
 </body>
 </html>
