@@ -396,16 +396,18 @@ z-index:5000;
 <button id="slideshowBtn"><i class="fa fa-play"></i></button>
 </div>
 </div>
-
-<!-- ================= VIDEO TAB ================= -->
-
-<div id="videoTab" class="ribbonPanel">
-  <div class="group">
+<!-- ================= BOARD STUDIO VIDEO PANEL ================= -->
+<div id="videoStudioTab" class="ribbonPanel">
+  <div class="controls">
     <button id="startRecordBtn"><i class="fa fa-circle"></i> Start</button>
     <button id="pauseRecordBtn" disabled><i class="fa fa-pause"></i> Pause</button>
     <button id="resumeRecordBtn" disabled><i class="fa fa-play"></i> Resume</button>
     <button id="stopRecordBtn" disabled><i class="fa fa-stop"></i> Stop</button>
     <span id="timer">00:00</span>
+  </div>
+  <div class="recordingsPanel">
+    <h4>Saved Recordings</h4>
+    <ul id="recordingsList"></ul>
   </div>
 </div>
 <!-- ================= EXPORT TAB ================= -->
@@ -469,6 +471,12 @@ let drawing=false,currentStroke=null;
 let selectedImage=null,dragging=false,resizing=false,offsetX=0,offsetY=0;
 let mediaRecorder, recordedChunks = [], audioStream;
 let timerInterval, seconds = 0;
+const startBtn = document.getElementById('startRecordBtn');
+const pauseBtn = document.getElementById('pauseRecordBtn');
+const resumeBtn = document.getElementById('resumeRecordBtn');
+const stopBtn = document.getElementById('stopRecordBtn');
+const timerDisplay = document.getElementById('timer');
+const recordingsList = document.getElementById('recordingsList');
 
 let selectedShape=null;
 let shapeDragging=false;
@@ -1942,82 +1950,142 @@ function cloudAutoSaveTrigger(){
 }
 </script>
 <script>
-function formatTime(sec){ return String(Math.floor(sec/60)).padStart(2,'0') + ":" + String(sec%60).padStart(2,'0'); }
-function startTimer(){ timerInterval = setInterval(()=>{ seconds++; document.getElementById('timer').innerText = formatTime(seconds); }, 1000); }
-function stopTimer(){ clearInterval(timerInterval); seconds=0; document.getElementById('timer').innerText = "00:00"; }
+/* ================= TIMER FUNCTIONS ================= */
+function formatTime(sec){ return String(Math.floor(sec/60)).padStart(2,'0')+":"+String(sec%60).padStart(2,'0'); }
+function startTimer(){ timerInterval=setInterval(()=>{seconds++; timerDisplay.innerText=formatTime(seconds);},1000); }
+function stopTimer(){ clearInterval(timerInterval); seconds=0; timerDisplay.innerText="00:00"; }
 
-const startBtn = document.getElementById('startRecordBtn');
-const pauseBtn = document.getElementById('pauseRecordBtn');
-const resumeBtn = document.getElementById('resumeRecordBtn');
-const stopBtn = document.getElementById('stopRecordBtn');
+/* ================= LOCAL STORAGE MANAGEMENT ================= */
+function getRecordings(){ 
+  return JSON.parse(localStorage.getItem("boardRecordings")||"[]"); 
+}
 
-startBtn.onclick = async () => {
+function saveRecordings(recordings){ localStorage.setItem("boardRecordings", JSON.stringify(recordings)); }
+
+function addRecording(blob, name){
+  const reader = new FileReader();
+  reader.onload = () => {
+    const recordings = getRecordings();
+    recordings.push({name:name, data:reader.result});
+    saveRecordings(recordings);
+    refreshRecordingsList();
+  };
+  reader.readAsDataURL(blob);
+}
+
+function deleteRecording(index){
+  const recordings = getRecordings();
+  recordings.splice(index,1);
+  saveRecordings(recordings);
+  refreshRecordingsList();
+}
+
+function renameRecording(index){
+  const recordings = getRecordings();
+  const newName = prompt("Enter new name:", recordings[index].name);
+  if(newName) recordings[index].name = newName;
+  saveRecordings(recordings);
+  refreshRecordingsList();
+}
+
+function refreshRecordingsList(){
+  recordingsList.innerHTML="";
+  const recordings = getRecordings();
+  recordings.forEach((r,i)=>{
+    const li = document.createElement("li");
+    li.innerHTML=`<b>${r.name}</b> 
+      <button onclick="playRecording(${i})">▶</button> 
+      <button onclick="renameRecording(${i})">✏</button>
+      <button onclick="deleteRecording(${i})">🗑</button>
+      <button onclick="uploadToDrive(${i})">⬆</button>`;
+    recordingsList.appendChild(li);
+  });
+}
+
+function playRecording(index){
+  const recordings = getRecordings();
+  const video = document.createElement("video");
+  video.controls = true;
+  video.src = recordings[index].data;
+  video.style.width="100%";
+  video.style.marginTop="10px";
+  document.body.appendChild(video);
+  video.play();
+}
+
+/* ================= GOOGLE DRIVE UPLOAD ================= */
+async function uploadToDrive(index){
+  const recordings = getRecordings();
+  const blob = dataURLtoBlob(recordings[index].data);
+  const reader = new FileReader();
+  reader.onloadend = async () => {
+    try{
+      const res = await fetch("https://script.google.com/macros/s/AKfycbwzmzqfqwRdrPxHkOjHsiLNy8hpwAlq03S5Hyw386eZHdhZfGfKiTORxBB_BcDXphmqYA/exec",{method:"POST",body:reader.result}); 
+      const data = await res.json();
+      alert("Upload Success!\nURL: "+data.url);
+    }catch(err){ alert("Upload failed: "+err); }
+  };
+  reader.readAsDataURL(blob);
+}
+
+function dataURLtoBlob(dataURL){
+  const parts = dataURL.split(','), mime = parts[0].match(/:(.*?);/)[1];
+  const binary = atob(parts[1]);
+  const array = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) array[i]=binary.charCodeAt(i);
+  return new Blob([array],{type:mime});
+}
+
+/* ================= BUTTON EVENTS ================= */
+startBtn.onclick = async ()=>{
+  try{
     const canvasStream = canvas.captureStream(30);
     audioStream = await navigator.mediaDevices.getUserMedia({audio:true});
     const combined = new MediaStream([...canvasStream.getTracks(), ...audioStream.getTracks()]);
-    
+
     mediaRecorder = new MediaRecorder(combined);
-    recordedChunks = [];
-    
-    mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
-    mediaRecorder.onstop = uploadRecording;
-    
+    recordedChunks=[];
+
+    mediaRecorder.ondataavailable = e=>recordedChunks.push(e.data);
+    mediaRecorder.onstop=()=>{
+      const blob = new Blob(recordedChunks,{type:"video/webm"});
+      const name = prompt("Recording Name:", "Recording_"+new Date().toISOString());
+      if(name) addRecording(blob,name);
+    };
+
     mediaRecorder.start();
-    
-    startBtn.disabled = true;
-    pauseBtn.disabled = false;
-    stopBtn.disabled = false;
-    
+    startBtn.disabled=true; pauseBtn.disabled=false; stopBtn.disabled=false;
     startTimer();
+  }catch(err){ alert("Error accessing canvas/audio: "+err); }
 };
 
-pauseBtn.onclick = () => {
-    if(mediaRecorder && mediaRecorder.state === "recording"){
-        mediaRecorder.pause();
-        pauseBtn.disabled = true;
-        resumeBtn.disabled = false;
-        clearInterval(timerInterval);
-    }
+pauseBtn.onclick = ()=>{
+  if(mediaRecorder && mediaRecorder.state==="recording"){
+    mediaRecorder.pause();
+    pauseBtn.disabled=true; resumeBtn.disabled=false;
+    clearInterval(timerInterval);
+  }
 };
 
-resumeBtn.onclick = () => {
-    if(mediaRecorder && mediaRecorder.state === "paused"){
-        mediaRecorder.resume();
-        pauseBtn.disabled = false;
-        resumeBtn.disabled = true;
-        startTimer();
-    }
+resumeBtn.onclick = ()=>{
+  if(mediaRecorder && mediaRecorder.state==="paused"){
+    mediaRecorder.resume();
+    pauseBtn.disabled=false; resumeBtn.disabled=true;
+    startTimer();
+  }
 };
 
-stopBtn.onclick = () => {
+stopBtn.onclick = ()=>{
+  if(mediaRecorder){
     mediaRecorder.stop();
     audioStream.getTracks().forEach(t=>t.stop());
-    startBtn.disabled = false;
-    pauseBtn.disabled = true;
-    resumeBtn.disabled = true;
-    stopBtn.disabled = true;
+    startBtn.disabled=false; pauseBtn.disabled=true; resumeBtn.disabled=true; stopBtn.disabled=true;
     stopTimer();
+  }
 };
 
-// Upload to Google Drive via Apps Script
-async function uploadRecording(){
-    const blob = new Blob(recordedChunks, {type:"video/webm"});
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-        try {
-            const base64data = reader.result;
-            const res = await fetch("https://script.google.com/macros/s/AKfycbwzmzqfqwRdrPxHkOjHsiLNy8hpwAlq03S5Hyw386eZHdhZfGfKiTORxBB_BcDXphmqYA/exec", { 
-                method: "POST",
-                body: base64data
-            });
-            const data = await res.json();
-            alert("Upload Success!\nURL: " + data.url);
-        } catch(err){
-            alert("Upload failed: " + err);
-        }
-    };
-    reader.readAsDataURL(blob);
-}
+/* ================= INIT ================= */
+refreshRecordingsList();
 </script>
 </body>
 </html>
