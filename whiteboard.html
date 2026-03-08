@@ -413,9 +413,6 @@ z-index:5000;
 <button id="pngBtn"><i class="fa fa-file-image"></i></button>
 <button id="pdfBtn"><i class="fa fa-file-pdf"></i></button>
 <button id="pptBtn"><i class="fa fa-file-powerpoint"></i></button>
-<button id="backupBtn" title="Download Backup">
-  <i class="fa fa-database"></i>
-</button>
 <button onclick="saveBoardToCloud()">☁ Save Cloud</button>
 <button onclick="loadBoardFromCloud()">☁ Load Cloud</button>
 </div>
@@ -1963,27 +1960,6 @@ async function loadBoardFromCloud(){
 function cloudAutoSaveTrigger(){
  saveBoardCloud();
 }
-
-</script>
-<script>
-document.getElementById("backupBtn").onclick = async () => {
-    // Optional: fetch latest cloud data first
-    await loadPageFromCloud(current); // ensures current page is up-to-date
-    saveToLocalStorage();             // update localStorage
-
-    const data = localStorage.getItem(storageKey);
-    if (!data) return alert("Nothing to backup!");
-
-    const blob = new Blob([data], { type: "application/json" });
-    const link = document.createElement("a");
-
-    link.href = URL.createObjectURL(blob);
-    link.download = `Whiteboard_Backup_${Date.now()}.json`;
-    link.click();
-
-    URL.revokeObjectURL(link.href);
-    alert("Backup downloaded successfully!");
-};
 </script>
 </body>
 </html>
