@@ -310,7 +310,7 @@ body{
       <li>To Export your work as PNG, PDF, and PPT,JSON, go to Export Tab and select your appropriate choice of export. After exporting, it will store in your browser.</li>
 How to get Your Exported whiteboard:? 
 <li> Go to your browser where you have opened the whiteboard and click three dots and go to Downloads.</li>
-<li> To work in cloud, click save to cloud which will store everything in cloud and it will load auto when you open it next. To share your whiteboard with content, click share which will give you a sharable link of a specific board with its id and you can share it with others.Once you share they can see all changes you will do in your that board, you need not share multiple times.</li></ul>
+<li> To work in cloud, click save to cloud which will store everything in cloud and it will load auto when you open it next.</li></ul>
 
   </div>
 </div>
@@ -398,57 +398,20 @@ let data={folders:[],boards:[],trash:[]};
 function getKey(){
   return "whiteboardDashboardData_"+currentUser.sub;
 }
-const CLOUD_URL="https://script.google.com/macros/s/AKfycbw6_nGKmXMLV9VwNGQgB2jHkC4Z1n4kxIZ-nW4lgIImNfnYqOGJnstknMEQ-4EoWHwlmA/exec";
 
-async function loadUserData(){
-
-if(!currentUser) return;
-
-disableButtons(true);
-
-const res = await fetch(CLOUD_URL,{
- method:"POST",
- headers:{
-  "Content-Type":"text/plain;charset=utf-8"
- },
- body:JSON.stringify({
-  action:"load",
-  userId:currentUser.sub
- })
-});
-
-data = await res.json();
-
-disableButtons(false);
-
-render();
-
-}
-async function save(){
-
-if(!currentUser) return;
-
-try{
-
-await fetch(CLOUD_URL,{
- method:"POST",
- headers:{
-  "Content-Type":"text/plain;charset=utf-8"
- },
- body:JSON.stringify({
-  action:"save",
-  userId:currentUser.sub,
-  data:data
- })
-});
-
-}catch(err){
-
-console.error("Cloud save failed",err);
-
+function loadUserData(){
+  const stored=localStorage.getItem(getKey());
+  data=stored?JSON.parse(stored):{folders:[],boards:[],trash:[]};
+  save();
+  disableButtons(false);
+  render();
 }
 
+function save(){
+  if(!currentUser) return;
+  localStorage.setItem(getKey(),JSON.stringify(data));
 }
+
 // ========== CORE FEATURES ==========
 function generateID(){return "id_"+Date.now()+"_"+Math.floor(Math.random()*1000);}
 
