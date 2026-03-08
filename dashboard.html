@@ -398,7 +398,6 @@ user:currentUser.sub
 });
 
 data = await res.json();
-
 render();
 
 }
@@ -413,9 +412,9 @@ headers:{
 "Content-Type":"application/json"
 },
 body:JSON.stringify({
-action:"saveUserData",
+action:"save",
 user:currentUser.sub,
-payload:data
+data:data
 })
 });
 
