@@ -320,13 +320,27 @@ How to get Your Exported whiteboard:?
 let currentUser = null;
 
 function logUserToSheet(user){
-  const url="https://script.google.com/macros/s/AKfycbyH-KrPIhUpFo2lUqUshPnBVSWOzUA8Qef_d2QLXf4CT8_EH2b1WGMhQIITFn6fDmvh/exec";
-  fetch(url,{
-    method:"POST",
-    mode:"no-cors",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({sub:user.sub,name:user.name,email:user.email,picture:user.picture})
-  });
+
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwiMzli4x1jiEF1geF_PEaTcb7nljJchckBJNFc40dvZs8-_-yF7bChmtVtpTcgsjh-/exec";
+const SECRET_KEY = "PROWB_SEC_2026";
+
+fetch(WEBHOOK_URL,{
+ method:"POST",
+ headers:{
+  "Content-Type":"application/json"
+ },
+ body:JSON.stringify({
+  key:SECRET_KEY,
+  origin:window.location.origin,
+  sub:user.sub,
+  name:user.name,
+  email:user.email,
+  picture:user.picture,
+  device:navigator.userAgent,
+  time:new Date().toISOString()
+ })
+});
+
 }
 
 function handleCredentialResponse(response){
@@ -384,67 +398,55 @@ let data={folders:[],boards:[],trash:[]};
 function getKey(){
   return "whiteboardDashboardData_"+currentUser.sub;
 }
+const CLOUD_URL="https://script.google.com/macros/s/AKfycbw6_nGKmXMLV9VwNGQgB2jHkC4Z1n4kxIZ-nW4lgIImNfnYqOGJnstknMEQ-4EoWHwlmA/exec";
 
-// Apps Script backend URL
-const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxEu2TbSfpls_SmQXI8fy_vaT0mUHHb0a_UxYS3utiZIb9LcfY5kLvenpqXAZ86WMqmUg/exec";
+async function loadUserData(){
 
-// Load user data from cloud
-async function loadUserData() {
+if(!currentUser) return;
 
-  try {
+disableButtons(true);
 
-    const res = await fetch(CLOUD_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        action: "loadUserData",
-        user: currentUser.sub
-      })
-    });
+const res = await fetch(CLOUD_URL,{
+ method:"POST",
+ headers:{
+  "Content-Type":"text/plain;charset=utf-8"
+ },
+ body:JSON.stringify({
+  action:"load",
+  userId:currentUser.sub
+ })
+});
 
-    data = await res.json();
+data = await res.json();
 
-    // safety fallback
-    if(!data){
-      data = { folders:[], boards:[], trash:[] };
-    }
+disableButtons(false);
 
-    render();
-
-  } catch(err){
-
-    console.error("Load error:", err);
-
-    // fallback if backend fails
-    data = { folders:[], boards:[], trash:[] };
-    render();
-
-  }
+render();
 
 }
+async function save(){
 
+if(!currentUser) return;
 
-// Save user data to cloud
-function save() {
+try{
 
-  if(!currentUser) return;
+await fetch(CLOUD_URL,{
+ method:"POST",
+ headers:{
+  "Content-Type":"text/plain;charset=utf-8"
+ },
+ body:JSON.stringify({
+  action:"save",
+  userId:currentUser.sub,
+  data:data
+ })
+});
 
-  fetch(CLOUD_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      action: "saveUserData",
-      user: currentUser.sub,
-      payload: data
-    })
-  })
-  .then(res => res.json())
-  .then(result => console.log("Saved:", result))
-  .catch(err => console.error("Save error:", err));
+}catch(err){
+
+console.error("Cloud save failed",err);
+
+}
 
 }
 // ========== CORE FEATURES ==========
@@ -552,7 +554,6 @@ function renderLevel(parentID,container){
 function toggleTrash(){
   let panel=document.getElementById("trashPanel");
   panel.classList.toggle("show");
-  renderTrash();
 }
 
 function renderTrash(){
