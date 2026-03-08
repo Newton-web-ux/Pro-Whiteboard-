@@ -280,6 +280,41 @@ z-index:5000;
 #canvasContainer.scrollMode:active {
   cursor: grabbing;
 }
+#recordingPanel{
+position:fixed;
+top:0;
+right:0;
+width:300px;
+height:100%;
+background:#ffffff;
+box-shadow:-2px 0 10px rgba(0,0,0,0.2);
+transform:translateX(100%);
+transition:0.3s;
+z-index:9999;
+}
+
+#recordingHeader{
+padding:12px;
+background:#222;
+color:white;
+display:flex;
+justify-content:space-between;
+}
+
+#recordingList{
+padding:10px;
+overflow:auto;
+height:calc(100% - 50px);
+}
+
+.recordItem{
+border-bottom:1px solid #ddd;
+padding:10px;
+}
+
+.recordItem button{
+margin:4px;
+}
 </style>
 </head>
 <body>
@@ -396,15 +431,72 @@ z-index:5000;
 <button id="slideshowBtn"><i class="fa fa-play"></i></button>
 </div>
 </div>
+
 <!-- ================= VIDEO TAB ================= -->
+
 <div id="videoTab" class="ribbonPanel">
+
   <div class="group">
-    <button id="startRecordBtn"><i class="fa fa-circle"></i> Start</button>
-    <button id="pauseRecordBtn" disabled><i class="fa fa-pause"></i> Pause</button>
-    <button id="resumeRecordBtn" disabled><i class="fa fa-play"></i> Resume</button>
-    <button id="stopRecordBtn" disabled><i class="fa fa-stop"></i> Stop</button>
-    <span id="timer">00:00</span>
+
+    <button id="startRecordBtn" title="Start Recording">
+      <i class="fa fa-circle"></i>
+    </button>
+
+    <button id="pauseRecordBtn" title="Pause Recording">
+      <i class="fa fa-pause"></i>
+    </button>
+
+    <button id="resumeRecordBtn" title="Resume Recording">
+      <i class="fa fa-play"></i>
+    </button>
+
+    <button id="stopRecordBtn" disabled title="Stop Recording">
+      <i class="fa fa-stop"></i>
+    </button>
+<button id="openRecordingPanel">
+<i class="fa fa-video"></i>
+</button>
+
   </div>
+
+</div>
+
+
+<!-- ================= RECORDING INDICATOR ================= -->
+
+<div id="recordingIndicator"
+style="
+position:fixed;
+top:20px;
+right:20px;
+background:#ff0000;
+color:white;
+padding:6px 12px;
+border-radius:8px;
+font-weight:bold;
+display:none;
+z-index:9999;
+">
+🔴 Recording...
+</div>
+
+
+<!-- ================= RECORD TIMER ================= -->
+
+<div id="recordTimer"
+style="
+position:fixed;
+top:55px;
+right:20px;
+background:#000;
+color:#fff;
+padding:6px 12px;
+border-radius:8px;
+font-family:monospace;
+display:none;
+z-index:9999;
+">
+00:00
 </div>
 
 <!-- ================= EXPORT TAB ================= -->
@@ -428,10 +520,16 @@ z-index:5000;
 <div id="canvasContainer">
 <canvas id="board" width="1600" height="2000"></canvas>
 </div>
-<div class="recordingsPanel">
-    <h4>Saved Recordings</h4>
-    <ul id="recordingsList"></ul>
-  </div>
+<div id="recordingPanel">
+
+<div id="recordingHeader">
+<span>Recording History</span>
+<button id="closeRecordingPanel">✖</button>
+</div>
+
+<div id="recordingList"></div>
+
+</div>
 
 <!-- ================= SLIDESHOW CONTROLS ================= -->
 
@@ -470,8 +568,12 @@ let pages=[];
 let current=0;
 let drawing=false,currentStroke=null;
 let selectedImage=null,dragging=false,resizing=false,offsetX=0,offsetY=0;
-let mediaRecorder, recordedChunks = [], audioStream;
-let timerInterval, seconds = 0;
+let mediaRecorder;
+let recordedChunks=[];
+let audioStream;
+
+let seconds=0;
+let timerInterval;
 
 let selectedShape=null;
 let shapeDragging=false;
@@ -1945,79 +2047,184 @@ function cloudAutoSaveTrigger(){
 }
 </script>
 <script>
-// --- TIMER FUNCTIONS ---
-function formatTime(sec){ 
-    return String(Math.floor(sec/60)).padStart(2,'0') + ":" + String(sec%60).padStart(2,'0'); 
-}
-function startTimer(){ 
-    timerInterval = setInterval(()=>{
-        seconds++; 
-        document.getElementById('timer').innerText = formatTime(seconds); 
-    }, 1000); 
-}
-function stopTimer(){ 
-    clearInterval(timerInterval); 
-    seconds = 0; 
-    document.getElementById('timer').innerText = "00:00"; 
-}
-
-// --- BUTTONS ---
-const startBtn = document.getElementById('startRecordBtn');
-const pauseBtn = document.getElementById('pauseRecordBtn');
-const resumeBtn = document.getElementById('resumeRecordBtn');
-const stopBtn = document.getElementById('stopRecordBtn');
-
-startBtn.onclick = async () => {
-    const canvasStream = canvas.captureStream(30); // your canvas
-    audioStream = await navigator.mediaDevices.getUserMedia({audio:true});
-    const combined = new MediaStream([...canvasStream.getTracks(), ...audioStream.getTracks()]);
-    
-    mediaRecorder = new MediaRecorder(combined);
-    recordedChunks = [];
-    
-    mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
-    mediaRecorder.onstop = () => {
-        const blob = new Blob(recordedChunks, {type:"video/webm"});
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = "recording.webm";
-        a.click();
-    };
-    
-    mediaRecorder.start();
-    startBtn.disabled = true;
-    pauseBtn.disabled = false;
-    stopBtn.disabled = false;
-    
-    startTimer();
+openRecordingPanel.onclick=()=>{
+recordingPanel.style.transform="translateX(0)";
+loadRecordings();
 };
 
-pauseBtn.onclick = () => {
-    if(mediaRecorder && mediaRecorder.state === "recording"){
-        mediaRecorder.pause();
-        pauseBtn.disabled = true;
-        resumeBtn.disabled = false;
-        clearInterval(timerInterval);
-    }
+closeRecordingPanel.onclick=()=>{
+recordingPanel.style.transform="translateX(100%)";
+};
+function loadRecordingHistory(){
+
+let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
+
+recordingList.innerHTML="";
+
+history.reverse().forEach(r=>{
+
+let div=document.createElement("div");
+
+div.className="recordItem";
+
+div.innerHTML=`
+<div>${r.date}</div>
+
+<button onclick="restoreRecording('${r.url}')">Restore</button>
+<button onclick="deleteRecording(${r.id})">Delete</button>
+`;
+
+recordingList.appendChild(div);
+
+});
+
+}
+function restoreRecording(url){
+
+const a=document.createElement("a");
+
+a.href=url;
+
+a.download="whiteboard_recording.webm";
+
+a.click();
+
+}
+function shareRecording(url){
+
+navigator.clipboard.writeText(url);
+
+alert("Recording link copied!");
+
+}
+function deleteRecording(id){
+
+let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
+
+history=history.filter(r=>r.id!==id);
+
+localStorage.setItem("recordingHistory",JSON.stringify(history));
+
+loadRecordingHistory();
+
+}
+window.addEventListener("DOMContentLoaded",()=>{
+
+loadRecordingHistory();
+
+});
+</script>
+<script>
+/* RECORDING */
+function updateTimer(){
+
+seconds++;
+
+let m=Math.floor(seconds/60).toString().padStart(2,"0");
+let s=(seconds%60).toString().padStart(2,"0");
+
+recordTimer.innerText=m+":"+s;
+
+}
+
+/* START RECORD */
+
+startRecordBtn.onclick=async()=>{
+
+const canvasStream=canvas.captureStream(30);
+
+audioStream=await navigator.mediaDevices.getUserMedia({audio:true});
+
+const combinedStream=new MediaStream([
+...canvasStream.getTracks(),
+...audioStream.getTracks()
+]);
+
+mediaRecorder=new MediaRecorder(combinedStream);
+
+recordedChunks=[];
+
+mediaRecorder.ondataavailable=e=>{
+if(e.data.size>0) recordedChunks.push(e.data);
 };
 
-resumeBtn.onclick = () => {
-    if(mediaRecorder && mediaRecorder.state === "paused"){
-        mediaRecorder.resume();
-        pauseBtn.disabled = false;
-        resumeBtn.disabled = true;
-        startTimer();
-    }
+mediaRecorder.onstop=()=>{
+
+const blob=new Blob(recordedChunks,{type:"video/webm"});
+
+const url=URL.createObjectURL(blob);
+
+let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
+
+history.push({
+id:Date.now(),
+url:url,
+date:new Date().toLocaleString()
+});
+
+localStorage.setItem("recordingHistory",JSON.stringify(history));
+
+loadRecordingHistory();
+
 };
 
-stopBtn.onclick = () => {
-    mediaRecorder.stop();
-    if(audioStream) audioStream.getTracks().forEach(t=>t.stop());
-    startBtn.disabled = false;
-    pauseBtn.disabled = true;
-    resumeBtn.disabled = true;
-    stopBtn.disabled = true;
-    stopTimer();
+mediaRecorder.start();
+
+recordingIndicator.style.display="block";
+recordTimer.style.display="block";
+
+seconds=0;
+timerInterval=setInterval(updateTimer,1000);
+
+startRecordBtn.disabled=true;
+stopRecordBtn.disabled=false;
+
+};
+
+/* PAUSE */
+
+pauseRecordBtn.onclick=()=>{
+
+if(mediaRecorder && mediaRecorder.state==="recording"){
+
+mediaRecorder.pause();
+
+clearInterval(timerInterval);
+
+}
+
+};
+
+/* RESUME */
+
+resumeRecordBtn.onclick=()=>{
+
+if(mediaRecorder && mediaRecorder.state==="paused"){
+
+mediaRecorder.resume();
+
+timerInterval=setInterval(updateTimer,1000);
+
+}
+
+};
+
+/* STOP */
+
+stopRecordBtn.onclick=()=>{
+
+mediaRecorder.stop();
+
+audioStream.getTracks().forEach(t=>t.stop());
+
+clearInterval(timerInterval);
+
+recordingIndicator.style.display="none";
+recordTimer.style.display="none";
+
+startRecordBtn.disabled=false;
+stopRecordBtn.disabled=true;
+
 };
 </script>
 </body>
