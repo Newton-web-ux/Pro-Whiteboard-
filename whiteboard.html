@@ -9,10 +9,9 @@
 <script
 src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.11.0/dist/pptxgen.bundle.js"></script>
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.1/math.min.js"></script>
-<!-- FIREBASE -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
 <style>
 body{
 margin:0;
@@ -271,40 +270,15 @@ font-size:20px;
 cursor:pointer;
 z-index:5000;
 }
-#recordingPanel{
-position:fixed;
-top:0;
-right:0;
-width:300px;
-height:100%;
-background:#ffffff;
-box-shadow:-2px 0 10px rgba(0,0,0,0.2);
-transform:translateX(100%);
-transition:0.3s;
-z-index:9999;
+/* Scroll mode enabled container */
+#canvasContainer.scrollMode {
+  overflow-y: auto;       /* vertical scroll */
+  cursor: grab;
 }
 
-#recordingHeader{
-padding:12px;
-background:#222;
-color:white;
-display:flex;
-justify-content:space-between;
-}
-
-#recordingList{
-padding:10px;
-overflow:auto;
-height:calc(100% - 50px);
-}
-
-.recordItem{
-border-bottom:1px solid #ddd;
-padding:10px;
-}
-
-.recordItem button{
-margin:4px;
+/* Optional: change cursor while panning */
+#canvasContainer.scrollMode:active {
+  cursor: grabbing;
 }
 </style>
 </head>
@@ -356,9 +330,7 @@ margin:4px;
 <div class="group">
   <button id="selectStrokeBtn"><i class="fa fa-mouse-pointer"></i></button>
   <button id="cutStrokeBtn"><i class="fa fa-scissors"></i></button>
-<div class="group">
-  <button id="scrollModeBtn"><i class="fa fa-hand-paper"></i> Scroll</button>
-</div>
+<button id="toggleScrollBtn">🖱️ Scroll Mode</button>
 </div>
 </div>
 
@@ -428,68 +400,10 @@ margin:4px;
 <!-- ================= VIDEO TAB ================= -->
 
 <div id="videoTab" class="ribbonPanel">
-
-  <div class="group">
-
-    <button id="startRecordBtn" title="Start Recording">
-      <i class="fa fa-circle"></i>
-    </button>
-
-    <button id="pauseRecordBtn" title="Pause Recording">
-      <i class="fa fa-pause"></i>
-    </button>
-
-    <button id="resumeRecordBtn" title="Resume Recording">
-      <i class="fa fa-play"></i>
-    </button>
-
-    <button id="stopRecordBtn" disabled title="Stop Recording">
-      <i class="fa fa-stop"></i>
-    </button>
-<button id="openRecordingPanel">
-<i class="fa fa-video"></i>
-</button>
-
-  </div>
-
+<div class="group">
+<button id="startRecordBtn"><i class="fa fa-circle"></i></button>
+<button id="stopRecordBtn" disabled><i class="fa fa-stop"></i></button>
 </div>
-
-
-<!-- ================= RECORDING INDICATOR ================= -->
-
-<div id="recordingIndicator"
-style="
-position:fixed;
-top:20px;
-right:20px;
-background:#ff0000;
-color:white;
-padding:6px 12px;
-border-radius:8px;
-font-weight:bold;
-display:none;
-z-index:9999;
-">
-🔴 Recording...
-</div>
-
-
-<!-- ================= RECORD TIMER ================= -->
-
-<div id="recordTimer"
-style="
-position:fixed;
-top:55px;
-right:20px;
-background:#000;
-color:#fff;
-padding:6px 12px;
-border-radius:8px;
-font-family:monospace;
-display:none;
-z-index:9999;
-">
-00:00
 </div>
 
 <!-- ================= EXPORT TAB ================= -->
@@ -502,14 +416,8 @@ z-index:9999;
 <button id="backupBtn" title="Download Backup">
   <i class="fa fa-database"></i>
 </button>
-<button id="cloudSaveBtn">
-<i class="fa fa-cloud-upload"></i>
-</button>
-
-<button id="cloudLoadBtn">
-<i class="fa fa-cloud-download"></i>
-</button>
-<button id="shareBoardBtn">🔗 Share Board</button>
+<button onclick="saveBoardToCloud()">☁ Save Cloud</button>
+<button onclick="loadBoardFromCloud()">☁ Load Cloud</button>
 </div>
 </div>
 
@@ -522,16 +430,7 @@ z-index:9999;
 <div id="canvasContainer">
 <canvas id="board" width="1600" height="2000"></canvas>
 </div>
-<div id="recordingPanel">
 
-<div id="recordingHeader">
-<span>Recording History</span>
-<button id="closeRecordingPanel">✖</button>
-</div>
-
-<div id="recordingList"></div>
-
-</div>
 <!-- ================= SLIDESHOW CONTROLS ================= -->
 
 <div id="slideshowControls">
@@ -547,22 +446,6 @@ z-index:9999;
 </div>
 
 <div class="g_id_signin" data-type="standard"></div>
-<script>
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCtvevbs_-Wp1Wh6TNhgrN1KZp7_6f0dfs",
-  authDomain: "prowhiteboard-20dc0.firebaseapp.com",
-  projectId: "prowhiteboard-20dc0",
-  storageBucket: "prowhiteboard-20dc0.firebasestorage.app",
-  messagingSenderId: "851259077192",
-  appId: "1:851259077192:web:b2b9cf746ac898fb2d1e7d"
-};
-
-firebase.initializeApp(firebaseConfig);
-
-const db = firebase.firestore();
-
-</script>
 <script>
 /* BOARD ID SYSTEM */
 const params = new URLSearchParams(window.location.search);
@@ -585,12 +468,7 @@ let pages=[];
 let current=0;
 let drawing=false,currentStroke=null;
 let selectedImage=null,dragging=false,resizing=false,offsetX=0,offsetY=0;
-let mediaRecorder;
-let recordedChunks=[];
-let audioStream;
-
-let seconds=0;
-let timerInterval;
+let mediaRecorder=null,recordedChunks=[],audioStream=null;
 let selectedShape=null;
 let shapeDragging=false;
 let shapeResizing=false;
@@ -604,12 +482,15 @@ let selectionBox = null;
 let movingStrokes = false;
 let moveStartX = 0;
 let moveStartY = 0;
-
-
+let scrollMode = false;
+let isPanning = false;
+let panPointerId = null;
+let panStartX = 0, panStartY = 0;
+let scrollStartX = 0, scrollStartY = 0;
+let toolBeforeScroll = "pen";
 /* LOCAL STORAGE – PER BOARD */
 
 function saveToLocalStorage(){
-
 let data = pages.map(p => ({
 bg: p.bg,
 strokes: p.strokes,
@@ -620,19 +501,13 @@ y: img.y,
 w: img.w,
 h: img.h
 })),
-shapes: p.shapes || []
+shapes: p.shapes || []   // ✅ ADD THIS
 }));
 
 localStorage.setItem(storageKey, JSON.stringify({
 pages: data,
 current: current
 }));
-
-/* OPTIONAL CLOUD SAVE */
-if(typeof saveToCloud === "function"){
-saveToCloud();
-}
-
 }
 
 function loadFromLocalStorage(){
@@ -672,68 +547,6 @@ redo: []
 });
 
 current = parsed.current || 0;
-}
-async function loadFromCloud(){
-
-try{
-
-const docRef = await db
-.collection("whiteboards")
-.doc(boardID)
-.get();
-
-if(!docRef.exists){
-
-alert("No cloud board found");
-return;
-
-}
-
-let data = docRef.data();
-
-pages = data.pages.map(p => {
-
-let images = [];
-
-(p.images || []).forEach(imgData => {
-
-let img = new Image();
-img.src = imgData.src;
-
-images.push({
-img: img,
-x: imgData.x,
-y: imgData.y,
-w: imgData.w,
-h: imgData.h
-});
-
-});
-
-return {
-bg: p.bg,
-strokes: p.strokes || [],
-images: images,
-shapes: p.shapes || [],
-undo: [],
-redo: []
-};
-
-});
-
-current = data.current || 0;
-
-redraw();
-
-alert("Cloud Load Successful ☁️");
-
-}catch(err){
-
-console.error(err);
-alert("Cloud Load Failed");
-
-}
-
 }
 /* SAVE STATE FOR UNDO */
 function saveState(){
@@ -1036,7 +849,16 @@ function pos(e){
   };
 }
 canvas.onpointerdown=e=>{
-if(scrollMode) return;
+if(scrollMode){
+    isPanning = true;
+    panPointerId = e.pointerId;
+    panStartX = e.clientX;
+    panStartY = e.clientY;
+    scrollStartX = canvas.parentElement.scrollLeft;
+    scrollStartY = canvas.parentElement.scrollTop;
+    e.preventDefault(); // stop accidental drawing
+    return; // skip all other drawing logic
+}
 const p=pos(e);
 
 selectedImage=null;
@@ -1162,6 +984,14 @@ pages[current].strokes.push(currentStroke);
 };
 
 canvas.onpointermove=e=>{
+if(scrollMode && isPanning && e.pointerId === panPointerId){
+    const dx = e.clientX - panStartX;
+    const dy = e.clientY - panStartY;
+    canvas.parentElement.scrollLeft = scrollStartX - dx;
+    canvas.parentElement.scrollTop = scrollStartY - dy;
+    e.preventDefault();
+    return; // skip drawing logic
+}
 const p=pos(e);
 /* ===== DRAW SELECTION BOX ===== */
 if(selectingStroke && selectionBox){
@@ -1235,6 +1065,11 @@ redraw();
 };
 
 canvas.onpointerup = () => {
+if(scrollMode && isPanning && e.pointerId === panPointerId){
+    isPanning = false;
+    panPointerId = null;
+    return; // skip rest of pointerup logic
+}
 
   /* ===== FINISH STROKE SELECTION ===== */
   if(selectingStroke && selectionBox){
@@ -1278,7 +1113,8 @@ canvas.onpointerup = () => {
   shapeResizing = false;
 
   /* ===== SAVE AFTER NORMAL ACTION ===== */
-  saveToLocalStorage();
+ saveToLocalStorage();
+cloudAutoSaveTrigger();
 };
 /* ERASER */
 function eraseAt(p){
@@ -1444,116 +1280,29 @@ nextSlide.onclick=()=>{if(current<pages.length-1){current++;redraw();}};
 prevSlide.onclick=()=>{if(current>0){current--;redraw();}};
 
 /* RECORDING */
-function updateTimer(){
-
-seconds++;
-
-let m=Math.floor(seconds/60).toString().padStart(2,"0");
-let s=(seconds%60).toString().padStart(2,"0");
-
-recordTimer.innerText=m+":"+s;
-
-}
-
-/* START RECORD */
-
 startRecordBtn.onclick=async()=>{
-
-const canvasStream=canvas.captureStream(30);
-
+const stream=canvas.captureStream(30);
 audioStream=await navigator.mediaDevices.getUserMedia({audio:true});
-
-const combinedStream=new MediaStream([
-...canvasStream.getTracks(),
-...audioStream.getTracks()
-]);
-
-mediaRecorder=new MediaRecorder(combinedStream);
-
+const combined=new MediaStream([...stream.getTracks(),...audioStream.getTracks()]);
+mediaRecorder=new MediaRecorder(combined);
 recordedChunks=[];
-
-mediaRecorder.ondataavailable=e=>{
-if(e.data.size>0) recordedChunks.push(e.data);
-};
-
+mediaRecorder.ondataavailable=e=>recordedChunks.push(e.data);
 mediaRecorder.onstop=()=>{
-
 const blob=new Blob(recordedChunks,{type:"video/webm"});
-
-const url=URL.createObjectURL(blob);
-
-let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
-
-history.push({
-id:Date.now(),
-url:url,
-date:new Date().toLocaleString()
-});
-
-localStorage.setItem("recordingHistory",JSON.stringify(history));
-
-loadRecordingHistory();
-
+const a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="recording.webm";
+a.click();
 };
-
 mediaRecorder.start();
-
-recordingIndicator.style.display="block";
-recordTimer.style.display="block";
-
-seconds=0;
-timerInterval=setInterval(updateTimer,1000);
-
-startRecordBtn.disabled=true;
-stopRecordBtn.disabled=false;
-
+startRecordBtn.disabled=true;stopRecordBtn.disabled=false;
 };
-
-/* PAUSE */
-
-pauseRecordBtn.onclick=()=>{
-
-if(mediaRecorder && mediaRecorder.state==="recording"){
-
-mediaRecorder.pause();
-
-clearInterval(timerInterval);
-
-}
-
-};
-
-/* RESUME */
-
-resumeRecordBtn.onclick=()=>{
-
-if(mediaRecorder && mediaRecorder.state==="paused"){
-
-mediaRecorder.resume();
-
-timerInterval=setInterval(updateTimer,1000);
-
-}
-
-};
-
-/* STOP */
-
 stopRecordBtn.onclick=()=>{
-
 mediaRecorder.stop();
-
 audioStream.getTracks().forEach(t=>t.stop());
-
-clearInterval(timerInterval);
-
-recordingIndicator.style.display="none";
-recordTimer.style.display="none";
-
-startRecordBtn.disabled=false;
-stopRecordBtn.disabled=true;
-
+startRecordBtn.disabled=false;stopRecordBtn.disabled=true;
 };
+
 /* EXPORT */
 pngBtn.onclick=()=>{let a=document.createElement("a");a.href=canvas.toDataURL();a.download="page.png";a.click();};
 
@@ -2069,242 +1818,153 @@ cutImageBtn.onclick = () => {
 </script>
 <script>
 
-async function saveToCloud(){
-
-let data = {
-pages: pages.map(p => ({
-bg: p.bg,
-strokes: p.strokes,
-images: p.images.map(img => ({
-src: img.img.src,
-x: img.x,
-y: img.y,
-w: img.w,
-h: img.h
-})),
-shapes: p.shapes || []
-})),
-current: current
-};
-
-try{
-
-await db.collection("whiteboards")
-.doc(boardID)
-.set(data);
-
-console.log("☁️ Cloud Save Successful");
-
-}catch(err){
-
-console.error(err);
-alert("Cloud Save Failed");
-
-}
-
-}
-
-/* CONNECT BUTTONS AFTER PAGE LOAD */
-
-window.addEventListener("DOMContentLoaded",()=>{
-
-let saveBtn = document.getElementById("cloudSaveBtn");
-let loadBtn = document.getElementById("cloudLoadBtn");
-
-if(saveBtn) saveBtn.onclick = saveToCloud;
-if(loadBtn) loadBtn.onclick = loadFromCloud;
-
-});
-
-</script>
-<script>
-
-/* ===== SHARE BOARD ===== */
-
-function shareBoard(){
-
-let url =
-window.location.origin +
-window.location.pathname +
-"?board=" +
-boardID;
-
-navigator.clipboard.writeText(url)
-.then(()=>{
-
-alert("Board link copied!\n\n" + url);
-
-})
-.catch(err=>{
-
-console.error(err);
-alert("Failed to copy link");
-
-});
-
-}
-
-/* ===== PAGE LOAD ===== */
-
-window.addEventListener("DOMContentLoaded",()=>{
-
-// connect share button
-let shareBtn = document.getElementById("shareBoardBtn");
-if(shareBtn){
-shareBtn.onclick = shareBoard;
-}
-
-// auto load shared board
-loadFromCloud();
-
-});
-
-</script>
-<script>
-
-/* ===== VARIABLES ===== */
-let scrollMode = false;
-let isPanning = false;
-
-let panStartX = 0;
-let panStartY = 0;
-
-let canvasOffsetX = 0;
-let canvasOffsetY = 0;
-
-const scrollModeBtn = document.getElementById("scrollModeBtn");
-const container = document.getElementById("canvasContainer");
-
-/* ===== TOGGLE SCROLL MODE ===== */
-
-scrollModeBtn.onclick = () => {
-
+function toggleScrollMode() {
     scrollMode = !scrollMode;
-
-    scrollModeBtn.style.background =
-        scrollMode ? "#4caf50" : "#fff";
-
-};
-
-/* ===== START PANNING ===== */
-
-container.addEventListener("pointerdown",(e)=>{
-
-    if(!scrollMode) return;
-
-    isPanning = true;
-
-    panStartX = e.clientX - canvasOffsetX;
-    panStartY = e.clientY - canvasOffsetY;
-
-    canvas.style.cursor = "grab";
-
-});
-
-/* ===== MOVE CANVAS ===== */
-
-container.addEventListener("pointermove",(e)=>{
-
-    if(!isPanning) return;
-
-    canvasOffsetX = e.clientX - panStartX;
-    canvasOffsetY = e.clientY - panStartY;
-
-    canvas.style.transform =
-        `translate(${canvasOffsetX}px, ${canvasOffsetY}px)`;
-
-});
-
-/* ===== STOP PANNING ===== */
-
-container.addEventListener("pointerup",()=>{
-
-    isPanning = false;
-    canvas.style.cursor = "default";
-
-});
-
-container.addEventListener("pointerleave",()=>{
-
-    isPanning = false;
-    canvas.style.cursor = "default";
-
-});
-
+    const container = document.getElementById("canvasContainer");
+    if(scrollMode){
+        container.classList.add("scrollMode");
+        toolBeforeScroll = tool;  // save drawing tool
+        tool = "none";            // disable drawing
+    } else {
+        container.classList.remove("scrollMode");
+        tool = toolBeforeScroll;  // restore drawing tool
+    }
+}
+document.getElementById("toggleScrollBtn")?.addEventListener("click", toggleScrollMode);
 </script>
 <script>
-openRecordingPanel.onclick=()=>{
-recordingPanel.style.transform="translateX(0)";
-loadRecordings();
-};
 
-closeRecordingPanel.onclick=()=>{
-recordingPanel.style.transform="translateX(100%)";
-};
-function loadRecordingHistory(){
+const CLOUD_URL="https://script.google.com/macros/s/AKfycbxq2J2OfVOm68RU7md_DnklvCOz2v8YGuv43Z19eFY4TYpiae5dR2lCZWfHexY27IxV/exec";
 
-let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
+/* USER ID */
 
-recordingList.innerHTML="";
+function getUserId(){
+ let id=localStorage.getItem("whiteboardUserId");
+ if(!id){
+  id="user_"+Math.random().toString(36).substr(2,9);
+  localStorage.setItem("whiteboardUserId",id);
+ }
+ return id;
+}
 
-history.reverse().forEach(r=>{
+const USER_ID=getUserId();
 
-let div=document.createElement("div");
+/* SERIALIZE BOARD */
 
-div.className="recordItem";
+function serializeBoard(){
 
-div.innerHTML=`
-<div>${r.date}</div>
-
-<button onclick="restoreRecording('${r.url}')">Restore</button>
-<button onclick="deleteRecording(${r.id})">Delete</button>
-`;
-
-recordingList.appendChild(div);
-
-});
+ return JSON.stringify({
+  pages: pages.map(p=>({
+   bg:p.bg,
+   strokes:p.strokes,
+   shapes:p.shapes||[],
+   images:p.images.map(img=>({
+    src:img.img.src,
+    x:img.x,
+    y:img.y,
+    w:img.w,
+    h:img.h
+   }))
+  })),
+  current: current
+ });
 
 }
-function restoreRecording(url){
 
-const a=document.createElement("a");
+/* SAVE BOARD */
 
-a.href=url;
+let saveTimer=null;
 
-a.download="whiteboard_recording.webm";
+function saveBoardCloud(){
 
-a.click();
+ clearTimeout(saveTimer);
 
-}
-function shareRecording(url){
+ saveTimer=setTimeout(()=>{
 
-navigator.clipboard.writeText(url);
+  fetch(CLOUD_URL,{
+   method:"POST",
+   body:JSON.stringify({
+    action:"saveBoard",
+    userId:USER_ID,
+    board:serializeBoard()
+   })
+  });
 
-alert("Recording link copied!");
-
-}
-function deleteRecording(id){
-
-let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
-
-history=history.filter(r=>r.id!==id);
-
-localStorage.setItem("recordingHistory",JSON.stringify(history));
-
-loadRecordingHistory();
+ },700);
 
 }
-window.addEventListener("DOMContentLoaded",()=>{
 
-loadRecordingHistory();
+/* LOAD BOARD */
 
-});
-</script>
-<script>
-if (location.pathname.endsWith(".html")) {
-  const cleanURL = location.pathname.replace(".html", "");
-  window.history.replaceState({}, "", cleanURL);
+async function loadBoardCloud(){
+
+ let res=await fetch(CLOUD_URL,{
+  method:"POST",
+  body:JSON.stringify({
+   action:"loadBoard",
+   userId:USER_ID
+  })
+ });
+
+ let data=await res.json();
+
+ if(!data.pages) return;
+
+ pages=data.pages.map(p=>{
+
+  let images=[];
+
+  (p.images||[]).forEach(imgData=>{
+
+   let img=new Image();
+   img.src=imgData.src;
+
+   images.push({
+    img:img,
+    x:imgData.x,
+    y:imgData.y,
+    w:imgData.w,
+    h:imgData.h
+   });
+
+  });
+
+  return{
+   bg:p.bg||"#fff",
+   strokes:p.strokes||[],
+   shapes:p.shapes||[],
+   images:images,
+   undo:[],
+   redo:[]
+  };
+
+ });
+
+ current=data.current||0;
+
+ redraw();
+
 }
+
+/* BUTTONS */
+
+function saveBoardToCloud(){
+ saveBoardCloud();
+ alert("Saved to cloud");
+}
+
+async function loadBoardFromCloud(){
+ await loadBoardCloud();
+ saveToLocalStorage();
+ alert("Loaded from cloud");
+}
+
+/* AUTO SAVE TRIGGER */
+
+function cloudAutoSaveTrigger(){
+ saveBoardCloud();
+}
+
 </script>
 </body>
 </html>
