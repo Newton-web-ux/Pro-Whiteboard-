@@ -384,39 +384,47 @@ let data={folders:[],boards:[],trash:[]};
 function getKey(){
   return "whiteboardDashboardData_"+currentUser.sub;
 }
-async function loadUserData(){
+// Apps Script backend URL
+const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxEu2TbSfpls_SmQXI8fy_vaT0mUHHb0a_UxYS3utiZIb9LcfY5kLvenpqXAZ86WMqmUg/exec";
 
-const res = await fetch(CLOUD_URL,{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-action:"load",
-user:currentUser.sub
-})
-});
 
-data = await res.json();
-render();
+// Load user data from cloud
+async function loadUserData() {
 
+  const res = await fetch(CLOUD_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      action: "loadUserData",
+      user: currentUser.sub
+    })
+  });
+
+  data = await res.json();
+
+  render();
 }
 
-const CLOUD_URL="https://script.google.com/macros/s/AKfycbxArQwUoudmxAnm8gKSvKQ6iHka6JfOmcsNUxJ6bfIZw_S-8w7mMSnnn2lXg7lSwz7Mww/exec";
 
-function save(){
+// Save user data to cloud
+function save() {
 
-fetch(CLOUD_URL,{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-action:"save",
-user:currentUser.sub,
-data:data
-})
-});
+  fetch(CLOUD_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      action: "saveUserData",
+      user: currentUser.sub,
+      payload: data
+    })
+  })
+  .then(res => res.json())
+  .then(result => console.log("Saved:", result))
+  .catch(err => console.error("Save error:", err));
 
 }
 
