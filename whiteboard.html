@@ -472,10 +472,6 @@ let drawing=false,currentStroke=null;
 let selectedImage=null,dragging=false,resizing=false,offsetX=0,offsetY=0;
 let mediaRecorder, recordedChunks = [], audioStream;
 let timerInterval, seconds = 0;
-const startBtn = document.getElementById('startRecordBtn');
-const pauseBtn = document.getElementById('pauseRecordBtn');
-const resumeBtn = document.getElementById('resumeRecordBtn');
-const stopBtn = document.getElementById('stopRecordBtn');
 
 let selectedShape=null;
 let shapeDragging=false;
@@ -1949,8 +1945,30 @@ function cloudAutoSaveTrigger(){
 }
 </script>
 <script>
+// --- TIMER FUNCTIONS ---
+function formatTime(sec){ 
+    return String(Math.floor(sec/60)).padStart(2,'0') + ":" + String(sec%60).padStart(2,'0'); 
+}
+function startTimer(){ 
+    timerInterval = setInterval(()=>{
+        seconds++; 
+        document.getElementById('timer').innerText = formatTime(seconds); 
+    }, 1000); 
+}
+function stopTimer(){ 
+    clearInterval(timerInterval); 
+    seconds = 0; 
+    document.getElementById('timer').innerText = "00:00"; 
+}
+
+// --- BUTTONS ---
+const startBtn = document.getElementById('startRecordBtn');
+const pauseBtn = document.getElementById('pauseRecordBtn');
+const resumeBtn = document.getElementById('resumeRecordBtn');
+const stopBtn = document.getElementById('stopRecordBtn');
+
 startBtn.onclick = async () => {
-    const canvasStream = canvas.captureStream(30); // your canvas element
+    const canvasStream = canvas.captureStream(30); // your canvas
     audioStream = await navigator.mediaDevices.getUserMedia({audio:true});
     const combined = new MediaStream([...canvasStream.getTracks(), ...audioStream.getTracks()]);
     
@@ -1958,10 +1976,15 @@ startBtn.onclick = async () => {
     recordedChunks = [];
     
     mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
-    mediaRecorder.onstop = handleStop;
+    mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, {type:"video/webm"});
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "recording.webm";
+        a.click();
+    };
     
     mediaRecorder.start();
-    
     startBtn.disabled = true;
     pauseBtn.disabled = false;
     stopBtn.disabled = false;
@@ -1989,68 +2012,13 @@ resumeBtn.onclick = () => {
 
 stopBtn.onclick = () => {
     mediaRecorder.stop();
-    audioStream.getTracks().forEach(t=>t.stop());
+    if(audioStream) audioStream.getTracks().forEach(t=>t.stop());
     startBtn.disabled = false;
     pauseBtn.disabled = true;
     resumeBtn.disabled = true;
     stopBtn.disabled = true;
     stopTimer();
 };
-
-// ---------------- Stop Handler ----------------
-function handleStop(){
-    const blob = new Blob(recordedChunks, {type:"video/webm"});
-
-    // 1️⃣ Save locally
-    saveRecordingLocally(blob);
-
-    // 2️⃣ Temporary download link
-    const tempURL = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = tempURL;
-    a.download = "recording_" + new Date().toISOString() + ".webm";
-    a.click();
-
-    // 3️⃣ Upload to Google Drive
-    uploadRecording(blob);
-}
-
-// ---------------- Upload to Apps Script ----------------
-async function uploadRecording(blob){
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-        try {
-            const base64data = reader.result;
-            const res = await fetch("https://script.google.com/macros/s/AKfycby2kLdpXNHsPPUAZ4XDh0Ix-voEwRlct6I2nyLoj6V4U4TS4PcN5wI0FfXM0_EMriKu0Q/exec", { 
-                method: "POST",
-                body: base64data
-            });
-            const data = await res.json();
-            if(data.url){
-                alert("Upload Success!\nURL: " + data.url);
-            } else {
-                alert("Upload failed: " + (data.message || "Unknown error"));
-            }
-        } catch(err){
-            alert("Upload failed: " + err);
-        }
-    };
-    reader.readAsDataURL(blob);
-}
-
-// ---------------- Optional: Preview Last Recording ----------------
-function previewLastRecording(){
-    const url = getLocalVideoURL();
-    if(url){
-        const video = document.createElement('video');
-        video.src = url;
-        video.controls = true;
-        video.autoplay = true;
-        document.body.appendChild(video);
-    } else {
-        alert("No recording found in local storage!");
-    }
-}
 </script>
 </body>
 </html>
