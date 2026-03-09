@@ -1662,9 +1662,8 @@ alert("No graph to insert.");
 };
 </script>
 <script>
-// ====== CONFIG (PROXY SECURE) ======
-const PROXY_URL = "https://script.google.com/macros/s/AKfycbx3Zy11FZxh3b2r3caS9SazNCwThbk0SlXJ4JEHTOZm_AI1YLYzYMW_vaTVDL4gRIXN/exec";
-const SECRET_KEY = "PROWB_SEC_2026";
+// ====== CONFIG ======
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyNOkLzGgoCx_t6eF1x6cA1qNWXSo8emRIuDXYwmQu90KeiXjoYFS0VfZePlRncCGErGw/exec";
 
 let userEmail = "";
 let userName = "";
@@ -1678,45 +1677,6 @@ function getBoardIdFromURL() {
 
 const boardId = getBoardIdFromURL();
 
-// ====== JWT PARSING ======
-function parseJwt(token) {
-  const base64Url = token.split('.')[1];
-  const base64 = base64Url.replace(/-/g,'+').replace(/_/g,'/');
-  const jsonPayload = decodeURIComponent(atob(base64).split('').map(c =>
-    '%' + ('00'+c.charCodeAt(0).toString(16)).slice(-2)
-  ).join(''));
-  return JSON.parse(jsonPayload);
-}
-
-// ====== SECURE LOGGING FUNCTION ======
-async function logBoard(action, duration = "") {
-  if(!userEmail || !userName) return;
-
-  const payload = {
-    email: userEmail,
-    name: userName,
-    boardId: boardId,
-    action: action,
-    duration: duration
-  };
-
-  try {
-    await fetch(PROXY_URL, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({
-        key: SECRET_KEY,
-        origin: window.location.origin,
-        action: "logBoard",
-        payload: payload
-      })
-    });
-  } catch(e){
-    console.error("Failed to log board:", e);
-  }
-}
-
-// ====== CREDENTIAL HANDLER ======
 function handleCredentialResponse(response) {
   const data = parseJwt(response.credential);
   userEmail = data.email;
@@ -1730,7 +1690,31 @@ function handleCredentialResponse(response) {
   setupExitLog();
 }
 
-// ====== HEARTBEAT ======
+function parseJwt(token) {
+  const base64Url = token.split('.')[1];
+  const base64 = base64Url.replace(/-/g,'+').replace(/_/g,'/');
+  const jsonPayload = decodeURIComponent(atob(base64).split('').map(c =>
+    '%' + ('00'+c.charCodeAt(0).toString(16)).slice(-2)
+  ).join(''));
+  return JSON.parse(jsonPayload);
+}
+
+function logBoard(action, duration = "") {
+  if(!userEmail || !userName) return;
+
+  fetch(GAS_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      email: userEmail,
+      name: userName,
+      boardId: boardId,
+      action: action,
+      duration: duration
+    }),
+    headers: {"Content-Type":"application/json"}
+  });
+}
+
 let heartbeatInterval;
 function startHeartbeat(){
   heartbeatInterval = setInterval(()=>{
@@ -1739,28 +1723,23 @@ function startHeartbeat(){
   },30000);
 }
 
-// ====== EXIT LOG ======
 function setupExitLog(){
   window.addEventListener("beforeunload", ()=>{
     if(userEmail && userName && enterTime){
 
       const exitTime = new Date();
+
       const durationMinutes = Math.max(
         (exitTime.getTime() - enterTime.getTime()) / 60000,
         0.01
       ).toFixed(2);
 
-      navigator.sendBeacon(PROXY_URL, JSON.stringify({
-        key: SECRET_KEY,
-        origin: window.location.origin,
-        action: "logBoard",
-        payload: {
-          email: userEmail,
-          name: userName,
-          boardId: boardId,
-          action: "exit",
-          duration: durationMinutes
-        }
+      navigator.sendBeacon(GAS_URL, JSON.stringify({
+        email: userEmail,
+        name: userName,
+        boardId: boardId,
+        action: "exit",
+        duration: durationMinutes
       }));
 
       clearInterval(heartbeatInterval);
@@ -1936,126 +1915,135 @@ function toggleScrollMode() {
 document.getElementById("toggleScrollBtn")?.addEventListener("click", toggleScrollMode);
 </script>
 <script>
-// ================= SECURE PROXY =================
-const PROXY_URL = "https://script.google.com/macros/s/AKfycbx3Zy11FZxh3b2r3caS9SazNCwThbk0SlXJ4JEHTOZm_AI1YLYzYMW_vaTVDL4gRIXN/exec";
-const SECRET_KEY = "PROWB_SEC_2026";
+const CLOUD_URL="https://script.google.com/macros/s/AKfycbxkFr6RrEuEqqnHdp8rcs-GOC83OMnwSHOV_qOmHkaVe7VA7FUiZBqMKTFhwBXxYHjZ/exec";
 
-async function callProxy(action, payload = {}) {
-  const request = {
-    key: SECRET_KEY,
-    origin: window.location.origin,
-    action: action,
-    payload: payload
-  };
+/* USER ID */
 
-  try {
-    const res = await fetch(PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request)
-    });
-    try {
-      return await res.json();
-    } catch (e) {
-      return await res.text();
-    }
-  } catch (err) {
-    console.error("Proxy request failed:", err);
-    return null;
-  }
-}
-
-// ================= USER ID =================
 function getUserId(){
-  let id = localStorage.getItem("whiteboardUserId");
-  if(!id){
-    id = "user_"+Math.random().toString(36).substr(2,9);
-    localStorage.setItem("whiteboardUserId", id);
-  }
-  return id;
+ let id=localStorage.getItem("whiteboardUserId");
+ if(!id){
+  id="user_"+Math.random().toString(36).substr(2,9);
+  localStorage.setItem("whiteboardUserId",id);
+ }
+ return id;
 }
 
-const USER_ID = getUserId();
+const USER_ID=getUserId();
 
-// ================= SERIALIZE BOARD =================
+/* SERIALIZE BOARD */
+
 function serializeBoard(){
-  return JSON.stringify({
-    pages: pages.map(p=>({
-      bg: p.bg,
-      strokes: p.strokes,
-      shapes: p.shapes||[],
-      images: p.images.map(img=>({
-        src: img.img.src,
-        x: img.x,
-        y: img.y,
-        w: img.w,
-        h: img.h
-      }))
-    })),
-    current: current
-  });
+
+ return JSON.stringify({
+  pages: pages.map(p=>({
+   bg:p.bg,
+   strokes:p.strokes,
+   shapes:p.shapes||[],
+   images:p.images.map(img=>({
+    src:img.img.src,
+    x:img.x,
+    y:img.y,
+    w:img.w,
+    h:img.h
+   }))
+  })),
+  current: current
+ });
+
 }
 
-// ================= SAVE BOARD =================
-let saveTimer = null;
+/* SAVE BOARD */
+
+let saveTimer=null;
 
 function saveBoardCloud(){
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(()=>{
-    callProxy("saveBoard", {
-      userId: USER_ID,
-      board: serializeBoard()
-    });
-  }, 700);
-}
 
-// ================= LOAD BOARD =================
-async function loadBoardCloud(){
-  const data = await callProxy("loadBoard", { userId: USER_ID });
-  if(!data || !data.pages) return;
+ clearTimeout(saveTimer);
 
-  pages = data.pages.map(p=>{
-    let images = [];
-    (p.images||[]).forEach(imgData=>{
-      let img = new Image();
-      img.src = imgData.src;
-      images.push({
-        img: img,
-        x: imgData.x,
-        y: imgData.y,
-        w: imgData.w,
-        h: imgData.h
-      });
-    });
-    return {
-      bg: p.bg||"#fff",
-      strokes: p.strokes||[],
-      shapes: p.shapes||[],
-      images: images,
-      undo: [],
-      redo: []
-    };
+ saveTimer=setTimeout(()=>{
+
+  fetch(CLOUD_URL,{
+   method:"POST",
+   body:JSON.stringify({
+    action:"saveBoard",
+    userId:USER_ID,
+    board:serializeBoard()
+   })
   });
 
-  current = data.current||0;
-  redraw();
+ },700);
+
 }
 
-// ================= BUTTONS =================
+/* LOAD BOARD */
+
+async function loadBoardCloud(){
+
+ let res=await fetch(CLOUD_URL,{
+  method:"POST",
+  body:JSON.stringify({
+   action:"loadBoard",
+   userId:USER_ID
+  })
+ });
+
+ let data=await res.json();
+
+ if(!data.pages) return;
+
+ pages=data.pages.map(p=>{
+
+  let images=[];
+
+  (p.images||[]).forEach(imgData=>{
+
+   let img=new Image();
+   img.src=imgData.src;
+
+   images.push({
+    img:img,
+    x:imgData.x,
+    y:imgData.y,
+    w:imgData.w,
+    h:imgData.h
+   });
+
+  });
+
+  return{
+   bg:p.bg||"#fff",
+   strokes:p.strokes||[],
+   shapes:p.shapes||[],
+   images:images,
+   undo:[],
+   redo:[]
+  };
+
+ });
+
+ current=data.current||0;
+
+ redraw();
+
+}
+
+/* BUTTONS */
+
 function saveBoardToCloud(){
-  saveBoardCloud();
-  alert("Saved to cloud");
+ saveBoardCloud();
+ alert("Saved to cloud");
 }
 
 async function loadBoardFromCloud(){
-  await loadBoardCloud();
-  saveToLocalStorage();
-  alert("Loaded from cloud");
+ await loadBoardCloud();
+ saveToLocalStorage();
+ alert("Loaded from cloud");
 }
 
-// ================= AUTO SAVE TRIGGER =================
+/* AUTO SAVE TRIGGER */
+
 function cloudAutoSaveTrigger(){
-  saveBoardCloud();
+ saveBoardCloud();
 }
 </script>
 <script>
@@ -2238,42 +2226,6 @@ startRecordBtn.disabled=false;
 stopRecordBtn.disabled=true;
 
 };
-</script>
-<script>
-// ================= SECURE PROXY HELPER =================
-const PROXY_URL = "https://script.google.com/macros/s/AKfycbwzMFEcAY9pkodluD1nlaGVaryh5l40LSV7RYHuKkt2xF_10imDOenGixroVwXwMCAY1A/exec";
-const SECRET_KEY = "PROWB_SEC_2026";
-
-async function callProxy(action, payload = {}) {
-  // Get Google ID token if using login
-  let idToken = window.googleUserCredential || "";
-
-  const request = {
-    key: SECRET_KEY,
-    idToken: idToken,
-    origin: window.location.origin,
-    action: action,
-    payload: payload
-  };
-
-  try {
-    const response = await fetch(PROXY_URL, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(request)
-    });
-
-    // Try parsing as JSON, fallback to text
-    try {
-      return await response.json();
-    } catch(e) {
-      return await response.text();
-    }
-  } catch(err) {
-    console.error("Proxy request failed:", err);
-    return null;
-  }
-}
 </script>
 </body>
 </html>
