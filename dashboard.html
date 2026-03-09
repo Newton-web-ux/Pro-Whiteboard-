@@ -415,8 +415,8 @@ function getKey(){
 }
 
 function loadUserData(){
-  const stored=localStorage.getItem(getKey());
-  data=stored?JSON.parse(stored):{folders:[],boards:[],trash:[]};
+  const stored = localStorage.getItem(getKey());
+  data = stored ? JSON.parse(stored) : { folders: [], boards: [], projects: [], trash: [] };
   save();
   disableButtons(false);
   render();
@@ -494,55 +494,57 @@ function render(){
   renderLevel(null,tree);
 }
 
-function renderLevel(parentID,container){
-  data.folders.filter(f=>f.parent===parentID).forEach(folder=>{
-    let div=document.createElement("div");
-    div.className="item";
-    div.innerHTML=`
-    <span><i class="fa fa-folder"></i> ${folder.name}</span>
-    <span>
-      <i class="fa fa-pen" onclick="renameFolder('${folder.id}')"></i>
-      <i class="fa fa-plus" onclick="createBoard('${folder.id}')"></i>
-      <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(folder)},"folder")'></i>
-    </span>`;
+function renderLevel(parentID, container) {
+  // Render folders
+  data.folders.filter(f => f.parent === parentID).forEach(folder => {
+    let div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <span><i class="fa fa-folder"></i> ${folder.name}</span>
+      <span>
+        <i class="fa fa-pen" onclick="renameFolder('${folder.id}')"></i>
+        <i class="fa fa-plus" onclick="createBoard('${folder.id}')"></i>
+        <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(folder)},"folder")'></i>
+      </span>`;
     container.appendChild(div);
 
-    let children=document.createElement("div");
-    children.className="children";
+    let children = document.createElement("div");
+    children.className = "children";
     container.appendChild(children);
-    renderLevel(folder.id,children);
+    renderLevel(folder.id, children);
   });
 
-  data.boards.filter(b=>b.parent===parentID).forEach(board=>{
-    let div=document.createElement("div");
-    div.className="item";
-    div.innerHTML=`
-    <span onclick="openBoard('${board.id}')">
-      <i class="fa fa-file"></i> ${board.name}
-    </span>
-    <span>
-      <i class="fa fa-folder-open" onclick="openBoard('${board.id}')"></i>
-      <i class="fa fa-pen" onclick="renameBoard('${board.id}')"></i>
-      <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(board)},"board")'></i>
-    </span>`;
+  // Render boards
+  data.boards.filter(b => b.parent === parentID).forEach(board => {
+    let div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <span onclick="openBoard('${board.id}')">
+        <i class="fa fa-file"></i> ${board.name}
+      </span>
+      <span>
+        <i class="fa fa-folder-open" onclick="openBoard('${board.id}')"></i>
+        <i class="fa fa-pen" onclick="renameBoard('${board.id}')"></i>
+        <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(board)},"board")'></i>
+      </span>`;
+    container.appendChild(div);
+  });
+
+  // Render projects
+  data.projects.filter(p => p.parent === parentID).forEach(project => {
+    let div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <span onclick="openProject('${project.id}')">
+        <i class="fa fa-briefcase"></i> ${project.name}
+      </span>
+      <span>
+        <i class="fa fa-pen" onclick="renameProject('${project.id}')"></i>
+        <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(project)},"project")'></i>
+      </span>`;
     container.appendChild(div);
   });
 }
-// Render projects
-data.projects.filter(p => p.parent === parentID).forEach(project => {
-  let div = document.createElement("div");
-  div.className = "item";
-  div.innerHTML = `
-    <span onclick="openProject('${project.id}')">
-      <i class="fa fa-briefcase"></i> ${project.name}
-    </span>
-    <span>
-      <i class="fa fa-pen" onclick="renameProject('${project.id}')"></i>
-      <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(project)},"project")'></i>
-    </span>`;
-  container.appendChild(div);
-});
-
 function toggleTrash(){
   let panel=document.getElementById("trashPanel");
   panel.classList.toggle("show");
