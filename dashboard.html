@@ -223,6 +223,9 @@ body{
 <div id="sidebar">
   <h2><i class="fa fa-folder"></i> Explorer</h2>
 
+<button id="newProjectBtn" onclick="createProject()">
+  <i class="fa fa-briefcase"></i> New Project
+</button>
   <button id="newFolderBtn" onclick="createFolder()"><i class="fa fa-plus"></i> New Folder</button>
   <button id="newBoardBtn" onclick="createBoard()"><i class="fa fa-columns"></i> New Board</button>
   <button class="secondary-btn" onclick="toggleTrash()"><i class="fa fa-trash"></i> Trash</button>
@@ -405,8 +408,8 @@ function disableButtons(state){
 }
 
 // ========== USER STORAGE ==========
-let data={folders:[],boards:[],trash:[]};
-
+let data = { folders: [], boards: [], projects: [], trash: []
+};
 function getKey(){
   return "whiteboardDashboardData_"+currentUser.sub;
 }
@@ -525,6 +528,20 @@ function renderLevel(parentID,container){
     container.appendChild(div);
   });
 }
+// Render projects
+data.projects.filter(p => p.parent === parentID).forEach(project => {
+  let div = document.createElement("div");
+  div.className = "item";
+  div.innerHTML = `
+    <span onclick="openProject('${project.id}')">
+      <i class="fa fa-briefcase"></i> ${project.name}
+    </span>
+    <span>
+      <i class="fa fa-pen" onclick="renameProject('${project.id}')"></i>
+      <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(project)},"project")'></i>
+    </span>`;
+  container.appendChild(div);
+});
 
 function toggleTrash(){
   let panel=document.getElementById("trashPanel");
@@ -634,6 +651,33 @@ panel.style.display="flex";
 
 });
 
+</script>
+<script>
+function createProject(parentID = null) {
+  if (!currentUser) { alert("Login required"); return; }
+
+  let name = prompt("Project Name:", "Untitled Project");
+  if (!name) return;
+
+  const id = generateID();
+  data.projects.push({ id, name, parent: parentID });
+  save();
+  render();
+}
+function openProject(id){
+  alert("Open project: " + id);
+  // You can replace this with opening in main panel or new page
+}
+
+function renameProject(id){
+  let project = data.projects.find(p => p.id === id);
+  if(!project) return;
+  let newName = prompt("Rename project:", project.name);
+  if(!newName) return;
+  project.name = newName;
+  save();
+  render();
+}
 </script>
 </body>
 </html>
