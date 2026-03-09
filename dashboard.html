@@ -431,22 +431,40 @@ function save(){
 function generateID(){return "id_"+Date.now()+"_"+Math.floor(Math.random()*1000);}
 
 function createFolder(parentID=null){
-  if(!currentUser){alert("Login required");return;}
-  let name=prompt("Folder name:");
+  if(!currentUser){alert("Login required"); return;}
+
+  let parentName = "";
+  if(parentID){
+    const project = data.projects.find(p => p.id===parentID);
+    const folder = data.folders.find(f => f.id===parentID);
+    parentName = project ? project.name : folder ? folder.name : "";
+  }
+
+  let name = prompt(parentName ? `Folder name inside "${parentName}":` : "Folder name:");
   if(!name) return;
-  data.folders.push({id:generateID(),name,parent:parentID});
-  save();render();
+
+  data.folders.push({id:generateID(), name, parent:parentID});
+  save(); render();
 }
 
 function createBoard(parentID=null){
-  if(!currentUser){alert("Login required");return;}
-  let id=generateID();
-  let name=prompt("Board name:","Untitled Board")||"Untitled Board";
-  data.boards.push({id,name,parent:parentID});
-  save();render();
-  window.location.href="whiteboard.html?board="+id;
-}
+  if(!currentUser){alert("Login required"); return;}
 
+  let parentName = "";
+  if(parentID){
+    const project = data.projects.find(p => p.id===parentID);
+    const folder = data.folders.find(f => f.id===parentID);
+    parentName = project ? project.name : folder ? folder.name : "";
+  }
+
+  let name = prompt(parentName ? `Board name inside "${parentName}":` : "Board name:", "Untitled Board") || "Untitled Board";
+
+  const id = generateID();
+  data.boards.push({id, name, parent:parentID});
+  save(); render();
+
+  window.location.href = "whiteboard.html?board=" + id;
+}
 function openBoard(id){window.location.href="whiteboard.html?board="+id;}
 function renameBoard(id){
   let board=data.boards.find(b=>b.id===id);
