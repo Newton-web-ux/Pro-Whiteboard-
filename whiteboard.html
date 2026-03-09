@@ -315,6 +315,35 @@ padding:10px;
 .recordItem button{
 margin:4px;
 }
+.panel{
+ position:fixed;
+ right:0;
+ top:0;
+ width:420px;
+ height:100%;
+ background:#fff;
+ box-shadow:-4px 0 10px rgba(0,0,0,0.2);
+ padding:20px;
+ overflow:auto;
+ transform:translateX(100%);
+ transition:0.3s;
+ z-index:9999;
+}
+
+.panel.open{
+ transform:translateX(0);
+}
+
+#storageTable{
+ width:100%;
+ border-collapse:collapse;
+}
+
+#storageTable td,#storageTable th{
+ border-bottom:1px solid #ddd;
+ padding:8px;
+ font-size:13px;
+}
 </style>
 </head>
 <body>
@@ -327,6 +356,7 @@ margin:4px;
 <button class="tabBtn" data-tab="slideshowTab">Slideshow</button>
 <button class="tabBtn" data-tab="videoTab">Video</button>
 <button class="tabBtn" data-tab="exportTab">Export</button>
+<button onclick="openStoragePanel()">Storage</button>
 </div>
 
 <!-- ================= DRAWING TAB ================= -->
@@ -528,6 +558,30 @@ z-index:9999;
 </div>
 
 <div id="recordingList"></div>
+
+</div>
+<div id="storagePanel" class="panel">
+
+<h2>Cloud Storage</h2>
+
+<div id="storageInfo"></div>
+
+<table id="storageTable">
+
+<thead>
+<tr>
+<th>File</th>
+<th>Size</th>
+<th>Updated</th>
+<th>Action</th>
+</tr>
+</thead>
+
+<tbody></tbody>
+
+</table>
+
+<button onclick="closeStoragePanel()">Close</button>
 
 </div>
 
@@ -1915,7 +1969,7 @@ function toggleScrollMode() {
 document.getElementById("toggleScrollBtn")?.addEventListener("click", toggleScrollMode);
 </script>
 <script>
-const CLOUD_URL="https://script.google.com/macros/s/AKfycbx0CssIe9HXKFyuZQzrNB8s5JNWe1uouh5J_Kb5L2RMWCr26v-ZZuvhQXonOtzpy9xS/exec";
+const CLOUD_URL="https://script.google.com/macros/s/AKfycby-EK5rJGH1B5-n05tAdMmz0VY8NcbtBN0uCVq2uarVKFzTZ2Ju942VxCSTuMh4Cm0/exec";
 
 /* USER ID */
 
@@ -2226,6 +2280,55 @@ startRecordBtn.disabled=false;
 stopRecordBtn.disabled=true;
 
 };
+</script>
+<script>
+
+function openStoragePanel(){
+ document.getElementById("storagePanel").classList.add("open");
+ loadStorage();
+}
+
+function closeStoragePanel(){
+ document.getElementById("storagePanel").classList.remove("open");
+}
+
+async function loadStorage(){
+
+ let res = await fetch("https://script.google.com/macros/s/AKfycby-EK5rJGH1B5-n05tAdMmz0VY8NcbtBN0uCVq2uarVKFzTZ2Ju942VxCSTuMh4Cm0/exec",{
+  method:"POST",
+  body:JSON.stringify({
+   action:"getStorage",
+   userId:USER_ID
+  })
+ });
+
+ let data = await res.json();
+
+ let table = document.querySelector("#storageTable tbody");
+ table.innerHTML="";
+
+ data.files.forEach(file=>{
+
+  let tr=document.createElement("tr");
+
+  tr.innerHTML=`
+   <td>${file.name}</td>
+   <td>${(file.size/1024).toFixed(2)} KB</td>
+   <td>${new Date(file.updated).toLocaleString()}</td>
+   <td>
+     <button onclick="loadBoardFromCloud()">Open</button>
+   </td>
+  `;
+
+  table.appendChild(tr);
+
+ });
+
+ document.getElementById("storageInfo").innerHTML =
+ "Used: " + (data.totalSize/1024).toFixed(2) + " KB";
+
+}
+
 </script>
 </body>
 </html>
