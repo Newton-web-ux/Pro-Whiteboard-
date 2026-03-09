@@ -310,51 +310,22 @@ body{
       <li>To Export your work as PNG, PDF, and PPT,JSON, go to Export Tab and select your appropriate choice of export. After exporting, it will store in your browser.</li>
 How to get Your Exported whiteboard:? 
 <li> Go to your browser where you have opened the whiteboard and click three dots and go to Downloads.</li>
-<li> To work in cloud, click save to cloud which will store everything in cloud and it will load auto when you open it next.</li></ul>
+<li> To work in cloud, click save to cloud which will store everything in cloud and it will load auto when you open it next. To share your whiteboard with content, click share which will give you a sharable link of a specific board with its id and you can share it with others.Once you share they can see all changes you will do in your that board, you need not share multiple times.</li></ul>
 
   </div>
 </div>
 
 <script>
-// ================= SECURE PROXY =================
-const PROXY_URL = "https://script.google.com/macros/s/AKfycbx3Zy11FZxh3b2r3caS9SazNCwThbk0SlXJ4JEHTOZm_AI1YLYzYMW_vaTVDL4gRIXN/exec";
-const SECRET_KEY = "PROWB_SEC_2026";
-
-async function callProxy(action, payload = {}) {
-  const request = {
-    key: SECRET_KEY,
-    origin: window.location.origin,
-    action: action,
-    payload: payload
-  };
-
-  try {
-    const res = await fetch(PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request)
-    });
-    try {
-      return await res.json();
-    } catch (e) {
-      return await res.text();
-    }
-  } catch (err) {
-    console.error("Proxy request failed:", err);
-    return null;
-  }
-}
-
 // ========== GOOGLE LOGIN ==========
 let currentUser = null;
 
 function logUserToSheet(user){
-  // Instead of direct GAS URL, send via proxy
-  callProxy("google_login", {
-    sub: user.sub,
-    name: user.name,
-    email: user.email,
-    picture: user.picture
+  const url="https://script.google.com/macros/s/AKfycbyH-KrPIhUpFo2lUqUshPnBVSWOzUA8Qef_d2QLXf4CT8_EH2b1WGMhQIITFn6fDmvh/exec";
+  fetch(url,{
+    method:"POST",
+    mode:"no-cors",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({sub:user.sub,name:user.name,email:user.email,picture:user.picture})
   });
 }
 
@@ -555,7 +526,6 @@ function toggleGuidePanel(){
   document.getElementById("userGuidePanel").classList.toggle("show");
 }
 </script>
-
 <script>
 if (location.pathname.endsWith(".html")) {
   const cleanURL = location.pathname.replace(".html", "");
