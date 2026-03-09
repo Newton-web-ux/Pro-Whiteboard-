@@ -1662,8 +1662,8 @@ alert("No graph to insert.");
 };
 </script>
 <script>
-// ====== CONFIG ======
-const PROXY_URL = "https://script.google.com/macros/s/AKfycbwzMFEcAY9pkodluD1nlaGVaryh5l40LSV7RYHuKkt2xF_10imDOenGixroVwXwMCAY1A/exec";
+// ====== CONFIG (PROXY SECURE) ======
+const PROXY_URL = "https://script.google.com/macros/s/AKfycbx3Zy11FZxh3b2r3caS9SazNCwThbk0SlXJ4JEHTOZm_AI1YLYzYMW_vaTVDL4gRIXN/exec";
 const SECRET_KEY = "PROWB_SEC_2026";
 
 let userEmail = "";
@@ -1678,6 +1678,45 @@ function getBoardIdFromURL() {
 
 const boardId = getBoardIdFromURL();
 
+// ====== JWT PARSING ======
+function parseJwt(token) {
+  const base64Url = token.split('.')[1];
+  const base64 = base64Url.replace(/-/g,'+').replace(/_/g,'/');
+  const jsonPayload = decodeURIComponent(atob(base64).split('').map(c =>
+    '%' + ('00'+c.charCodeAt(0).toString(16)).slice(-2)
+  ).join(''));
+  return JSON.parse(jsonPayload);
+}
+
+// ====== SECURE LOGGING FUNCTION ======
+async function logBoard(action, duration = "") {
+  if(!userEmail || !userName) return;
+
+  const payload = {
+    email: userEmail,
+    name: userName,
+    boardId: boardId,
+    action: action,
+    duration: duration
+  };
+
+  try {
+    await fetch(PROXY_URL, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        key: SECRET_KEY,
+        origin: window.location.origin,
+        action: "logBoard",
+        payload: payload
+      })
+    });
+  } catch(e){
+    console.error("Failed to log board:", e);
+  }
+}
+
+// ====== CREDENTIAL HANDLER ======
 function handleCredentialResponse(response) {
   const data = parseJwt(response.credential);
   userEmail = data.email;
@@ -1691,41 +1730,7 @@ function handleCredentialResponse(response) {
   setupExitLog();
 }
 
-function parseJwt(token) {
-  const base64Url = token.split('.')[1];
-  const base64 = base64Url.replace(/-/g,'+').replace(/_/g,'/');
-  const jsonPayload = decodeURIComponent(atob(base64).split('').map(c =>
-    '%' + ('00'+c.charCodeAt(0).toString(16)).slice(-2)
-  ).join(''));
-  return JSON.parse(jsonPayload);
-}
-
-// ================= SECURE PROXY LOGGING =================
-async function logBoard(action, duration = "") {
-  if(!userEmail || !userName) return;
-
-  try {
-    await fetch(PROXY_URL, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({
-        key: SECRET_KEY,
-        origin: window.location.origin,
-        action: "whiteboard_log",
-        payload: {
-          email: userEmail,
-          name: userName,
-          boardId: boardId,
-          action: action,
-          duration: duration
-        }
-      })
-    });
-  } catch(err) {
-    console.error("Proxy logging failed:", err);
-  }
-}
-
+// ====== HEARTBEAT ======
 let heartbeatInterval;
 function startHeartbeat(){
   heartbeatInterval = setInterval(()=>{
@@ -1734,6 +1739,7 @@ function startHeartbeat(){
   },30000);
 }
 
+// ====== EXIT LOG ======
 function setupExitLog(){
   window.addEventListener("beforeunload", ()=>{
     if(userEmail && userName && enterTime){
@@ -1744,11 +1750,10 @@ function setupExitLog(){
         0.01
       ).toFixed(2);
 
-      // Use sendBeacon via proxy
-      const payload = JSON.stringify({
+      navigator.sendBeacon(PROXY_URL, JSON.stringify({
         key: SECRET_KEY,
         origin: window.location.origin,
-        action: "whiteboard_log",
+        action: "logBoard",
         payload: {
           email: userEmail,
           name: userName,
@@ -1756,8 +1761,7 @@ function setupExitLog(){
           action: "exit",
           duration: durationMinutes
         }
-      });
-      navigator.sendBeacon(PROXY_URL, payload);
+      }));
 
       clearInterval(heartbeatInterval);
     }
@@ -1932,29 +1936,55 @@ function toggleScrollMode() {
 document.getElementById("toggleScrollBtn")?.addEventListener("click", toggleScrollMode);
 </script>
 <script>
-// ================= SECURE PROXY FOR CLOUD =================
-const PROXY_URL = "https://script.google.com/macros/s/AKfycbwzMFEcAY9pkodluD1nlaGVaryh5l40LSV7RYHuKkt2xF_10imDOenGixroVwXwMCAY1A/exec";
+// ================= SECURE PROXY =================
+const PROXY_URL = "https://script.google.com/macros/s/AKfycbx3Zy11FZxh3b2r3caS9SazNCwThbk0SlXJ4JEHTOZm_AI1YLYzYMW_vaTVDL4gRIXN/exec";
 const SECRET_KEY = "PROWB_SEC_2026";
 
-/* USER ID */
+async function callProxy(action, payload = {}) {
+  const request = {
+    key: SECRET_KEY,
+    origin: window.location.origin,
+    action: action,
+    payload: payload
+  };
+
+  try {
+    const res = await fetch(PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request)
+    });
+    try {
+      return await res.json();
+    } catch (e) {
+      return await res.text();
+    }
+  } catch (err) {
+    console.error("Proxy request failed:", err);
+    return null;
+  }
+}
+
+// ================= USER ID =================
 function getUserId(){
   let id = localStorage.getItem("whiteboardUserId");
   if(!id){
-    id = "user_" + Math.random().toString(36).substr(2,9);
+    id = "user_"+Math.random().toString(36).substr(2,9);
     localStorage.setItem("whiteboardUserId", id);
   }
   return id;
 }
+
 const USER_ID = getUserId();
 
-/* SERIALIZE BOARD */
+// ================= SERIALIZE BOARD =================
 function serializeBoard(){
   return JSON.stringify({
-    pages: pages.map(p => ({
+    pages: pages.map(p=>({
       bg: p.bg,
       strokes: p.strokes,
-      shapes: p.shapes || [],
-      images: p.images.map(img => ({
+      shapes: p.shapes||[],
+      images: p.images.map(img=>({
         src: img.img.src,
         x: img.x,
         y: img.y,
@@ -1966,73 +1996,52 @@ function serializeBoard(){
   });
 }
 
-/* SAVE BOARD */
+// ================= SAVE BOARD =================
 let saveTimer = null;
+
 function saveBoardCloud(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{
-    fetch(PROXY_URL, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({
-        key: SECRET_KEY,
-        origin: window.location.origin,
-        action: "whiteboard_cloud",
-        payload: {
-          subAction: "saveBoard",
-          userId: USER_ID,
-          board: serializeBoard()
-        }
-      })
-    }).catch(err => console.error("Proxy save failed:", err));
+    callProxy("saveBoard", {
+      userId: USER_ID,
+      board: serializeBoard()
+    });
   }, 700);
 }
 
-/* LOAD BOARD */
+// ================= LOAD BOARD =================
 async function loadBoardCloud(){
-  try {
-    const res = await fetch(PROXY_URL, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({
-        key: SECRET_KEY,
-        origin: window.location.origin,
-        action: "whiteboard_cloud",
-        payload: {
-          subAction: "loadBoard",
-          userId: USER_ID
-        }
-      })
-    });
+  const data = await callProxy("loadBoard", { userId: USER_ID });
+  if(!data || !data.pages) return;
 
-    const data = await res.json();
-    if(!data.pages) return;
-
-    pages = data.pages.map(p => {
-      let images = [];
-      (p.images || []).forEach(imgData => {
-        let img = new Image();
-        img.src = imgData.src;
-        images.push({img, x: imgData.x, y: imgData.y, w: imgData.w, h: imgData.h});
+  pages = data.pages.map(p=>{
+    let images = [];
+    (p.images||[]).forEach(imgData=>{
+      let img = new Image();
+      img.src = imgData.src;
+      images.push({
+        img: img,
+        x: imgData.x,
+        y: imgData.y,
+        w: imgData.w,
+        h: imgData.h
       });
-      return {
-        bg: p.bg || "#fff",
-        strokes: p.strokes || [],
-        shapes: p.shapes || [],
-        images: images,
-        undo: [],
-        redo: []
-      };
     });
+    return {
+      bg: p.bg||"#fff",
+      strokes: p.strokes||[],
+      shapes: p.shapes||[],
+      images: images,
+      undo: [],
+      redo: []
+    };
+  });
 
-    current = data.current || 0;
-    redraw();
-  } catch(err) {
-    console.error("Proxy load failed:", err);
-  }
+  current = data.current||0;
+  redraw();
 }
 
-/* BUTTONS */
+// ================= BUTTONS =================
 function saveBoardToCloud(){
   saveBoardCloud();
   alert("Saved to cloud");
@@ -2044,7 +2053,7 @@ async function loadBoardFromCloud(){
   alert("Loaded from cloud");
 }
 
-/* AUTO SAVE TRIGGER */
+// ================= AUTO SAVE TRIGGER =================
 function cloudAutoSaveTrigger(){
   saveBoardCloud();
 }
@@ -2229,6 +2238,42 @@ startRecordBtn.disabled=false;
 stopRecordBtn.disabled=true;
 
 };
+</script>
+<script>
+// ================= SECURE PROXY HELPER =================
+const PROXY_URL = "https://script.google.com/macros/s/AKfycbwzMFEcAY9pkodluD1nlaGVaryh5l40LSV7RYHuKkt2xF_10imDOenGixroVwXwMCAY1A/exec";
+const SECRET_KEY = "PROWB_SEC_2026";
+
+async function callProxy(action, payload = {}) {
+  // Get Google ID token if using login
+  let idToken = window.googleUserCredential || "";
+
+  const request = {
+    key: SECRET_KEY,
+    idToken: idToken,
+    origin: window.location.origin,
+    action: action,
+    payload: payload
+  };
+
+  try {
+    const response = await fetch(PROXY_URL, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(request)
+    });
+
+    // Try parsing as JSON, fallback to text
+    try {
+      return await response.json();
+    } catch(e) {
+      return await response.text();
+    }
+  } catch(err) {
+    console.error("Proxy request failed:", err);
+    return null;
+  }
+}
 </script>
 </body>
 </html>
