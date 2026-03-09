@@ -19,6 +19,10 @@
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/patternLock/0.5.0/patternLock.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/patternLock/0.5.0/patternLock.min.js"></script>
 <style>
 /* ============ RESET & BODY ============ */
 body{
@@ -315,6 +319,28 @@ How to get Your Exported whiteboard:?
   </div>
 </div>
 
+<div id="securityPanel" style="
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:#111;
+display:none;
+z-index:999999;
+align-items:center;
+justify-content:center;
+flex-direction:column;
+color:white;
+font-family:sans-serif;
+">
+
+<h2>Security Lock</h2>
+<p>Draw pattern to continue</p>
+
+<div id="patternLock"></div>
+
+</div>
 <script>
 // ========== GOOGLE LOGIN ==========
 let currentUser = null;
@@ -531,6 +557,83 @@ if (location.pathname.endsWith(".html")) {
   const cleanURL = location.pathname.replace(".html", "");
   window.history.replaceState({}, "", cleanURL);
 }
+</script>
+<script>
+
+/* ================= PRO WHITEBOARD SECURITY ================= */
+
+const panel = document.getElementById("securityPanel");
+
+/* Pattern Lock */
+
+var lock = new PatternLock('#patternLock');
+
+lock.on('draw', function(pattern){
+
+// Your private pattern
+const SECRET_PATTERN = "1729";
+
+if(pattern === SECRET_PATTERN){
+
+panel.style.display = "none";
+
+}else{
+
+alert("Wrong Pattern");
+
+}
+
+});
+
+/* DevTools Detection */
+
+function detectDevTools(){
+
+let widthDiff = window.outerWidth - window.innerWidth;
+let heightDiff = window.outerHeight - window.innerHeight;
+
+if(widthDiff > 160 || heightDiff > 160){
+
+panel.style.display = "flex";
+
+}
+
+}
+
+setInterval(detectDevTools,1000);
+
+/* Block Right Click */
+
+document.addEventListener("contextmenu",function(e){
+e.preventDefault();
+});
+
+/* Block Inspect Shortcuts */
+
+document.addEventListener("keydown",function(e){
+
+if(e.key==="F12"){
+e.preventDefault();
+panel.style.display="flex";
+}
+
+if(e.ctrlKey && e.shiftKey && e.key==="I"){
+e.preventDefault();
+panel.style.display="flex";
+}
+
+if(e.ctrlKey && e.shiftKey && e.key==="J"){
+e.preventDefault();
+panel.style.display="flex";
+}
+
+if(e.ctrlKey && e.key==="U"){
+e.preventDefault();
+panel.style.display="flex";
+}
+
+});
+
 </script>
 </body>
 </html>
