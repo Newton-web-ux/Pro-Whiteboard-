@@ -223,10 +223,11 @@ body{
   <button id="newBoardBtn" onclick="createBoard()"><i class="fa fa-columns"></i> New Board</button>
   <button class="secondary-btn" onclick="toggleTrash()"><i class="fa fa-trash"></i> Trash</button>
   <button class="secondary-btn" onclick="toggleFormPanel()"><i class="fa fa-file-alt"></i> Feedback</button>
-
-  <hr>
-
-  <div id="gSignInDiv"></div>
+<button onclick="toggleStoragePanel()">
+<i class="fa fa-database"></i> Cloud Storage
+</button>
+ <hr>
+ <div id="gSignInDiv"></div>
   <div id="userInfo" style="display:none;">
     <div style="display:flex; align-items:center;">
       <img id="userPic">
@@ -263,6 +264,18 @@ body{
   <iframe 
     src="https://docs.google.com/forms/d/e/1FAIpQLSea6fWKaZFJ1p46Nn2DBJFlVCqpFp6vtpAVTVC-Sbf0gnR7gQ/viewform?embedded=true" 
     marginheight="0" marginwidth="0">Loading…</iframe>
+</div>
+<div id="storagePanel" class="trash-panel">
+
+<div style="display:flex;justify-content:space-between;align-items:center;">
+<h2><i class="fa fa-database"></i> Cloud Storage</h2>
+<span style="cursor:pointer;font-size:22px;" onclick="toggleStoragePanel()">×</span>
+</div>
+
+<div id="storageInfo"></div>
+
+<div id="cloudBoards"></div>
+
 </div>
 <!-- USER GUIDE TOGGLE BUTTON -->
 <button id="guideToggleBtn" class="secondary-btn" style="margin-top:10px;" onclick="toggleGuidePanel()">
@@ -530,6 +543,86 @@ function toggleGuidePanel(){
 if (location.pathname.endsWith(".html")) {
   const cleanURL = location.pathname.replace(".html", "");
   window.history.replaceState({}, "", cleanURL);
+}
+</script>
+<script>
+const CLOUD_URL="https://script.google.com/macros/s/AKfycbwHofY_YeEXDHlakQF_x9ZawrImIOLL1LE-hziHV7-2IOXzjYGMRArLLC5WDvn-TWkn/exec";
+
+function toggleStoragePanel(){
+
+ let panel=document.getElementById("storagePanel");
+
+ panel.classList.toggle("show");
+
+ if(panel.classList.contains("show")){
+  loadCloudStorage();
+ }
+
+}
+
+async function loadCloudStorage(){
+
+ if(!currentUser){
+  alert("Please login first");
+  return;
+ }
+
+ const res = await fetch(CLOUD_URL,{
+  method:"POST",
+  body:JSON.stringify({
+   action:"listBoards",
+   userId:currentUser.sub
+  })
+ });
+
+ const data = await res.json();
+
+ const list=document.getElementById("cloudBoards");
+ const info=document.getElementById("storageInfo");
+
+ list.innerHTML="";
+
+ let totalMB=(data.total/1024/1024).toFixed(2);
+
+ info.innerHTML="<b>Total Storage Used:</b> "+totalMB+" MB<hr>";
+
+ data.boards.forEach(board=>{
+
+  let size=(board.size/1024).toFixed(1);
+
+  let div=document.createElement("div");
+
+  div.className="trash-item";
+
+  div.innerHTML=`
+  <b>${board.name}</b><br>
+  Size: ${size} KB<br>
+  <button class="small-btn" onclick="deleteCloudBoard('${board.id}')">
+  Delete
+  </button>
+  `;
+
+  list.appendChild(div);
+
+ });
+
+}
+
+async function deleteCloudBoard(fileId){
+
+ if(!confirm("Delete this board from cloud?")) return;
+
+ await fetch(CLOUD_URL,{
+  method:"POST",
+  body:JSON.stringify({
+   action:"deleteBoard",
+   userId:currentUser.sub,
+   fileId:fileId
+  })
+ });
+
+ loadCloudStorage();
+
 }
 </script>
 </body>
