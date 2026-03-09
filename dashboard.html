@@ -544,9 +544,16 @@ function deleteChildren(parentID) {
   // Delete child boards
   data.boards = data.boards.filter(b => b.parent !== parentID);
 }
-// ========== RENDER ==========
+// ========== RENDER FUNCTIONS ==========
+
+function render() {
+  const tree = document.getElementById("tree");
+  tree.innerHTML = "";
+  renderLevel(null, tree); // start from top-level (parentID=null)
+}
+
 function renderLevel(parentID, container) {
-  // Render projects
+  // 1️⃣ Render Projects
   data.projects.filter(p => p.parent === parentID).forEach(project => {
     let div = document.createElement("div");
     div.className = "item";
@@ -555,38 +562,41 @@ function renderLevel(parentID, container) {
         <i class="fa fa-briefcase"></i> ${project.name}
       </span>
       <span>
-        <i class="fa fa-pen" onclick="renameProject('${project.id}')"></i>
-        <i class="fa fa-plus" onclick="createFolder('${project.id}')"></i>
-        <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(project)},"project")'></i>
+        <i class="fa fa-pen" title="Rename Project" onclick="renameProject('${project.id}')"></i>
+        <i class="fa fa-plus" title="Add Folder" onclick="createFolder('${project.id}')"></i>
+        <i class="fa fa-plus-square" title="Add Board" onclick="createBoard('${project.id}')"></i>
+        <i class="fa fa-trash" title="Move Project to Trash" onclick='moveToTrash(${JSON.stringify(project)},"project")'></i>
       </span>`;
     container.appendChild(div);
 
+    // Create container for children and render recursively
     let children = document.createElement("div");
     children.className = "children";
     container.appendChild(children);
-    renderLevel(project.id, children); // recursive for folders/boards inside
+    renderLevel(project.id, children);
   });
 
-  // Render folders
+  // 2️⃣ Render Folders
   data.folders.filter(f => f.parent === parentID).forEach(folder => {
     let div = document.createElement("div");
     div.className = "item";
     div.innerHTML = `
       <span><i class="fa fa-folder"></i> ${folder.name}</span>
       <span>
-        <i class="fa fa-pen" onclick="renameFolder('${folder.id}')"></i>
-        <i class="fa fa-plus" onclick="createBoard('${folder.id}')"></i>
-        <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(folder)},"folder")'></i>
+        <i class="fa fa-pen" title="Rename Folder" onclick="renameFolder('${folder.id}')"></i>
+        <i class="fa fa-plus" title="Add Board" onclick="createBoard('${folder.id}')"></i>
+        <i class="fa fa-trash" title="Move Folder to Trash" onclick='moveToTrash(${JSON.stringify(folder)},"folder")'></i>
       </span>`;
     container.appendChild(div);
 
+    // Container for nested children
     let children = document.createElement("div");
     children.className = "children";
     container.appendChild(children);
-    renderLevel(folder.id, children); // recursive for boards inside
+    renderLevel(folder.id, children);
   });
 
-  // Render boards
+  // 3️⃣ Render Boards
   data.boards.filter(b => b.parent === parentID).forEach(board => {
     let div = document.createElement("div");
     div.className = "item";
@@ -595,25 +605,27 @@ function renderLevel(parentID, container) {
         <i class="fa fa-file"></i> ${board.name}
       </span>
       <span>
-        <i class="fa fa-folder-open" onclick="openBoard('${board.id}')"></i>
-        <i class="fa fa-pen" onclick="renameBoard('${board.id}')"></i>
-        <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(board)},"board")'></i>
+        <i class="fa fa-folder-open" title="Open Board" onclick="openBoard('${board.id}')"></i>
+        <i class="fa fa-pen" title="Rename Board" onclick="renameBoard('${board.id}')"></i>
+        <i class="fa fa-trash" title="Move Board to Trash" onclick='moveToTrash(${JSON.stringify(board)},"board")'></i>
       </span>`;
     container.appendChild(div);
   });
 }
-function toggleTrash(){
-  let panel=document.getElementById("trashPanel");
+
+// ========== TRASH RENDER ==========
+function toggleTrash() {
+  let panel = document.getElementById("trashPanel");
   panel.classList.toggle("show");
 }
 
-function renderTrash(){
-  let list=document.getElementById("trashList");
-  list.innerHTML="";
-  data.trash.forEach(item=>{
-    let div=document.createElement("div");
-    div.className="trash-item";
-    div.innerHTML=`
+function renderTrash() {
+  let list = document.getElementById("trashList");
+  list.innerHTML = "";
+  data.trash.forEach(item => {
+    let div = document.createElement("div");
+    div.className = "trash-item";
+    div.innerHTML = `
       <b>${item.name}</b><br>
       <button class="small-btn" onclick='restoreItem(${JSON.stringify(item)})'>Restore</button>
       <button class="small-btn" onclick='deleteForever(${JSON.stringify(item)})'>Delete Permanently</button>`;
