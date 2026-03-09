@@ -414,7 +414,7 @@ function getKey(){
   return "whiteboardDashboardData_"+currentUser.sub;
 }
 
-function loadUserData(){
+function loadUserData() {
   const stored = localStorage.getItem(getKey());
   data = stored ? JSON.parse(stored) : { folders: [], boards: [], projects: [], trash: [] };
   save();
@@ -467,34 +467,88 @@ function renameFolder(id){
   render();
 }
 
-function moveToTrash(item,type){
-  data.trash.push({...item,type});
-  if(type==="folder") data.folders=data.folders.filter(f=>f.id!==item.id);
-  else data.boards=data.boards.filter(b=>b.id!==item.id);
-  save();render();renderTrash();
+function moveToTrash(item, type) {
+  data.trash.push({ ...item, type });
+
+  if (type === "project") {
+    data.projects = data.projects.filter(p => p.id !== item.id);
+    // Also move all child folders and boards to trash
+    moveChildrenToTrash(item.id);
+  } else if (type === "folder") {
+    data.folders = data.folders.filter(f => f.id !== item.id);
+    moveChildrenToTrash(item.id);
+  } else if (type === "board") {
+    data.boards = data.boards.filter(b => b.id !== item.id);
+  }
+
+  save();
+  render();
+  renderTrash();
 }
 
-function restoreItem(item){
-  if(item.type==="folder") data.folders.push(item);
-  else data.boards.push(item);
-  data.trash=data.trash.filter(t=>t.id!==item.id);
-  save();render();renderTrash();
+function moveChildrenToTrash(parentID) {
+  // Move child folders
+  data.folders.filter(f => f.parent === parentID).forEach(f => moveToTrash(f, "folder"));
+  // Move child boards
+  data.boards.filter(b => b.parent === parentID).forEach(b => moveToTrash(b, "board"));
 }
 
-function deleteForever(item){
-  data.trash=data.trash.filter(t=>t.id!==item.id);
-  localStorage.removeItem("whiteboardData_"+item.id);
-  save();renderTrash();
+function restoreItem(item) {
+  if (item.type === "project") data.projects.push(item);
+  else if (item.type === "folder") data.folders.push(item);
+  else if (item.type === "board") data.boards.push(item);
+
+  data.trash = data.trash.filter(t => t.id !== item.id);
+  save();
+  render();
+  renderTrash();
 }
 
+function deleteForever(item) {
+  data.trash = data.trash.filter(t => t.id !== item.id);
+
+  // Delete child items if project or folder
+  if (item.type === "project" || item.type === "folder") {
+    deleteChildren(item.id);
+  }
+
+  localStorage.removeItem("whiteboardData_" + item.id);
+  save();
+  renderTrash();
+}
+
+function deleteChildren(parentID) {
+  // Delete child folders
+  data.folders.filter(f => f.parent === parentID).forEach(f => {
+    deleteChildren(f.id);
+    data.folders = data.folders.filter(fd => fd.id !== f.id);
+  });
+  // Delete child boards
+  data.boards = data.boards.filter(b => b.parent !== parentID);
+}
 // ========== RENDER ==========
-function render(){
-  let tree=document.getElementById("tree");
-  tree.innerHTML="";
-  renderLevel(null,tree);
-}
-
 function renderLevel(parentID, container) {
+  // Render projects
+  data.projects.filter(p => p.parent === parentID).forEach(project => {
+    let div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <span onclick="openProject('${project.id}')">
+        <i class="fa fa-briefcase"></i> ${project.name}
+      </span>
+      <span>
+        <i class="fa fa-pen" onclick="renameProject('${project.id}')"></i>
+        <i class="fa fa-plus" onclick="createFolder('${project.id}')"></i>
+        <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(project)},"project")'></i>
+      </span>`;
+    container.appendChild(div);
+
+    let children = document.createElement("div");
+    children.className = "children";
+    container.appendChild(children);
+    renderLevel(project.id, children); // recursive for folders/boards inside
+  });
+
   // Render folders
   data.folders.filter(f => f.parent === parentID).forEach(folder => {
     let div = document.createElement("div");
@@ -511,7 +565,7 @@ function renderLevel(parentID, container) {
     let children = document.createElement("div");
     children.className = "children";
     container.appendChild(children);
-    renderLevel(folder.id, children);
+    renderLevel(folder.id, children); // recursive for boards inside
   });
 
   // Render boards
@@ -526,21 +580,6 @@ function renderLevel(parentID, container) {
         <i class="fa fa-folder-open" onclick="openBoard('${board.id}')"></i>
         <i class="fa fa-pen" onclick="renameBoard('${board.id}')"></i>
         <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(board)},"board")'></i>
-      </span>`;
-    container.appendChild(div);
-  });
-
-  // Render projects
-  data.projects.filter(p => p.parent === parentID).forEach(project => {
-    let div = document.createElement("div");
-    div.className = "item";
-    div.innerHTML = `
-      <span onclick="openProject('${project.id}')">
-        <i class="fa fa-briefcase"></i> ${project.name}
-      </span>
-      <span>
-        <i class="fa fa-pen" onclick="renameProject('${project.id}')"></i>
-        <i class="fa fa-trash" onclick='moveToTrash(${JSON.stringify(project)},"project")'></i>
       </span>`;
     container.appendChild(div);
   });
