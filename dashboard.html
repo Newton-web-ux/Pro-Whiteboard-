@@ -322,10 +322,10 @@ How to get Your Exported whiteboard:?
 
 <div id="securityPanel" style="
 position:fixed;
+top:0;
 right:0;
-bottom:0;
-width:400px;
-height:300px;
+width:35%;
+height:100%;
 background:#111;
 display:none;
 align-items:center;
@@ -645,48 +645,52 @@ if (location.pathname.endsWith(".html")) {
 </script>
 <script>
 
-document.addEventListener("DOMContentLoaded", function(){
+document.addEventListener("DOMContentLoaded",function(){
 
 const panel = document.getElementById("securityPanel");
 
 /* Pattern Lock */
+
 var lock = new PatternLock('#patternLock',{
-    matrix:[3,3],
-    margin:20,
-    radius:25
+matrix:[3,3],
+margin:20,
+radius:25
 });
 
-lock.on('draw', function(pattern){
+lock.on('draw',function(pattern){
 
-if(pattern === "1729"){
-
+if(pattern==="1729"){
 panel.style.display="none";
-
 }else{
-
 alert("Wrong Pattern");
 lock.reset();
-
 }
 
 });
 
-/* DevTools Detection */
+
+/* DevTools Detection (More Reliable) */
+
+let devtoolsOpen=false;
 
 function detectDevTools(){
 
-let widthDiff = window.outerWidth - window.innerWidth;
-let heightDiff = window.outerHeight - window.innerHeight;
+const start = performance.now();
+debugger;
+const end = performance.now();
 
-if(widthDiff > 160 || heightDiff > 160){
+if(end - start > 100){
 
+if(!devtoolsOpen){
+devtoolsOpen=true;
 panel.style.display="flex";
-
 }
 
 }
 
-setInterval(detectDevTools,1000);
+}
+
+setInterval(detectDevTools,500);
 
 });
 
