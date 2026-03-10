@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/patternLock/0.5.0/patternLock.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/patternLock/0.5.0/patternLock.min.js"></script>
 <meta charset="UTF-8">
@@ -182,24 +180,23 @@ Secure • Fast • Intelligent
 </div>
 <div id="securityPanel" style="
 position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
+right:0;
+bottom:0;
+width:400px;
+height:300px;
 background:#111;
 display:none;
-z-index:999999;
 align-items:center;
 justify-content:center;
-flex-direction:column;
-color:white;
-font-family:sans-serif;
+z-index:999999;
 ">
 
-<h2>Security Lock</h2>
-<p>Draw pattern to continue</p>
+<div>
+<h3 style="color:white;text-align:center;">Developer Access</h3>
 
 <div id="patternLock"></div>
+
+</div>
 
 </div>
 
@@ -352,26 +349,27 @@ if (window.matchMedia('(display-mode: standalone)').matches) {
 </script>
 <script>
 
-/* ================= PRO WHITEBOARD SECURITY ================= */
+document.addEventListener("DOMContentLoaded", function(){
 
 const panel = document.getElementById("securityPanel");
 
 /* Pattern Lock */
-
-var lock = new PatternLock('#patternLock');
+var lock = new PatternLock('#patternLock',{
+    matrix:[3,3],
+    margin:20,
+    radius:25
+});
 
 lock.on('draw', function(pattern){
 
-// Your private pattern
-const SECRET_PATTERN = "1729";
+if(pattern === "1729"){
 
-if(pattern === SECRET_PATTERN){
-
-panel.style.display = "none";
+panel.style.display="none";
 
 }else{
 
 alert("Wrong Pattern");
+lock.reset();
 
 }
 
@@ -386,43 +384,13 @@ let heightDiff = window.outerHeight - window.innerHeight;
 
 if(widthDiff > 160 || heightDiff > 160){
 
-panel.style.display = "flex";
+panel.style.display="flex";
 
 }
 
 }
 
 setInterval(detectDevTools,1000);
-
-/* Block Right Click */
-
-document.addEventListener("contextmenu",function(e){
-e.preventDefault();
-});
-
-/* Block Inspect Shortcuts */
-
-document.addEventListener("keydown",function(e){
-
-if(e.key==="F12"){
-e.preventDefault();
-panel.style.display="flex";
-}
-
-if(e.ctrlKey && e.shiftKey && e.key==="I"){
-e.preventDefault();
-panel.style.display="flex";
-}
-
-if(e.ctrlKey && e.shiftKey && e.key==="J"){
-e.preventDefault();
-panel.style.display="flex";
-}
-
-if(e.ctrlKey && e.key==="U"){
-e.preventDefault();
-panel.style.display="flex";
-}
 
 });
 
