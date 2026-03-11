@@ -215,13 +215,82 @@ body{
 #sidebar::-webkit-scrollbar-track, .trash-panel::-webkit-scrollbar-track{
   background:transparent;
 }
+/* SEARCH BAR */
+
+.searchBox{
+margin-bottom:12px;
+}
+
+#searchInput{
+width:100%;
+padding:8px 10px;
+border-radius:8px;
+border:1px solid #ccc;
+font-size:14px;
+outline:none;
+}
+
+#searchInput:focus{
+border-color:#1976d2;
+box-shadow:0 0 4px rgba(25,118,210,0.3);
+}
+/* ================= DARK MODE ================= */
+
+body.dark{
+background:#1e1e1e;
+color:#e0e0e0;
+}
+
+body.dark #sidebar{
+background:#252526;
+border-right:1px solid #333;
+}
+
+body.dark #main{
+background:#1e1e1e;
+}
+
+body.dark .item{
+background:#2d2d2d;
+border-color:#444;
+color:#ddd;
+}
+
+body.dark .item:hover{
+background:#3a3a3a;
+border-color:#1976d2;
+}
+
+body.dark .trash-panel{
+background:#252526;
+border-left:1px solid #333;
+}
+
+body.dark input{
+background:#2d2d2d;
+color:#eee;
+border:1px solid #444;
+}
+
+body.dark button{
+background:#1976d2;
+}
+
+body.dark button:hover{
+background:#1565c0;
+}
 </style>
 </head>
 <body>
 
 <!-- SIDEBAR -->
 <div id="sidebar">
-  <h2><i class="fa fa-folder"></i> Explorer</h2>
+ <h2><i class="fa fa-folder"></i> Explorer</h2>
+
+
+<div class="searchBox">
+<input type="text" id="searchInput" placeholder="Search projects, folders, boards..." onkeyup="searchExplorer()">
+</div>
 
 <button id="newProjectBtn" onclick="createProject()">
   <i class="fa fa-briefcase"></i> New Project
@@ -231,6 +300,9 @@ body{
   <button class="secondary-btn" onclick="toggleTrash()"><i class="fa fa-trash"></i> Trash</button>
   <button class="secondary-btn" onclick="toggleFormPanel()"><i class="fa fa-file-alt"></i> Feedback</button>
 
+<button onclick="toggleTheme()" id="themeToggle">
+<i class="fa fa-moon"></i> Dark Mode
+</button>
   <hr>
 
   <div id="gSignInDiv"></div>
@@ -752,6 +824,59 @@ function renameProject(id){
   save();
   render();
 }
+</script>
+<script>
+function searchExplorer(){
+
+const input = document.getElementById("searchInput").value.toLowerCase();
+
+const items = document.querySelectorAll("#tree .item");
+
+items.forEach(item => {
+
+const text = item.innerText.toLowerCase();
+
+if(text.includes(input)){
+item.style.display = "flex";
+}else{
+item.style.display = "none";
+}
+
+});
+
+}
+/* ================= THEME TOGGLE ================= */
+
+function toggleTheme(){
+
+const body = document.body;
+const btn = document.getElementById("themeToggle");
+
+body.classList.toggle("dark");
+
+if(body.classList.contains("dark")){
+localStorage.setItem("theme","dark");
+btn.innerHTML = '<i class="fa fa-sun"></i> Light Mode';
+}else{
+localStorage.setItem("theme","light");
+btn.innerHTML = '<i class="fa fa-moon"></i> Dark Mode';
+}
+
+}
+
+/* Load saved theme */
+
+window.addEventListener("load", function(){
+
+const savedTheme = localStorage.getItem("theme");
+
+if(savedTheme === "dark"){
+document.body.classList.add("dark");
+document.getElementById("themeToggle").innerHTML =
+'<i class="fa fa-sun"></i> Light Mode';
+}
+
+});
 </script>
 </body>
 </html>
