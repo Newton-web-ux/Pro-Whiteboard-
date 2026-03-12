@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/patternLock/0.5.0/patternLock.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/patternLock/0.5.0/patternLock.min.js"></script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -17,6 +19,9 @@
 <meta name="theme-color" content="#1e3c72">
 
 <style>
+
+/* ================= UI ================= */
+
 *{
 margin:0;
 padding:0;
@@ -70,7 +75,6 @@ animation:pulse 2.5s infinite ease-in-out;
 font-size:28px;
 font-weight:600;
 margin-bottom:6px;
-letter-spacing:1px;
 }
 
 .subtitle{
@@ -83,7 +87,6 @@ margin-bottom:35px;
 font-size:13px;
 margin-bottom:15px;
 opacity:0.9;
-letter-spacing:0.5px;
 }
 
 .progress-container{
@@ -106,12 +109,6 @@ transition:width 0.3s ease;
 .percent{
 margin-top:12px;
 font-size:12px;
-opacity:0.85;
-}
-
-@keyframes fadeIn{
-from{opacity:0;transform:translateY(20px);}
-to{opacity:1;transform:translateY(0);}
 }
 
 .fade-out{
@@ -122,13 +119,6 @@ animation:fadeOut 1s forwards;
 to{opacity:0;transform:scale(1.05);}
 }
 
-.footer{
-margin-top:30px;
-font-size:11px;
-opacity:0.6;
-}
-
-/* Install Button */
 #installContainer{
 margin-top:20px;
 display:none;
@@ -142,14 +132,26 @@ background:white;
 color:#1e3c72;
 font-weight:600;
 cursor:pointer;
-transition:0.2s;
 }
 
-#installBtn:hover{
-transform:scale(1.05);
+/* Developer Security Panel */
+
+#securityPanel{
+position:fixed;
+right:0;
+bottom:0;
+width:400px;
+height:300px;
+background:#111;
+display:none;
+align-items:center;
+justify-content:center;
+z-index:999999;
 }
+
 </style>
 </head>
+
 <body>
 
 <div class="loader-card" id="loader">
@@ -173,38 +175,20 @@ transform:scale(1.05);
 <button id="installBtn">Install App</button>
 </div>
 
-<div class="footer">
-Secure • Fast • Intelligent
 </div>
 
-</div>
-<div id="securityPanel" style="
-position:fixed;
-right:0;
-bottom:0;
-width:400px;
-height:300px;
-background:#111;
-display:none;
-align-items:center;
-justify-content:center;
-z-index:999999;
-">
-
+<div id="securityPanel">
 <div>
 <h3 style="color:white;text-align:center;">Developer Access</h3>
-
 <div id="patternLock"></div>
-
 </div>
-
 </div>
 
 <script>
 
-/* ================= LOADER SYSTEM ================= */
+/* ================= LOADER ================= */
 
-const steps = [
+const steps=[
 "Initializing System...",
 "Securing Authentication...",
 "Loading User Workspace...",
@@ -212,157 +196,211 @@ const steps = [
 "Finalizing Launch..."
 ];
 
-let progress = 0;
-let stepIndex = 0;
+let progress=0;
+let stepIndex=0;
 
-const progressBar = document.getElementById("progress");
-const percentText = document.getElementById("percent");
-const statusText = document.getElementById("status");
-const loader = document.getElementById("loader");
+const progressBar=document.getElementById("progress");
+const percentText=document.getElementById("percent");
+const statusText=document.getElementById("status");
+const loader=document.getElementById("loader");
 
 function updateLoader(){
 
-progress += Math.floor(Math.random()*7) + 4;
+progress+=Math.floor(Math.random()*7)+4;
 
-if(progress >= 100){
-progress = 100;
-progressBar.style.width = "100%";
-percentText.textContent = "100%";
-statusText.textContent = "Launching Dashboard...";
+if(progress>=100){
+
+progress=100;
+progressBar.style.width="100%";
+percentText.textContent="100%";
+statusText.textContent="Launching Dashboard...";
 
 setTimeout(()=>{
 loader.classList.add("fade-out");
+
 setTimeout(()=>{
-window.location.href = "dashboard.html";
+window.location.href="dashboard.html";
 },1000);
+
 },700);
 
 return;
 }
 
-if(progress > (stepIndex+1)*20 && stepIndex < steps.length-1){
+if(progress>(stepIndex+1)*20 && stepIndex<steps.length-1){
 stepIndex++;
-statusText.textContent = steps[stepIndex];
+statusText.textContent=steps[stepIndex];
 }
 
-progressBar.style.width = progress + "%";
-percentText.textContent = progress + "%";
+progressBar.style.width=progress+"%";
+percentText.textContent=progress+"%";
 
 setTimeout(updateLoader,150);
+
 }
 
 setTimeout(updateLoader,800);
 
-/* ================= PWA SYSTEM ================= */
+/* ================= ANALYTICS ================= */
 
-let deferredPrompt;
-const installBtn = document.getElementById("installBtn");
-const installContainer = document.getElementById("installContainer");
+const APP_VERSION="1.0.0";
 
-/* Service Worker */
-if ('serviceWorker' in navigator) {
-window.addEventListener('load', () => {
-navigator.serviceWorker.register('service-worker.js')
-.then(reg => {
+const WEBHOOK_URL="https://script.google.com/macros/s/AKfycbxVI-ViIdVrP70fff-nGXNoU_jvNzwqP0CpsDvgzFi_1gNJeCVBWsBAmysFYtQqGUQZCA/exec";
 
-reg.onupdatefound = () => {
-const newWorker = reg.installing;
-newWorker.onstatechange = () => {
-if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-alert("New version available. Refreshing...");
-window.location.reload();
-}
-};
-};
+/* Device ID */
 
-});
-});
+function getDeviceId(){
+
+let id=localStorage.getItem("prowhiteboard_device");
+
+if(!id){
+id=crypto.randomUUID();
+localStorage.setItem("prowhiteboard_device",id);
 }
 
-/* Install Prompt */
-window.addEventListener('beforeinstallprompt', (e) => {
-e.preventDefault();
-deferredPrompt = e;
-installContainer.style.display = "block";
-});
+return id;
 
-installBtn.addEventListener("click", async () => {
-if (!deferredPrompt) return;
-
-deferredPrompt.prompt();
-const choice = await deferredPrompt.userChoice;
-
-if (choice.outcome === 'accepted') {
-installContainer.style.display = "none";
 }
 
-deferredPrompt = null;
-});
+/* Source tracking */
 
-/* Offline / Online Detection */
-window.addEventListener("offline", () => {
-statusText.textContent = "Offline Mode Enabled";
-});
+const source=new URLSearchParams(window.location.search).get("source") || "direct";
 
-window.addEventListener("online", () => {
-statusText.textContent = "Connected Successfully";
-});
+/* Send Event */
 
-</script>
-<script>
-const APP_VERSION = "1.0.0";
-const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxjBhiQSg2a3H_cWu1R-H88IPtWTMG439b18wJHZiscKpNZgA8gHaw7E99ow5GjpwFaGA/exec";
+function sendEvent(type){
 
-function getDeviceId() {
-  let id = localStorage.getItem("device_id");
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem("device_id", id);
-  }
-  return id;
+fetch(WEBHOOK_URL,{
+method:"POST",
+headers:{ "Content-Type":"application/json" },
+
+body:JSON.stringify({
+
+eventType:type,
+deviceId:getDeviceId(),
+userAgent:navigator.userAgent,
+platform:navigator.platform,
+referrer:document.referrer,
+source:source,
+appVersion:APP_VERSION,
+mode:window.matchMedia('(display-mode: standalone)').matches
+? "standalone"
+: "browser"
+
+})
+
+}).catch(err=>console.log(err));
+
 }
 
-function sendEvent(eventType) {
-  fetch(WEBHOOK_URL, {
-    method: "POST",
-    body: JSON.stringify({
-      eventType: eventType,
-      deviceId: getDeviceId(),
-      userAgent: navigator.userAgent,
-      platform: navigator.platform,
-      referrer: document.referrer,
-      appVersion: APP_VERSION,
-      mode: window.matchMedia('(display-mode: standalone)').matches 
-            ? "standalone" 
-            : "browser"
-    })
-  });
-}
+/* Track Visit */
 
-// Track first visit
 sendEvent("visit");
 
-// Track standalone open
-if (window.matchMedia('(display-mode: standalone)').matches) {
-  sendEvent("standalone_open");
+/* Detect installed app */
+
+if(window.matchMedia('(display-mode: standalone)').matches){
+sendEvent("standalone_open");
 }
-</script>
-<script>
 
-document.addEventListener("DOMContentLoaded", function(){
+/* Detect successful install */
 
-const panel = document.getElementById("securityPanel");
-
-/* Pattern Lock */
-var lock = new PatternLock('#patternLock',{
-    matrix:[3,3],
-    margin:20,
-    radius:25
+window.addEventListener("appinstalled",()=>{
+sendEvent("pwa_installed");
 });
 
-lock.on('draw', function(pattern){
+</script>
 
-if(pattern === "1729"){
+<script>
+
+/* ================= PWA INSTALL ================= */
+
+let deferredPrompt;
+
+const installBtn=document.getElementById("installBtn");
+const installContainer=document.getElementById("installContainer");
+
+window.addEventListener('beforeinstallprompt',(e)=>{
+
+e.preventDefault();
+deferredPrompt=e;
+
+installContainer.style.display="block";
+
+});
+
+installBtn.addEventListener("click",async()=>{
+
+sendEvent("install_click");
+
+if(!deferredPrompt) return;
+
+deferredPrompt.prompt();
+
+const choice=await deferredPrompt.userChoice;
+
+if(choice.outcome==="accepted"){
+
+sendEvent("install_accepted");
+installContainer.style.display="none";
+
+}
+
+deferredPrompt=null;
+
+});
+
+/* Service Worker */
+
+if('serviceWorker' in navigator){
+
+window.addEventListener('load',()=>{
+
+navigator.serviceWorker.register('service-worker.js')
+.then(reg=>{
+
+reg.onupdatefound=()=>{
+
+const newWorker=reg.installing;
+
+newWorker.onstatechange=()=>{
+
+if(newWorker.state==="installed" && navigator.serviceWorker.controller){
+
+alert("New version available. Refreshing...");
+window.location.reload();
+
+}
+
+};
+
+};
+
+});
+
+});
+
+}
+
+</script>
+
+<script>
+
+/* ================= SECURITY ================= */
+
+document.addEventListener("DOMContentLoaded",function(){
+
+const panel=document.getElementById("securityPanel");
+
+var lock=new PatternLock('#patternLock',{
+matrix:[3,3],
+margin:20,
+radius:25
+});
+
+lock.on('draw',function(pattern){
+
+if(pattern==="1729"){
 
 panel.style.display="none";
 
@@ -375,14 +413,14 @@ lock.reset();
 
 });
 
-/* DevTools Detection */
+/* DevTools detection */
 
 function detectDevTools(){
 
-let widthDiff = window.outerWidth - window.innerWidth;
-let heightDiff = window.outerHeight - window.innerHeight;
+let widthDiff=window.outerWidth-window.innerWidth;
+let heightDiff=window.outerHeight-window.innerHeight;
 
-if(widthDiff > 160 || heightDiff > 160){
+if(widthDiff>200 || heightDiff>200){
 
 panel.style.display="flex";
 
@@ -395,5 +433,6 @@ setInterval(detectDevTools,1000);
 });
 
 </script>
+
 </body>
 </html>
