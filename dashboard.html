@@ -424,15 +424,26 @@ font-family:sans-serif;
 let currentUser = null;
 
 function logUserToSheet(user){
-  const url="https://script.google.com/macros/s/AKfycbyH-KrPIhUpFo2lUqUshPnBVSWOzUA8Qef_d2QLXf4CT8_EH2b1WGMhQIITFn6fDmvh/exec";
-  fetch(url,{
-    method:"POST",
-    mode:"no-cors",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({sub:user.sub,name:user.name,email:user.email,picture:user.picture})
-  });
-}
 
+const url="https://script.google.com/macros/s/AKfycbzeeoh0qzik6Sv26s7MsVSHdADY7eO8v2J2-Q1BvIaXm7uAtQkRiAa_kTSmySB394m_/exec";
+
+fetch(url,{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+sub:user.sub,
+name:user.name,
+email:user.email,
+picture:user.picture
+})
+})
+.then(res=>res.json())
+.then(data=>console.log("Saved:",data))
+.catch(err=>console.error(err));
+
+}
 function handleCredentialResponse(response){
   const jwt=response.credential;
   const base64Url=jwt.split('.')[1];
