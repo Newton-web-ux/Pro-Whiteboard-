@@ -509,6 +509,7 @@ function handleCredentialResponse(response){
   document.getElementById("userName").textContent=user.name;
   logUserToSheet(user);
   loadUserData();
+loadDashboardFromDrive();
 }
 
 window.onload=function(){
@@ -561,8 +562,13 @@ function loadUserData() {
 }
 
 function save(){
-  if(!currentUser) return;
-  localStorage.setItem(getKey(),JSON.stringify(data));
+
+if(!currentUser) return;
+
+localStorage.setItem(getKey(),JSON.stringify(data));
+
+saveDashboardToDrive();
+
 }
 
 // ========== CORE FEATURES ==========
@@ -947,6 +953,129 @@ document.getElementById("themeToggle").innerHTML =
 function toggleContactPanel(){
 document.getElementById("contactPanel").classList.toggle("show");
 }
+</script>
+<script>
+const DRIVE_API = "https://script.google.com/macros/s/AKfycbyt_vktynO2pG6cgP9piJFkOXuSdsi_k4sw-xYMrDbLcLzBxTopMSQBoMPHMC4RDGVw/exec";
+async function saveDashboardToDrive(){
+
+if(!currentUser) return;
+
+try{
+
+await fetch(DRIVE_API,{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+type:"dashboard",
+userId:currentUser.sub,
+content:data
+})
+});
+
+console.log("Dashboard saved to Drive");
+
+}catch(err){
+
+console.error("Drive save error",err);
+
+}
+
+}
+async function loadDashboardFromDrive(){
+
+if(!currentUser) return;
+
+try{
+
+const res = await fetch(DRIVE_API+"?type=dashboard&userId="+currentUser.sub);
+
+const json = await res.json();
+
+if(json && json.content){
+
+data = json.content;
+
+save();
+
+render();
+
+console.log("Loaded dashboard from Drive");
+
+}
+
+}catch(err){
+
+console.error("Drive load error",err);
+
+}
+
+}
+async function saveBoardToDrive(boardId,boardData){
+
+if(!currentUser) return;
+
+try{
+
+await fetch(DRIVE_API,{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+type:"board",
+userId:currentUser.sub,
+content:{
+id:boardId,
+data:boardData
+}
+})
+});
+
+console.log("Board saved");
+
+}catch(err){
+
+console.error(err);
+
+}
+
+}
+async function loadBoardFromDrive(boardId){
+
+if(!currentUser) return null;
+
+try{
+
+const res = await fetch(DRIVE_API+"?type=board&userId="+currentUser.sub+"&boardId="+boardId);
+
+const json = await res.json();
+
+if(json && json.content){
+
+return json.content;
+
+}
+
+}catch(err){
+
+console.error(err);
+
+}
+
+return null;
+
+}
+setInterval(()=>{
+
+if(currentUser){
+
+saveDashboardToDrive();
+
+}
+
+},10000);
 </script>
 </body>
 </html>
