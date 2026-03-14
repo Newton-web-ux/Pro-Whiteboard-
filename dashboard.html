@@ -477,7 +477,7 @@ let currentUser = null;
 
 function logUserToSheet(user){
 
-const url="https://script.google.com/macros/s/AKfycbzo4l5S95rBoMUnNVZgDI273MexG_FoAsv7KYOW7dg_MH4db2AMFHLg3QG6174biUoz/exec";
+const url="https://script.google.com/macros/s/AKfycbzhvP3bSC6DM8Z34n-a3o635U46b3CWR5H4s8lCkcRENw7blboFKKNmF64_Z-lHbGdA/exec";
 
 fetch(url,{
 method:"POST",
@@ -551,46 +551,18 @@ let data = { folders: [], boards: [], projects: [], trash: []
 function getKey(){
   return "whiteboardDashboardData_"+currentUser.sub;
 }
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbylIsEHKH0Jxfpe8NVvSnTR-Yg89AYvMkYZeRm2-vxpm5oixJ3c_kQfkrYyBiFc-Ho_/exec";
 
-// Save function
+function loadUserData() {
+  const stored = localStorage.getItem(getKey());
+  data = stored ? JSON.parse(stored) : { folders: [], boards: [], projects: [], trash: [] };
+  save();
+  disableButtons(false);
+  render();
+}
+
 function save(){
   if(!currentUser) return;
-
-  fetch(SCRIPT_URL, {
-    method: "POST",
-    body: JSON.stringify({
-      action: "save",
-      userId: currentUser.sub,
-      payload: data
-    })
-  })
-  .then(res => res.json())
-  .then(resp => {
-    if(resp.status === "success") console.log("Data saved to Drive ✅");
-  })
-  .catch(err => console.error(err));
-}
-// Load function
-function loadUserData() {
-  if(!currentUser) return;
-
-  fetch(SCRIPT_URL, {
-    method: "POST",
-    body: JSON.stringify({
-      action: "load",
-      userId: currentUser.sub
-    })
-  })
-  .then(res => res.json())
-  .then(resp => {
-    if(resp.status === "success"){
-      data = resp.data;
-      disableButtons(false);
-      render();
-    }
-  })
-  .catch(err => console.error(err));
+  localStorage.setItem(getKey(),JSON.stringify(data));
 }
 
 // ========== CORE FEATURES ==========
