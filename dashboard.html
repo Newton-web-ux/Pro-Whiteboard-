@@ -507,32 +507,43 @@ function handleCredentialResponse(response){
   document.getElementById("userInfo").style.display="flex";
   document.getElementById("userPic").src=user.picture;
   document.getElementById("userName").textContent=user.name;
-  logUserToSheet(user);
-  loadUserData();
-loadDashboardFromDrive();
+ logUserToSheet(user);
+loadUserData();
+loadFromDrive();
 }
 
 window.onload=function(){
+
   google.accounts.id.initialize({
     client_id:"104112968849-oehrp6bnkkqvei19vu2v2krbjbscf84p.apps.googleusercontent.com",
     callback:handleCredentialResponse
   });
+
   google.accounts.id.renderButton(
     document.getElementById("gSignInDiv"),
     {theme:"outline",size:"large",width:"240"}
   );
 
-  const savedUser=localStorage.getItem("currentUser");
+  const savedUser = localStorage.getItem("currentUser");
+
   if(savedUser){
-    currentUser=JSON.parse(savedUser);
+
+    currentUser = JSON.parse(savedUser);
+
     document.getElementById("gSignInDiv").style.display="none";
     document.getElementById("userInfo").style.display="flex";
     document.getElementById("userPic").src=currentUser.picture;
     document.getElementById("userName").textContent=currentUser.name;
+
     loadUserData();
+    loadFromDrive();
+
   }else{
+
     disableButtons(true);
+
   }
+
 };
 
 function signOut(){
@@ -561,13 +572,43 @@ function loadUserData() {
   render();
 }
 
+const DRIVE_API="https://script.google.com/macros/s/AKfycbwbNjdqMQnybPL0jHoup_w1MnfXVNgK6RH9Nq8vv_5_96ONf8furyKU1oyWCuLCTrErCg/exec";
+
 function save(){
 
 if(!currentUser) return;
 
-localStorage.setItem(getKey(), JSON.stringify(data));
+localStorage.setItem(getKey(),JSON.stringify(data));
 
-saveDashboardToDrive(); // save to Google Drive
+fetch(DRIVE_API,{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+userId:currentUser.sub,
+content:data
+})
+})
+.then(res=>res.json())
+.then(d=>console.log("Drive saved",d))
+.catch(err=>console.error(err));
+
+}
+async function loadFromDrive(){
+
+const res = await fetch(DRIVE_API+"?user="+currentUser.sub);
+
+const d = await res.json();
+
+if(d.content){
+
+data = d.content;
+
+save();
+render();
+
+}
 
 }
 // ========== CORE FEATURES ==========
@@ -952,95 +993,6 @@ document.getElementById("themeToggle").innerHTML =
 function toggleContactPanel(){
 document.getElementById("contactPanel").classList.toggle("show");
 }
-</script>
-<script>
-
-/* ================= DRIVE STORAGE API ================= */
-
-const DRIVE_API = "https://script.google.com/macros/s/AKfycbx_pGKQ_dvhlkBHNskNERPJKfrRAtYBfgAHWm1xaMa-S10ASskPa9fdy7xs7L5Laq7UJA/exec";
-
-/* SAVE DASHBOARD */
-
-async function saveDashboardToDrive(){
-
-if(!currentUser) return;
-
-try{
-
-await fetch(DRIVE_API,{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-userId: currentUser.sub,
-type: "dashboard",
-content: {
-projects: data.projects,
-folders: data.folders,
-boards: data.boards,
-trash: data.trash
-}
-})
-});
-
-console.log("Dashboard synced to Drive");
-
-}catch(err){
-console.error("Drive save error:",err);
-}
-
-}
-
-
-/* LOAD DASHBOARD */
-
-async function loadDashboardFromDrive(){
-
-if(!currentUser) return;
-
-try{
-
-const res = await fetch(DRIVE_API + "?userId=" + currentUser.sub + "&type=dashboard");
-
-const json = await res.json();
-
-if(json){
-
-data.projects = json.projects || [];
-data.folders = json.folders || [];
-data.boards = json.boards || [];
-data.trash = json.trash || [];
-
-localStorage.setItem(getKey(), JSON.stringify(data));
-
-render();
-
-console.log("Dashboard loaded from Drive");
-
-}
-
-}catch(err){
-
-console.error("Drive load error:",err);
-
-}
-
-}
-
-
-/* AUTO SYNC EVERY 10 SECONDS */
-
-setInterval(()=>{
-
-if(currentUser){
-
-saveDashboardToDrive();
-
-}
-
-},10000);
-
 </script>
 </body>
 </html>
