@@ -509,7 +509,6 @@ function handleCredentialResponse(response){
   document.getElementById("userName").textContent=user.name;
   logUserToSheet(user);
   loadUserData();
-  trackAction("login");
 }
 
 window.onload=function(){
@@ -552,69 +551,104 @@ let data = { folders: [], boards: [], projects: [], trash: []
 function getKey(){
   return "whiteboardDashboardData_"+currentUser.sub;
 }
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbylIsEHKH0Jxfpe8NVvSnTR-Yg89AYvMkYZeRm2-vxpm5oixJ3c_kQfkrYyBiFc-Ho_/exec";
 
-function loadUserData() {
-  const stored = localStorage.getItem(getKey());
-  data = stored ? JSON.parse(stored) : { folders: [], boards: [], projects: [], trash: [] };
-  save();
-  disableButtons(false);
-  render();
-}
-
+// Save function
 function save(){
   if(!currentUser) return;
-  localStorage.setItem(getKey(),JSON.stringify(data));
+
+  fetch(SCRIPT_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      action: "save",
+      userId: currentUser.sub,
+      payload: data
+    })
+  })
+  .then(res => res.json())
+  .then(resp => {
+    if(resp.status === "success") console.log("Data saved to Drive ✅");
+  })
+  .catch(err => console.error(err));
+}
+// Load function
+function loadUserData() {
+  if(!currentUser) return;
+
+  fetch(SCRIPT_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      action: "load",
+      userId: currentUser.sub
+    })
+  })
+  .then(res => res.json())
+  .then(resp => {
+    if(resp.status === "success"){
+      data = resp.data;
+      disableButtons(false);
+      render();
+    }
+  })
+  .catch(err => console.error(err));
 }
 
 // ========== CORE FEATURES ==========
 function generateID(){return "id_"+Date.now()+"_"+Math.floor(Math.random()*1000);}
 
-function createFolder(parentID = null) {
+function createFolder(parentID=null){
   if(!currentUser){alert("Login required"); return;}
-  let name = prompt(parentID ? `Folder inside parent?` : "Folder Name:");
-  if(!name) return;
-  const id = generateID();
-  data.folders.push({id, name, parent: parentID});
-  save(); render();
 
-  trackAction("create_folder", { folderId: id, folderName: name, parent: parentID });
+  let parentName = "";
+  if(parentID){
+    const project = data.projects.find(p => p.id===parentID);
+    const folder = data.folders.find(f => f.id===parentID);
+    parentName = project ? project.name : folder ? folder.name : "";
+  }
+
+  let name = prompt(parentName ? `Folder name inside "${parentName}":` : "Folder name:");
+  if(!name) return;
+
+  data.folders.push({id:generateID(), name, parent:parentID});
+  save(); render();
 }
 
-function createBoard(parentID = null) {
+function createBoard(parentID=null){
   if(!currentUser){alert("Login required"); return;}
-  let name = prompt(parentID ? `Board inside parent?` : "Board Name:", "Untitled Board");
-  if(!name) return;
+
+  let parentName = "";
+  if(parentID){
+    const project = data.projects.find(p => p.id===parentID);
+    const folder = data.folders.find(f => f.id===parentID);
+    parentName = project ? project.name : folder ? folder.name : "";
+  }
+
+  let name = prompt(parentName ? `Board name inside "${parentName}":` : "Board name:", "Untitled Board") || "Untitled Board";
+
   const id = generateID();
-  data.boards.push({id, name, parent: parentID});
+  data.boards.push({id, name, parent:parentID});
   save(); render();
 
-  trackAction("create_board", { boardId: id, boardName: name, parent: parentID });
   window.location.href = "whiteboard.html?board=" + id;
 }
-function openBoard(id){
-  trackAction("open_board", { boardId: id });
-  window.location.href = "whiteboard.html?board=" + id;
+function openBoard(id){window.location.href="whiteboard.html?board="+id;}
+function renameBoard(id){
+  let board=data.boards.find(b=>b.id===id);
+  if(!board) return;
+  let newName=prompt("Rename board:", board.name);
+  if(!newName) return;
+  board.name=newName;
+  save();
+  render();
 }
 function renameFolder(id){
-  let folder = data.folders.find(f=>f.id===id);
+  let folder=data.folders.find(f=>f.id===id);
   if(!folder) return;
-  let newName = prompt("Rename folder:", folder.name);
+  let newName=prompt("Rename folder:", folder.name);
   if(!newName) return;
-  folder.name = newName;
-  save(); render();
-
-  trackAction("rename_folder", { folderId: id, newName });
-}
-
-function renameBoard(id){
-  let board = data.boards.find(b=>b.id===id);
-  if(!board) return;
-  let newName = prompt("Rename board:", board.name);
-  if(!newName) return;
-  board.name = newName;
-  save(); render();
-
-  trackAction("rename_board", { boardId: id, newName });
+  folder.name=newName;
+  save();
+  render();
 }
 
 function moveToTrash(item, type) {
@@ -861,32 +895,30 @@ panel.style.display="flex";
 </script>
 <script>
 function createProject(parentID = null) {
-  if(!currentUser){alert("Login required"); return;}
-  let name = prompt("Project Name:", "Untitled Project");
-  if(!name) return;
-  const id = generateID();
-  data.projects.push({id, name, parent: parentID});
-  save(); render();
+  if (!currentUser) { alert("Login required"); return; }
 
-  // Track event
-  trackAction("create_project", { projectId: id, projectName: name, parent: parentID });
+  let name = prompt("Project Name:", "Untitled Project");
+  if (!name) return;
+
+  const id = generateID();
+  data.projects.push({ id, name, parent: parentID });
+  save();
+  render();
 }
 function openProject(id){
-  trackAction("open_project", { projectId: id });
   alert("Open project: " + id);
+  // You can replace this with opening in main panel or new page
 }
 
 function renameProject(id){
-  let project = data.projects.find(p=>p.id===id);
+  let project = data.projects.find(p => p.id === id);
   if(!project) return;
   let newName = prompt("Rename project:", project.name);
   if(!newName) return;
   project.name = newName;
-  save(); render();
-
-  trackAction("rename_project", { projectId: id, newName });
+  save();
+  render();
 }
-
 </script>
 <script>
 function searchExplorer(){
@@ -942,25 +974,6 @@ document.getElementById("themeToggle").innerHTML =
 });
 function toggleContactPanel(){
 document.getElementById("contactPanel").classList.toggle("show");
-}
-</script>
-<script>
-function trackAction(actionType, details = {}) {
-  if(!currentUser) return;
-
-  const payload = {
-    sub: currentUser.sub,
-    name: currentUser.name,
-    email: currentUser.email,
-    action: actionType,
-    details: details
-  };
-
-  fetch("https://script.google.com/macros/s/AKfycbweQwlK_RKywgFoV8naPO9u8je2qzu2PQDqjcLK2UyPAahSJRhJBwQy2bf1ftEkkeKE/exec", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify(payload)
-  }).catch(err => console.error("Tracking failed:", err));
 }
 </script>
 </body>
