@@ -954,11 +954,12 @@ document.getElementById("contactPanel").classList.toggle("show");
 }
 </script>
 <script>
+
 /* ================= DRIVE STORAGE API ================= */
 
-const DRIVE_API = "https://script.google.com/macros/s/AKfycbyt_vktynO2pG6cgP9piJFkOXuSdsi_k4sw-xYMrDbLcLzBxTopMSQBoMPHMC4RDGVw/exec";
+const DRIVE_API = "https://script.google.com/macros/s/AKfycbx_pGKQ_dvhlkBHNskNERPJKfrRAtYBfgAHWm1xaMa-S10ASskPa9fdy7xs7L5Laq7UJA/exec";
 
-/* SAVE PROJECTS / FOLDERS / BOARDS */
+/* SAVE DASHBOARD */
 
 async function saveDashboardToDrive(){
 
@@ -966,20 +967,21 @@ if(!currentUser) return;
 
 try{
 
-let payload = {
-userId: currentUser.sub,
-projects: data.projects,
-folders: data.folders,
-boards: data.boards,
-trash: data.trash
-};
-
 await fetch(DRIVE_API,{
 method:"POST",
 headers:{
 "Content-Type":"application/json"
 },
-body:JSON.stringify(payload)
+body:JSON.stringify({
+userId: currentUser.sub,
+type: "dashboard",
+content: {
+projects: data.projects,
+folders: data.folders,
+boards: data.boards,
+trash: data.trash
+}
+})
 });
 
 console.log("Dashboard synced to Drive");
@@ -990,7 +992,8 @@ console.error("Drive save error:",err);
 
 }
 
-/* LOAD PROJECTS / FOLDERS / BOARDS */
+
+/* LOAD DASHBOARD */
 
 async function loadDashboardFromDrive(){
 
@@ -998,7 +1001,7 @@ if(!currentUser) return;
 
 try{
 
-const res = await fetch(DRIVE_API + "?userId=" + currentUser.sub);
+const res = await fetch(DRIVE_API + "?userId=" + currentUser.sub + "&type=dashboard");
 
 const json = await res.json();
 
@@ -1024,6 +1027,8 @@ console.error("Drive load error:",err);
 }
 
 }
+
+
 /* AUTO SYNC EVERY 10 SECONDS */
 
 setInterval(()=>{
@@ -1035,6 +1040,7 @@ saveDashboardToDrive();
 }
 
 },10000);
+
 </script>
 </body>
 </html>
