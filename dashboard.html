@@ -282,29 +282,6 @@ background:#1565c0;
 </style>
 </head>
 <body>
-<!-- LOGIN REQUIRED SCREEN -->
-<div id="loginRequired" style="
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-background:#111;
-color:white;
-display:flex;
-align-items:center;
-justify-content:center;
-flex-direction:column;
-z-index:999999;
-font-family:sans-serif;
-">
-
-<h2>Login Required</h2>
-<p>Please login with Google to continue</p>
-
-<div id="loginBtnContainer"></div>
-
-</div>
 
 <!-- SIDEBAR -->
 <div id="sidebar">
@@ -330,7 +307,7 @@ font-family:sans-serif;
 <i class="fa fa-address-book"></i> Contact
 </button>
   <hr>
- <div id="loginBtnContainermain"></div>
+ <div id="gSignInDiv"></div>
   <div id="userInfo" style="display:none;">
     <div style="display:flex; align-items:center;">
       <img id="userPic">
@@ -495,86 +472,82 @@ font-family:sans-serif;
 
 </div>
 <script>
-// ========== GOOGLE LOGIN ==========
-let currentUser = null;
+const API_URL="https://script.google.com/macros/s/AKfycbxvX4A1_rRbUs_QFsH0lPRtIkgsrivHVI2Jte6782sl3YytkJTkLEhVPBmxJy6QG5pR/exec";
 
-function logUserToSheet(user){
+async function apiPost(data){
 
-const url="https://script.google.com/macros/s/AKfycby1gKouOKh9triyGIlKqvVMxup5MvAopqehCcMRzZMb-xZP4rGXdhpYW_dB-YFRAJKr/exec";
-
-fetch(url,{
+const res=await fetch(API_URL,{
 method:"POST",
 headers:{
 "Content-Type":"application/json"
 },
-body:JSON.stringify({
+body:JSON.stringify(data)
+});
+
+return await res.json();
+}
+
+async function apiGet(params){
+
+const url=API_URL+"?"+new URLSearchParams(params);
+
+const res=await fetch(url);
+
+return await res.json();
+
+}
+// ========== GOOGLE LOGIN ==========
+let currentUser = null;
+
+async function logUserToBackend(user){
+
+await apiPost({
+action:"login",
 sub:user.sub,
 name:user.name,
 email:user.email,
 picture:user.picture
-})
-})
-.then(res=>res.json())
-.then(data=>console.log("Saved:",data))
-.catch(err=>console.error(err));
+});
 
 }
 function handleCredentialResponse(response){
-
   const jwt=response.credential;
-
   const base64Url=jwt.split('.')[1];
   const base64=base64Url.replace(/-/g,'+').replace(/_/g,'/');
-
   const user=JSON.parse(decodeURIComponent(atob(base64).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
-
   currentUser=user;
-
   localStorage.setItem("currentUser",JSON.stringify(user));
-
-  document.getElementById("loginRequired").style.display="none";
-
+  document.getElementById("gSignInDiv").style.display="none";
   document.getElementById("userInfo").style.display="flex";
-
   document.getElementById("userPic").src=user.picture;
   document.getElementById("userName").textContent=user.name;
-
   logUserToSheet(user);
-
   loadUserData();
-
 }
 
 window.onload=function(){
-
   google.accounts.id.initialize({
     client_id:"104112968849-oehrp6bnkkqvei19vu2v2krbjbscf84p.apps.googleusercontent.com",
     callback:handleCredentialResponse
   });
-
   google.accounts.id.renderButton(
-    document.getElementById("loginBtnContainer"),
+    document.getElementById("gSignInDiv"),
     {theme:"outline",size:"large",width:"240"}
   );
 
   const savedUser=localStorage.getItem("currentUser");
-
   if(savedUser){
-
     currentUser=JSON.parse(savedUser);
-
-    document.getElementById("loginRequired").style.display="none";
-
+    document.getElementById("gSignInDiv").style.display="none";
     document.getElementById("userInfo").style.display="flex";
-
     document.getElementById("userPic").src=currentUser.picture;
     document.getElementById("userName").textContent=currentUser.name;
-
     loadUserData();
-
+  }else{
+    disableButtons(true);
   }
-
 };
+
 function signOut(){
   localStorage.removeItem("currentUser");
   currentUser=null;
@@ -593,14 +566,23 @@ function getKey(){
   return "whiteboardDashboardData_"+currentUser.sub;
 }
 
-function loadUserData() {
-  const stored = localStorage.getItem(getKey());
-  data = stored ? JSON.parse(stored) : { folders: [], boards: [], projects: [], trash: [] };
-  save();
-  disableButtons(false);
-  render();
-  renderTrash();
+async function loadUserData(){
+
+const server=await apiGet({
+action:"getData",
+user:currentUser.sub
+});
+
+data.projects=server.projects;
+data.folders=server.folders;
+data.boards=server.boards;
+data.trash=server.trash;
+
+render();
+renderTrash();
+
 }
+
 function save(){
   if(!currentUser) return;
   localStorage.setItem(getKey(),JSON.stringify(data));
@@ -609,80 +591,72 @@ function save(){
 // ========== CORE FEATURES ==========
 function generateID(){return "id_"+Date.now()+"_"+Math.floor(Math.random()*1000);}
 
-function createFolder(parentID=null){
-  if(!currentUser){alert("Login required"); return;}
+async function createFolder(parent=null){
 
-  let parentName = "";
-  if(parentID){
-    const project = data.projects.find(p => p.id===parentID);
-    const folder = data.folders.find(f => f.id===parentID);
-    parentName = project ? project.name : folder ? folder.name : "";
-  }
+let name=prompt("Folder name");
+if(!name) return;
 
-  let name = prompt(parentName ? `Folder name inside "${parentName}":` : "Folder name:");
-  if(!name) return;
+const id="id_"+Date.now();
 
-  data.folders.push({id:generateID(), name, parent:parentID});
-  save(); render();
+await apiPost({
+action:"createFolder",
+id:id,
+user:currentUser.sub,
+name:name,
+parent:parent
+});
+
+loadUserData();
+
 }
+async function createBoard(parent=null){
 
-function createBoard(parentID=null){
-  if(!currentUser){alert("Login required"); return;}
+let name=prompt("Board name");
+if(!name) return;
 
-  let parentName = "";
-  if(parentID){
-    const project = data.projects.find(p => p.id===parentID);
-    const folder = data.folders.find(f => f.id===parentID);
-    parentName = project ? project.name : folder ? folder.name : "";
-  }
+const id="id_"+Date.now();
 
-  let name = prompt(parentName ? `Board name inside "${parentName}":` : "Board name:", "Untitled Board") || "Untitled Board";
+await apiPost({
+action:"createBoard",
+id:id,
+user:currentUser.sub,
+name:name,
+parent:parent
+});
 
-  const id = generateID();
-  data.boards.push({id, name, parent:parentID});
-  save(); render();
+location.href="whiteboard.html?board="+id;
 
-  window.location.href = "whiteboard.html?board=" + id;
 }
 function openBoard(id){window.location.href="whiteboard.html?board="+id;}
-function renameBoard(id){
-  let board=data.boards.find(b=>b.id===id);
-  if(!board) return;
-  let newName=prompt("Rename board:", board.name);
-  if(!newName) return;
-  board.name=newName;
-  save();
-  render();
+async function renameItem(id,type){
+
+let newName=prompt("New name");
+if(!newName) return;
+
+await apiPost({
+action:"rename",
+id:id,
+type:type,
+name:newName
+});
+
+loadUserData();
+
 }
-function renameFolder(id){
-  let folder=data.folders.find(f=>f.id===id);
-  if(!folder) return;
-  let newName=prompt("Rename folder:", folder.name);
-  if(!newName) return;
-  folder.name=newName;
-  save();
-  render();
+async function moveToTrash(item,type){
+
+await apiPost({
+action:"delete",
+id:item.id,
+user:currentUser.sub,
+name:item.name,
+type:type,
+parent:item.parent
+});
+
+loadUserData();
+
 }
-
-function moveToTrash(item, type) {
-  data.trash.push({ ...item, type });
-
-  if (type === "project") {
-    data.projects = data.projects.filter(p => p.id !== item.id);
-    // Also move all child folders and boards to trash
-    moveChildrenToTrash(item.id);
-  } else if (type === "folder") {
-    data.folders = data.folders.filter(f => f.id !== item.id);
-    moveChildrenToTrash(item.id);
-  } else if (type === "board") {
-    data.boards = data.boards.filter(b => b.id !== item.id);
-  }
-
-  save();
-  render();
-  renderTrash();
-}
-
 function moveChildrenToTrash(parentID) {
   // Move child folders
   data.folders.filter(f => f.parent === parentID).forEach(f => moveToTrash(f, "folder"));
@@ -690,28 +664,30 @@ function moveChildrenToTrash(parentID) {
   data.boards.filter(b => b.parent === parentID).forEach(b => moveToTrash(b, "board"));
 }
 
-function restoreItem(item) {
-  if (item.type === "project") data.projects.push(item);
-  else if (item.type === "folder") data.folders.push(item);
-  else if (item.type === "board") data.boards.push(item);
+async function restoreItem(item){
 
-  data.trash = data.trash.filter(t => t.id !== item.id);
-  save();
-  render();
-  renderTrash();
+await apiGet({
+action:"restore",
+id:item.id,
+user:currentUser.sub,
+name:item.name,
+type:item.type,
+parent:item.parent
+});
+
+loadUserData();
+
 }
 
-function deleteForever(item) {
-  data.trash = data.trash.filter(t => t.id !== item.id);
+async function deleteForever(item){
 
-  // Delete child items if project or folder
-  if (item.type === "project" || item.type === "folder") {
-    deleteChildren(item.id);
-  }
+await apiPost({
+action:"deleteForever",
+id:item.id
+});
 
-  localStorage.removeItem("whiteboardData_" + item.id);
-  save();
-  renderTrash();
+loadUserData();
+
 }
 
 function deleteChildren(parentID) {
@@ -903,30 +879,27 @@ panel.style.display="flex";
 
 </script>
 <script>
-function createProject(parentID = null) {
-  if (!currentUser) { alert("Login required"); return; }
+async function createProject(parent=null){
 
-  let name = prompt("Project Name:", "Untitled Project");
-  if (!name) return;
+let name=prompt("Project name");
+if(!name) return;
 
-  const id = generateID();
-  data.projects.push({ id, name, parent: parentID });
-  save();
-  render();
+const id="id_"+Date.now();
+
+await apiPost({
+action:"createProject",
+id:id,
+user:currentUser.sub,
+name:name,
+parent:parent
+});
+
+loadUserData();
+
 }
 function openProject(id){
   alert("Open project: " + id);
   // You can replace this with opening in main panel or new page
-}
-
-function renameProject(id){
-  let project = data.projects.find(p => p.id === id);
-  if(!project) return;
-  let newName = prompt("Rename project:", project.name);
-  if(!newName) return;
-  project.name = newName;
-  save();
-  render();
 }
 </script>
 <script>
