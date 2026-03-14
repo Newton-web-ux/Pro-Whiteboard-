@@ -472,42 +472,28 @@ font-family:sans-serif;
 
 </div>
 <script>
-const API_URL="https://script.google.com/macros/s/AKfycbxvX4A1_rRbUs_QFsH0lPRtIkgsrivHVI2Jte6782sl3YytkJTkLEhVPBmxJy6QG5pR/exec";
+// ========== GOOGLE LOGIN ==========
+let currentUser = null;
 
-async function apiPost(data){
+function logUserToSheet(user){
 
-const res=await fetch(API_URL,{
+const url="https://script.google.com/macros/s/AKfycbzo4l5S95rBoMUnNVZgDI273MexG_FoAsv7KYOW7dg_MH4db2AMFHLg3QG6174biUoz/exec";
+
+fetch(url,{
 method:"POST",
 headers:{
 "Content-Type":"application/json"
 },
-body:JSON.stringify(data)
-});
-
-return await res.json();
-}
-
-async function apiGet(params){
-
-const url=API_URL+"?"+new URLSearchParams(params);
-
-const res=await fetch(url);
-
-return await res.json();
-
-}
-// ========== GOOGLE LOGIN ==========
-let currentUser = null;
-
-async function logUserToBackend(user){
-
-await apiPost({
-action:"login",
+body:JSON.stringify({
 sub:user.sub,
 name:user.name,
 email:user.email,
 picture:user.picture
-});
+})
+})
+.then(res=>res.json())
+.then(data=>console.log("Saved:",data))
+.catch(err=>console.error(err));
 
 }
 function handleCredentialResponse(response){
@@ -566,21 +552,12 @@ function getKey(){
   return "whiteboardDashboardData_"+currentUser.sub;
 }
 
-async function loadUserData(){
-
-const server=await apiGet({
-action:"getData",
-user:currentUser.sub
-});
-
-data.projects=server.projects;
-data.folders=server.folders;
-data.boards=server.boards;
-data.trash=server.trash;
-
-render();
-renderTrash();
-
+function loadUserData() {
+  const stored = localStorage.getItem(getKey());
+  data = stored ? JSON.parse(stored) : { folders: [], boards: [], projects: [], trash: [] };
+  save();
+  disableButtons(false);
+  render();
 }
 
 function save(){
@@ -591,72 +568,80 @@ function save(){
 // ========== CORE FEATURES ==========
 function generateID(){return "id_"+Date.now()+"_"+Math.floor(Math.random()*1000);}
 
-async function createFolder(parent=null){
+function createFolder(parentID=null){
+  if(!currentUser){alert("Login required"); return;}
 
-let name=prompt("Folder name");
-if(!name) return;
+  let parentName = "";
+  if(parentID){
+    const project = data.projects.find(p => p.id===parentID);
+    const folder = data.folders.find(f => f.id===parentID);
+    parentName = project ? project.name : folder ? folder.name : "";
+  }
 
-const id="id_"+Date.now();
+  let name = prompt(parentName ? `Folder name inside "${parentName}":` : "Folder name:");
+  if(!name) return;
 
-await apiPost({
-action:"createFolder",
-id:id,
-user:currentUser.sub,
-name:name,
-parent:parent
-});
-
-loadUserData();
-
+  data.folders.push({id:generateID(), name, parent:parentID});
+  save(); render();
 }
-async function createBoard(parent=null){
 
-let name=prompt("Board name");
-if(!name) return;
+function createBoard(parentID=null){
+  if(!currentUser){alert("Login required"); return;}
 
-const id="id_"+Date.now();
+  let parentName = "";
+  if(parentID){
+    const project = data.projects.find(p => p.id===parentID);
+    const folder = data.folders.find(f => f.id===parentID);
+    parentName = project ? project.name : folder ? folder.name : "";
+  }
 
-await apiPost({
-action:"createBoard",
-id:id,
-user:currentUser.sub,
-name:name,
-parent:parent
-});
+  let name = prompt(parentName ? `Board name inside "${parentName}":` : "Board name:", "Untitled Board") || "Untitled Board";
 
-location.href="whiteboard.html?board="+id;
+  const id = generateID();
+  data.boards.push({id, name, parent:parentID});
+  save(); render();
 
+  window.location.href = "whiteboard.html?board=" + id;
 }
 function openBoard(id){window.location.href="whiteboard.html?board="+id;}
-async function renameItem(id,type){
-
-let newName=prompt("New name");
-if(!newName) return;
-
-await apiPost({
-action:"rename",
-id:id,
-type:type,
-name:newName
-});
-
-loadUserData();
-
+function renameBoard(id){
+  let board=data.boards.find(b=>b.id===id);
+  if(!board) return;
+  let newName=prompt("Rename board:", board.name);
+  if(!newName) return;
+  board.name=newName;
+  save();
+  render();
 }
-async function moveToTrash(item,type){
-
-await apiPost({
-action:"delete",
-id:item.id,
-user:currentUser.sub,
-name:item.name,
-type:type,
-parent:item.parent
-});
-
-loadUserData();
-
+function renameFolder(id){
+  let folder=data.folders.find(f=>f.id===id);
+  if(!folder) return;
+  let newName=prompt("Rename folder:", folder.name);
+  if(!newName) return;
+  folder.name=newName;
+  save();
+  render();
 }
+
+function moveToTrash(item, type) {
+  data.trash.push({ ...item, type });
+
+  if (type === "project") {
+    data.projects = data.projects.filter(p => p.id !== item.id);
+    // Also move all child folders and boards to trash
+    moveChildrenToTrash(item.id);
+  } else if (type === "folder") {
+    data.folders = data.folders.filter(f => f.id !== item.id);
+    moveChildrenToTrash(item.id);
+  } else if (type === "board") {
+    data.boards = data.boards.filter(b => b.id !== item.id);
+  }
+
+  save();
+  render();
+  renderTrash();
+}
+
 function moveChildrenToTrash(parentID) {
   // Move child folders
   data.folders.filter(f => f.parent === parentID).forEach(f => moveToTrash(f, "folder"));
@@ -664,30 +649,28 @@ function moveChildrenToTrash(parentID) {
   data.boards.filter(b => b.parent === parentID).forEach(b => moveToTrash(b, "board"));
 }
 
-async function restoreItem(item){
+function restoreItem(item) {
+  if (item.type === "project") data.projects.push(item);
+  else if (item.type === "folder") data.folders.push(item);
+  else if (item.type === "board") data.boards.push(item);
 
-await apiGet({
-action:"restore",
-id:item.id,
-user:currentUser.sub,
-name:item.name,
-type:item.type,
-parent:item.parent
-});
-
-loadUserData();
-
+  data.trash = data.trash.filter(t => t.id !== item.id);
+  save();
+  render();
+  renderTrash();
 }
 
-async function deleteForever(item){
+function deleteForever(item) {
+  data.trash = data.trash.filter(t => t.id !== item.id);
 
-await apiPost({
-action:"deleteForever",
-id:item.id
-});
+  // Delete child items if project or folder
+  if (item.type === "project" || item.type === "folder") {
+    deleteChildren(item.id);
+  }
 
-loadUserData();
-
+  localStorage.removeItem("whiteboardData_" + item.id);
+  save();
+  renderTrash();
 }
 
 function deleteChildren(parentID) {
@@ -879,27 +862,30 @@ panel.style.display="flex";
 
 </script>
 <script>
-async function createProject(parent=null){
+function createProject(parentID = null) {
+  if (!currentUser) { alert("Login required"); return; }
 
-let name=prompt("Project name");
-if(!name) return;
+  let name = prompt("Project Name:", "Untitled Project");
+  if (!name) return;
 
-const id="id_"+Date.now();
-
-await apiPost({
-action:"createProject",
-id:id,
-user:currentUser.sub,
-name:name,
-parent:parent
-});
-
-loadUserData();
-
+  const id = generateID();
+  data.projects.push({ id, name, parent: parentID });
+  save();
+  render();
 }
 function openProject(id){
   alert("Open project: " + id);
   // You can replace this with opening in main panel or new page
+}
+
+function renameProject(id){
+  let project = data.projects.find(p => p.id === id);
+  if(!project) return;
+  let newName = prompt("Rename project:", project.name);
+  if(!newName) return;
+  project.name = newName;
+  save();
+  render();
 }
 </script>
 <script>
