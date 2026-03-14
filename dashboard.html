@@ -753,8 +753,12 @@ function renderLevel(parentID, container) {
 
 // ========== TRASH RENDER ==========
 function toggleTrash() {
+
   let panel = document.getElementById("trashPanel");
+
   panel.classList.toggle("show");
+
+  renderTrash();   // important
 }
 
 function renderTrash() {
