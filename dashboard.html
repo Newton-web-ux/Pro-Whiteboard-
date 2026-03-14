@@ -303,9 +303,11 @@ background:#1565c0;
 <button onclick="toggleTheme()" id="themeToggle">
 <i class="fa fa-moon"></i> Dark Mode
 </button>
+<button onclick="toggleContactPanel()" class="secondary-btn">
+<i class="fa fa-address-book"></i> Contact
+</button>
   <hr>
-
-  <div id="gSignInDiv"></div>
+ <div id="gSignInDiv"></div>
   <div id="userInfo" style="display:none;">
     <div style="display:flex; align-items:center;">
       <img id="userPic">
@@ -395,6 +397,56 @@ How to get Your Exported whiteboard:?
 </ul>
 
   </div>
+</div>
+<div id="contactPanel" class="trash-panel">
+
+<div style="display:flex; justify-content:space-between; align-items:center;">
+<h2><i class="fa fa-address-book"></i> Contact & Social</h2>
+<span style="font-size:22px; cursor:pointer;" onclick="toggleContactPanel()">×</span>
+</div>
+
+<div style="padding-top:10px; line-height:1.8; font-size:15px;">
+
+<p>
+<i class="fa fa-phone"></i> 
+<b>Phone:</b> 
+<a href="tel:8167738344">8167738344</a>
+</p>
+
+<p>
+<i class="fa fa-envelope"></i> 
+<b>Email:</b> 
+<a href="mailto:prowhiteboard1@gmail.com">prowhiteboard1@gmail.com</a>
+</p>
+
+<hr>
+
+<p>
+<i class="fab fa-instagram"></i> 
+<b>Instagram:</b><br>
+<a href="https://instagram.com/prowhiteboard2026" target="_blank">
+@prowhiteboard2026
+</a>
+</p>
+
+<p>
+<i class="fab fa-youtube"></i> 
+<b>YouTube:</b><br>
+<a href="https://youtube.com/@ProWhiteboard" target="_blank">
+@ProWhiteboard
+</a>
+</p>
+
+<p>
+<i class="fab fa-telegram"></i> 
+<b>Telegram:</b><br>
+<a href="https://t.me/ProWhiteboard" target="_blank">
+Pro Whiteboard
+</a>
+</p>
+
+</div>
+
 </div>
 
 <div id="securityPanel" style="
@@ -888,6 +940,9 @@ document.getElementById("themeToggle").innerHTML =
 }
 
 });
+function toggleContactPanel(){
+document.getElementById("contactPanel").classList.toggle("show");
+}
 </script>
 </body>
 </html>
