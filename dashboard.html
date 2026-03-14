@@ -497,19 +497,21 @@ picture:user.picture
 
 }
 function handleCredentialResponse(response){
-  const jwt=response.credential;
-  const base64Url=jwt.split('.')[1];
-  const base64=base64Url.replace(/-/g,'+').replace(/_/g,'/');
-  const user=JSON.parse(decodeURIComponent(atob(base64).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
-  currentUser=user;
-  localStorage.setItem("currentUser",JSON.stringify(user));
+  const jwt = response.credential;
+  const base64Url = jwt.split('.')[1];
+  const base64 = base64Url.replace(/-/g,'+').replace(/_/g,'/');
+  const user = JSON.parse(decodeURIComponent(atob(base64).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+  
+  currentUser = user;
+  localStorage.setItem("currentUser", JSON.stringify(user));
+
   document.getElementById("gSignInDiv").style.display="none";
   document.getElementById("userInfo").style.display="flex";
-  document.getElementById("userPic").src=user.picture;
-  document.getElementById("userName").textContent=user.name;
-logUserToSheet(user);
-loadUserData();
-loadFromCloud();
+  document.getElementById("userPic").src = user.picture;
+  document.getElementById("userName").textContent = user.name;
+
+  loadUserData(); // Load local data if any
+  loadFromCloud(); // Overwrite with Sheet data
 }
 
 window.onload = function(){
@@ -526,8 +528,7 @@ window.onload = function(){
 
   const savedUser = localStorage.getItem("currentUser");
 
-  if(savedUser){
-
+if(savedUser){
     currentUser = JSON.parse(savedUser);
 
     document.getElementById("gSignInDiv").style.display="none";
@@ -536,16 +537,10 @@ window.onload = function(){
     document.getElementById("userName").textContent = currentUser.name;
 
     loadUserData();
-    loadFromCloud();
-
-  }else{
-
+    loadFromCloud(); // ✅ correct
+}else{
     disableButtons(true);
-
-  }
-
-};
-
+}
 function signOut(){
   localStorage.removeItem("currentUser");
   currentUser=null;
@@ -572,28 +567,24 @@ function loadUserData() {
   render();
 }
 
-function save(){
+function save() {
+  if (!currentUser) return;
 
-if(!currentUser) return;
+  // 1️⃣ Local storage backup
+  localStorage.setItem(getKey(), JSON.stringify(data));
 
-// local backup
-localStorage.setItem(getKey(),JSON.stringify(data));
-
-// send to Google Doc database
-fetch(API_URL,{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-userId:currentUser.sub,
-content:data
-})
-})
-.then(res=>res.json())
-.then(res=>console.log("Saved to Google Doc:",res))
-.catch(err=>console.error(err));
-
+  // 2️⃣ Save to Google Sheet
+  fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId: currentUser.sub,
+      content: data
+    })
+  })
+    .then(res => res.json())
+    .then(res => console.log("Saved to Sheet:", res))
+    .catch(err => console.error("Error saving to Sheet:", err));
 }
 
 // ========== CORE FEATURES ==========
@@ -980,30 +971,40 @@ document.getElementById("contactPanel").classList.toggle("show");
 }
 </script>
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbxq2gyhkZBMSuN4yhhzbz1gr0q7XnNWXTG-izjRTihGgwPyPy0GUdMuovk25MKts0hQ/exec";
+const API_URL="https://script.google.com/macros/s/AKfycbxq2gyhkZBMSuN4yhhzbz1gr0q7XnNWXTG-izjRTihGgwPyPy0GUdMuovk25MKts0hQ/exec";
+function saveToCloud(){
+
+if(!currentUser) return;
+
+fetch(API_URL,{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+userId:currentUser.sub,
+content:data
+})
+})
+.then(r=>r.json())
+.then(r=>console.log("Saved:",r));
+
+}
 async function loadFromCloud(){
 
 if(!currentUser) return;
 
-try{
+const res = await fetch(API_URL+"?user="+currentUser.sub);
 
-const res = await fetch(API_URL + "?user=" + currentUser.sub);
 const json = await res.json();
 
 if(json.content){
 
 data = json.content;
 
-// store locally
 localStorage.setItem(getKey(),JSON.stringify(data));
 
 render();
-
-}
-
-}catch(err){
-
-console.log("Cloud load failed");
 
 }
 
