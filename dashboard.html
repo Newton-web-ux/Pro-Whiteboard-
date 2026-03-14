@@ -507,12 +507,12 @@ function handleCredentialResponse(response){
   document.getElementById("userInfo").style.display="flex";
   document.getElementById("userPic").src=user.picture;
   document.getElementById("userName").textContent=user.name;
- logUserToSheet(user);
+logUserToSheet(user);
 loadUserData();
-loadFromDrive();
+loadFromCloud();
 }
 
-window.onload=function(){
+window.onload = function(){
 
   google.accounts.id.initialize({
     client_id:"104112968849-oehrp6bnkkqvei19vu2v2krbjbscf84p.apps.googleusercontent.com",
@@ -532,11 +532,11 @@ window.onload=function(){
 
     document.getElementById("gSignInDiv").style.display="none";
     document.getElementById("userInfo").style.display="flex";
-    document.getElementById("userPic").src=currentUser.picture;
-    document.getElementById("userName").textContent=currentUser.name;
+    document.getElementById("userPic").src = currentUser.picture;
+    document.getElementById("userName").textContent = currentUser.name;
 
     loadUserData();
-    loadFromDrive();
+    loadFromCloud();
 
   }else{
 
@@ -572,15 +572,15 @@ function loadUserData() {
   render();
 }
 
-const DRIVE_API="https://script.google.com/macros/s/AKfycbwbNjdqMQnybPL0jHoup_w1MnfXVNgK6RH9Nq8vv_5_96ONf8furyKU1oyWCuLCTrErCg/exec";
-
 function save(){
 
 if(!currentUser) return;
 
+// local backup
 localStorage.setItem(getKey(),JSON.stringify(data));
 
-fetch(DRIVE_API,{
+// send to Google Doc database
+fetch(API_URL,{
 method:"POST",
 headers:{
 "Content-Type":"application/json"
@@ -591,26 +591,11 @@ content:data
 })
 })
 .then(res=>res.json())
-.then(d=>console.log("Drive saved",d))
+.then(res=>console.log("Saved to Google Doc:",res))
 .catch(err=>console.error(err));
 
 }
-async function loadFromDrive(){
 
-const res = await fetch(DRIVE_API+"?user="+currentUser.sub);
-
-const d = await res.json();
-
-if(d.content){
-
-data = d.content;
-
-save();
-render();
-
-}
-
-}
 // ========== CORE FEATURES ==========
 function generateID(){return "id_"+Date.now()+"_"+Math.floor(Math.random()*1000);}
 
@@ -992,6 +977,36 @@ document.getElementById("themeToggle").innerHTML =
 });
 function toggleContactPanel(){
 document.getElementById("contactPanel").classList.toggle("show");
+}
+</script>
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbxq2gyhkZBMSuN4yhhzbz1gr0q7XnNWXTG-izjRTihGgwPyPy0GUdMuovk25MKts0hQ/exec";
+async function loadFromCloud(){
+
+if(!currentUser) return;
+
+try{
+
+const res = await fetch(API_URL + "?user=" + currentUser.sub);
+const json = await res.json();
+
+if(json.content){
+
+data = json.content;
+
+// store locally
+localStorage.setItem(getKey(),JSON.stringify(data));
+
+render();
+
+}
+
+}catch(err){
+
+console.log("Cloud load failed");
+
+}
+
 }
 </script>
 </body>
