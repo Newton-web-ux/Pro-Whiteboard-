@@ -567,10 +567,9 @@ if(!currentUser) return;
 
 localStorage.setItem(getKey(), JSON.stringify(data));
 
-saveDashboardToDrive(); // sync to Drive
+saveDashboardToDrive(); // save to Google Drive
 
 }
-
 // ========== CORE FEATURES ==========
 function generateID(){return "id_"+Date.now()+"_"+Math.floor(Math.random()*1000);}
 
@@ -955,9 +954,11 @@ document.getElementById("contactPanel").classList.toggle("show");
 }
 </script>
 <script>
-const DRIVE_API = "https://script.google.com/macros/s/AKfycbzVR7g9TnVuUzuRrdxPshtE02sIEJCvfgQn4ZM5otTbw1jSiB0K7qFQrRw3HKNtgzQTlg/exec";
+/* ================= DRIVE STORAGE API ================= */
 
-/* SAVE DASHBOARD TO DRIVE */
+const DRIVE_API = "https://script.google.com/macros/s/AKfycbyt_vktynO2pG6cgP9piJFkOXuSdsi_k4sw-xYMrDbLcLzBxTopMSQBoMPHMC4RDGVw/exec";
+
+/* SAVE PROJECTS / FOLDERS / BOARDS */
 
 async function saveDashboardToDrive(){
 
@@ -965,24 +966,32 @@ if(!currentUser) return;
 
 try{
 
+let payload = {
+userId: currentUser.sub,
+projects: data.projects,
+folders: data.folders,
+boards: data.boards,
+trash: data.trash
+};
+
 await fetch(DRIVE_API,{
 method:"POST",
 headers:{
 "Content-Type":"application/json"
 },
-body:JSON.stringify({
-userId: currentUser.sub,
-dashboard: data
-})
+body:JSON.stringify(payload)
 });
 
-console.log("Dashboard saved to Drive");
+console.log("Dashboard synced to Drive");
 
 }catch(err){
-console.error(err);
+console.error("Drive save error:",err);
 }
 
 }
+
+/* LOAD PROJECTS / FOLDERS / BOARDS */
+
 async function loadDashboardFromDrive(){
 
 if(!currentUser) return;
@@ -993,9 +1002,12 @@ const res = await fetch(DRIVE_API + "?userId=" + currentUser.sub);
 
 const json = await res.json();
 
-if(json && json.dashboard){
+if(json){
 
-data = json.dashboard;
+data.projects = json.projects || [];
+data.folders = json.folders || [];
+data.boards = json.boards || [];
+data.trash = json.trash || [];
 
 localStorage.setItem(getKey(), JSON.stringify(data));
 
@@ -1007,12 +1019,13 @@ console.log("Dashboard loaded from Drive");
 
 }catch(err){
 
-console.error(err);
+console.error("Drive load error:",err);
 
 }
 
 }
-},10000);
+/* AUTO SYNC EVERY 10 SECONDS */
+
 setInterval(()=>{
 
 if(currentUser){
@@ -1021,7 +1034,7 @@ saveDashboardToDrive();
 
 }
 
-},15000);
+},10000);
 </script>
 </body>
 </html>
