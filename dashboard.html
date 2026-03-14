@@ -19,8 +19,6 @@
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/patternLock/0.5.0/patternLock.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/patternLock/0.5.0/patternLock.min.js"></script>
 <style>
@@ -279,6 +277,30 @@ background:#1976d2;
 body.dark button:hover{
 background:#1565c0;
 }
+
+/* ============ SECONDARY BUTTONS ============ */
+#sidebar .secondary-btn{
+  background:#f0f4f8;
+  color:#444;
+  border:1px solid #ddd;
+}
+
+#sidebar .secondary-btn:hover{
+  background:#e3eaf3;
+  border-color:#aaa;
+  color:#222;
+}
+
+body.dark #sidebar .secondary-btn{
+  background:#2d2d2d;
+  color:#bbb;
+  border:1px solid #444;
+}
+
+body.dark #sidebar .secondary-btn:hover{
+  background:#3a3a3a;
+  color:#eee;
+}
 </style>
 </head>
 <body>
@@ -305,6 +327,9 @@ background:#1565c0;
 </button>
 <button onclick="toggleContactPanel()" class="secondary-btn">
 <i class="fa fa-address-book"></i> Contact
+</button>
+<button onclick="toggleGuidePanel()" class="secondary-btn">
+<i class="fa fa-book"></i> User Guide
 </button>
   <hr>
  <div id="gSignInDiv"></div>
@@ -345,10 +370,6 @@ background:#1565c0;
     src="https://docs.google.com/forms/d/e/1FAIpQLSea6fWKaZFJ1p46Nn2DBJFlVCqpFp6vtpAVTVC-Sbf0gnR7gQ/viewform?embedded=true" 
     marginheight="0" marginwidth="0">Loading…</iframe>
 </div>
-<!-- USER GUIDE TOGGLE BUTTON -->
-<button id="guideToggleBtn" class="secondary-btn" style="margin-top:10px;" onclick="toggleGuidePanel()">
-  <i class="fa fa-book"></i> User Guide
-</button>
 <!-- USER GUIDE PANEL -->
 <div id="userGuidePanel" class="trash-panel">
   <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -390,11 +411,10 @@ background:#1565c0;
     <h3>5. Export Tab</h3>
     <ul>
       <li>To Export your work as PNG, PDF, and PPT, go to Export Tab and select your appropriate choice of export. After exporting, it will store in your browser.</li>
-How to get Your Exported whiteboard:? 
-<li> Go to your browser where you have opened the whiteboard and click three dots and go to Downloads.</li>
-<li> To work in cloud, click save cloud which will store everything in cloud and it will load auto when you open it next.</li>
-<li> To see storage, click Storage tab which will open a panel consists board in the JSON format with storage. </li>
-</ul>
+      <li><b>How to get your exported whiteboard:</b> Go to your browser where you have opened the whiteboard, click the three-dot menu, and go to Downloads.</li>
+      <li>To work in cloud, click Save Cloud — this stores everything in the cloud and loads automatically when you reopen.</li>
+      <li>To see storage, click the Storage tab which opens a panel showing the board in JSON format with storage usage.</li>
+    </ul>
 
   </div>
 </div>
@@ -416,7 +436,7 @@ How to get Your Exported whiteboard:?
 <p>
 <i class="fa fa-envelope"></i> 
 <b>Email:</b> 
-<a href="mailto:prowhiteboard1@gmail.com">prowhiteboard1@gmail.com</a>
+<a href="mailto:prowhiteboard2026@gmail.com">prowhiteboard2026@gmail.com</a>
 </p>
 
 <hr>
@@ -475,26 +495,37 @@ font-family:sans-serif;
 // ========== GOOGLE LOGIN ==========
 let currentUser = null;
 
-function logUserToSheet(user){
+// ── Apps Script Web App URL ──────────────────────────────────
+// IMPORTANT: Replace with your own deployed /exec URL every time
+// you re-deploy (Deployments → Manage → copy Web App URL).
+// Deploy settings must be:
+//   Execute as  → Me
+//   Who has access → Anyone
+const APPS_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycby2VmPzSzv_KBfhZK9XN2nTE9Oa_MPIpY3iaVsR0l0OJyH5CP_zI25xLkkZr_Tuf3T8/exec";
 
-const url="https://script.google.com/macros/s/AKfycbzhvP3bSC6DM8Z34n-a3o635U46b3CWR5H4s8lCkcRENw7blboFKKNmF64_Z-lHbGdA/exec";
+// FIX (CORS): Apps Script does NOT support custom CORS headers,
+// so we MUST use mode:"no-cors".  The trade-off is that the
+// response is opaque (we can't read it), but the POST still
+// reaches the server and writes to the Sheet correctly.
+// Do NOT add "Content-Type":"application/json" — that triggers
+// a pre-flight OPTIONS request which Apps Script rejects.
+function logUserToSheet(user) {
+  // Build a URL-encoded body (no pre-flight, works with no-cors)
+  const payload = new URLSearchParams({
+    sub:     user.sub     || "",
+    name:    user.name    || "",
+    email:   user.email   || "",
+    picture: user.picture || ""
+  });
 
-fetch(url,{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-sub:user.sub,
-name:user.name,
-email:user.email,
-picture:user.picture
-})
-})
-.then(res=>res.json())
-.then(data=>console.log("Saved:",data))
-.catch(err=>console.error(err));
-
+  fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    mode:   "no-cors",   // ← key fix; avoids CORS pre-flight block
+    body:   payload
+  })
+  .then(() => console.log("✅ User logged to Sheet (opaque response — this is expected with no-cors)"))
+  .catch(err => console.error("❌ logUserToSheet error:", err));
 }
 function handleCredentialResponse(response){
   const jwt=response.credential;
@@ -543,6 +574,7 @@ function signOut(){
 function disableButtons(state){
   document.getElementById("newFolderBtn").disabled=state;
   document.getElementById("newBoardBtn").disabled=state;
+  document.getElementById("newProjectBtn").disabled=state; // FIX: was missing
 }
 
 // ========== USER STORAGE ==========
@@ -781,6 +813,9 @@ function toggleFormPanel(){
 function toggleGuidePanel(){
   document.getElementById("userGuidePanel").classList.toggle("show");
 }
+function toggleContactPanel(){
+  document.getElementById("contactPanel").classList.toggle("show");
+}
 </script>
 <script>
 if (location.pathname.endsWith(".html")) {
@@ -798,21 +833,30 @@ const panel = document.getElementById("securityPanel");
 
 var lock = new PatternLock('#patternLock');
 
-lock.on('draw', function(pattern){
-
-// Your private pattern
+// ⚠️  SECURITY NOTE: The secret pattern is visible in client-side
+// source. For real security, validate the pattern server-side.
+// Anyone who reads this JS can unlock the panel without drawing.
 const SECRET_PATTERN = "1729";
 
-if(pattern === SECRET_PATTERN){
+// Add an error message element inside the security panel
+(function(){
+  var errMsg = document.createElement("p");
+  errMsg.id = "patternError";
+  errMsg.style.cssText = "color:#ff6b6b;margin-top:8px;font-size:14px;min-height:20px;";
+  document.getElementById("patternLock").after(errMsg);
+})();
 
-panel.style.display = "none";
-
-}else{
-
-alert("Wrong Pattern");
-
-}
-
+lock.on('draw', function(pattern){
+  var errEl = document.getElementById("patternError");
+  if(pattern === SECRET_PATTERN){
+    panel.style.display = "none";
+    errEl.textContent = "";
+  } else {
+    // FIX: use inline error instead of alert() — alert blocks UI
+    // and prevents the user from trying again without a page reload
+    errEl.textContent = "Wrong pattern — try again.";
+    setTimeout(function(){ lock.reset(); errEl.textContent = ""; }, 1200);
+  }
 });
 
 /* DevTools Detection */
@@ -878,8 +922,12 @@ function createProject(parentID = null) {
   render();
 }
 function openProject(id){
-  alert("Open project: " + id);
-  // You can replace this with opening in main panel or new page
+  // FIX: show project name in the main panel instead of a raw alert
+  const project = data.projects.find(p => p.id === id);
+  if(!project) return;
+  document.getElementById("main").innerHTML =
+    `<h1><i class="fa fa-briefcase"></i> ${project.name}</h1>
+     <p>Boards and folders inside this project are shown in the left panel.</p>`;
 }
 
 function renameProject(id){
@@ -938,15 +986,12 @@ window.addEventListener("load", function(){
 const savedTheme = localStorage.getItem("theme");
 
 if(savedTheme === "dark"){
-document.body.classList.add("dark");
-document.getElementById("themeToggle").innerHTML =
-'<i class="fa fa-sun"></i> Light Mode';
+  document.body.classList.add("dark");
+  const btn = document.getElementById("themeToggle");
+  if(btn) btn.innerHTML = '<i class="fa fa-sun"></i> Light Mode';
 }
 
 });
-function toggleContactPanel(){
-document.getElementById("contactPanel").classList.toggle("show");
-}
 </script>
 </body>
 </html>
