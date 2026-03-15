@@ -1,630 +1,1272 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pro Whiteboard – Persistent Version</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script
-src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.11.0/dist/pptxgen.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.11.0/dist/pptxgen.bundle.js"></script>
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
-<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/patternLock/0.5.0/patternLock.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/patternLock/0.5.0/patternLock.min.js"></script>
+
 <style>
-body{
-margin:0;
-font-family:Segoe UI,Arial;
-background:#f4f4f4;
-overflow:hidden;
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root {
+  --chrome:        #16191f;
+  --chrome-2:      #1e2229;
+  --chrome-3:      #252b34;
+  --chrome-4:      #2e3542;
+  --chrome-border: #363d4a;
+  --chrome-hover:  #3a4152;
+
+  --ribbon-bg:     #f7f8fa;
+  --ribbon-border: #dde1e8;
+  --ribbon-hover:  #eaecf1;
+  --ribbon-active: #e0e7ff;
+
+  --accent:        #4f7cff;
+  --accent-2:      #3b63e8;
+  --accent-glow:   rgba(79,124,255,0.25);
+  --accent-muted:  rgba(79,124,255,0.12);
+
+  --danger:        #f04b4b;
+  --success:       #22c55e;
+  --warning:       #f59e0b;
+
+  --text-primary:   #f0f2f7;
+  --text-secondary: #8b95a8;
+  --text-ribbon:    #1a202c;
+  --text-ribbon-m:  #5a6478;
+
+  --canvas-bg:     #e8eaf0;
+  --sidebar-w:     128px;
+  --ribbon-h:      46px;
+  --tabs-h:        40px;
+  --total-top:     calc(var(--tabs-h) + var(--ribbon-h));
+
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.14);
+  --shadow-md: 0 4px 14px rgba(0,0,0,0.18);
+  --shadow-lg: 0 12px 36px rgba(0,0,0,0.28);
+  --shadow-xl: 0 20px 60px rgba(0,0,0,0.38);
+
+  --ease: cubic-bezier(0.4,0,0.2,1);
+  --dur:  0.18s;
 }
 
-/* ================= RIBBON TABS ================= */
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-#ribbonTabs{
-display:flex;
-background:#1f1f1f;
+html, body {
+  height: 100%;
+  overflow: hidden;
 }
 
-#ribbonTabs button{
-background:none;
-border:none;
-color:#fff;
-padding:12px 20px;
-cursor:pointer;
-font-size:14px;
+body {
+  font-family: 'Outfit', system-ui, sans-serif;
+  background: var(--canvas-bg);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
-#ribbonTabs button.active{
-background:#333;
-}
-
-/* ================= RIBBON PANEL ================= */
-
-.ribbonPanel{
-display:none;
-background:#fff;
-padding:8px 10px;
-border-bottom:1px solid #ccc;
-align-items:center;
-gap:25px;
-}
-
-.ribbonPanel.active{
-display:flex;
-}
-
-/* ================= TOOL GROUPS ================= */
-
-.group{
-display:flex;
-flex-direction:row;          /* ← HORIZONTAL */
-align-items:center;
-gap:8px;
-border-right:1px solid #ddd;
-padding:0 15px;
-}
-
-.group:last-child{
-border:none;
-}
-
-.group button{
-margin:0;
-padding:8px 12px;
-border:1px solid #ccc;
-background:#fff;
-cursor:pointer;
-border-radius:6px;
-transition:0.2s;
-}
-
-.group button:hover{
-background:#eee;
-}
-
-.group input[type="color"],
-.group input[type="number"]{
-height:34px;
-border:1px solid #ccc;
-border-radius:6px;
-padding:0 5px;
-}
-
-/* ================= SIDEBAR ================= */
-
-#sidebar{
-position:absolute;
-left:0;
-top:110px;
-bottom:0;
-width:120px;
-background:#2d2d2d;
-overflow:auto;
-transition:.3s;
-padding-top:5px;
-}
-
-#sidebar.hidden{
-transform:translateX(-120px);
-}
-
-.thumb{
-width:100px;
-height:70px;
-margin:5px auto;
-background:#fff;
-cursor:pointer;
-border:2px solid transparent;
-}
-
-.thumb.active{
-border-color:#4caf50;
-}
-
-/* ================= CANVAS AREA ================= */
-
-#canvasContainer{
-position:absolute;
-left:120px;
-top:110px;
-right:0;
-bottom:0;
-background:#ddd;
-overflow:auto;
-transition:.3s;
-}
-
-#canvasContainer.full{
-left:0;
-}
-
-canvas{
-display:block;
-margin:auto;
-background:#fff;
-touch-action:none;
-box-shadow:0 2px 8px rgba(0,0,0,0.2);
-}
-
-
-/* ================= SLIDESHOW CONTROLS ================= */
-
-#slideshowControls{
-display:none;
-position:fixed;
-bottom:20px;
-left:50%;
-transform:translateX(-50%);
-background:rgba(0,0,0,.7);
-padding:10px;
-border-radius:8px;
-}
-
-#slideshowControls button{
-margin:5px;
-background:#444;
-color:#fff;
-border:none;
-padding:6px 12px;
-border-radius:6px;
-cursor:pointer;
-}
-
-#slideshowControls button:hover{
-background:#666;
-}
-/* Basic Styles */
-#shapePanel {
+/* ============================================================
+   RIBBON TABS
+   ============================================================ */
+#ribbonTabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px;
-  background: #fff;
-  border: 1px solid #ccc;
+  align-items: stretch;
+  height: var(--tabs-h);
+  background: var(--chrome);
+  border-bottom: 1px solid var(--chrome-border);
+  padding: 0 6px;
+  gap: 2px;
+  position: relative;
+  z-index: 200;
+  user-select: none;
+}
+
+#ribbonTabs::after {
+  content: '';
   position: absolute;
-  top: 50px; /* adjust based on your toolbar */
-  left: 10px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  border-radius: 6px;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent) 40%, var(--accent) 60%, transparent);
+  opacity: 0.25;
+}
+
+.tabBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
+  letter-spacing: 0.01em;
+  position: relative;
+}
+
+.tabBtn::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 8px; right: 8px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease);
+}
+
+.tabBtn:hover { color: var(--text-primary); background: var(--chrome-3); }
+
+.tabBtn.active {
+  color: var(--text-primary);
+  background: var(--chrome-2);
+}
+
+.tabBtn.active::after { opacity: 1; }
+
+/* Storage tab special */
+#ribbonTabs .storage-tab-btn {
+  margin-left: auto;
+  padding: 0 14px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color var(--dur) var(--ease);
+}
+
+#ribbonTabs .storage-tab-btn:hover { color: var(--text-primary); }
+
+/* ============================================================
+   RIBBON PANEL
+   ============================================================ */
+.ribbonPanel {
+  display: none;
+  align-items: center;
+  height: var(--ribbon-h);
+  background: var(--ribbon-bg);
+  border-bottom: 1px solid var(--ribbon-border);
+  padding: 0 8px;
+  gap: 0;
+  position: relative;
+  z-index: 190;
+  overflow: hidden;
+}
+
+.ribbonPanel.active { display: flex; }
+
+/* Tool Groups */
+.group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 3px;
+  padding: 0 10px;
+  border-right: 1px solid var(--ribbon-border);
+  height: 100%;
+  position: relative;
+}
+
+.group:last-child { border-right: none; }
+
+/* Group label (optional decoration) */
+.group-label {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-ribbon-m);
+  white-space: nowrap;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+/* Ribbon Buttons */
+.group button,
+.ribbonPanel button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-ribbon);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur) var(--ease),
+              border-color var(--dur) var(--ease),
+              color var(--dur) var(--ease),
+              box-shadow var(--dur) var(--ease);
+}
+
+.group button:hover,
+.ribbonPanel button:hover {
+  background: var(--ribbon-hover);
+  border-color: var(--ribbon-border);
+  color: var(--text-ribbon);
+}
+
+.group button.active-tool,
+.ribbonPanel button.active-tool {
+  background: var(--ribbon-active);
+  border-color: var(--accent);
+  color: var(--accent-2);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+/* Icon-only buttons */
+.group button.icon-btn {
+  width: 30px;
+  padding: 0;
+}
+
+/* Color / Number inputs */
+.group input[type="color"] {
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--ribbon-border);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  background: var(--ribbon-bg);
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease);
+}
+
+.group input[type="color"]:hover { border-color: var(--accent); }
+
+.group input[type="number"] {
+  width: 52px;
+  height: 30px;
+  border: 1px solid var(--ribbon-border);
+  border-radius: var(--radius-sm);
+  padding: 0 6px;
+  background: #fff;
+  color: var(--text-ribbon);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  outline: none;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+.group input[type="number"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+/* Scroll mode button */
+#toggleScrollBtn {
+  font-size: 12px;
+  padding: 0 10px;
+}
+
+/* ============================================================
+   SIDEBAR (Page Thumbnails)
+   ============================================================ */
+#sidebar {
+  position: absolute;
+  left: 0;
+  top: var(--total-top);
+  bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--chrome-2);
+  border-right: 1px solid var(--chrome-border);
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: transform var(--dur) var(--ease);
+  padding: 8px 6px;
   z-index: 100;
 }
 
-#shapePanel.hidden {
-  display: none;
+#sidebar.hidden {
+  transform: translateX(calc(-1 * var(--sidebar-w)));
 }
 
-#shapePanel button {
-  background: #f8f8f8;
-  border: 1px solid #ccc;
-  padding: 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 18px;
-}
+#sidebar::-webkit-scrollbar { width: 4px; }
+#sidebar::-webkit-scrollbar-thumb { background: var(--chrome-4); border-radius: 2px; }
 
-#shapeToggleBtn {
-  padding: 8px 12px;
-  cursor: pointer;
-  border-radius: 4px;
-  border: 1px solid #ccc;
+.thumb {
+  width: 108px;
+  height: 72px;
+  margin: 0 auto 8px;
   background: #fff;
-  font-size: 16px;
-}
-#graphPanel{
-position:fixed;
-top:80px;
-right:40px;
-width:650px;
-height:550px;
-background:#fff;
-border-radius:10px;
-box-shadow:0 10px 30px rgba(0,0,0,0.3);
-display:flex;
-flex-direction:column;
-z-index:5000;
+  cursor: pointer;
+  border: 2px solid var(--chrome-border);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease);
+  display: block;
+  overflow: hidden;
 }
 
-#graphPanel.hidden{
-display:none;
+.thumb:hover {
+  border-color: var(--accent);
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
-#graphHeader{
-background:#1f2937;
-color:#fff;
-padding:10px;
-display:flex;
-justify-content:space-between;
-cursor:move;
-border-radius:10px 10px 0 0;
+.thumb.active {
+  border-color: var(--success);
+  box-shadow: 0 0 0 2px rgba(34,197,94,0.3);
 }
 
-#graphControls{
-display:flex;
-gap:8px;
-padding:10px;
-background:#f3f4f6;
+/* Page number badge */
+.thumb-wrapper {
+  position: relative;
+  margin-bottom: 8px;
 }
 
-#graphControls input{
-flex:1;
-padding:6px;
+.thumb-num {
+  position: absolute;
+  bottom: 10px;
+  right: 0;
+  background: var(--chrome);
+  color: var(--text-secondary);
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 1px 4px;
+  border-radius: 3px 0 0 3px;
+  pointer-events: none;
 }
 
-#graphContainer{
-flex:1;
+/* ============================================================
+   CANVAS AREA
+   ============================================================ */
+#canvasContainer {
+  position: absolute;
+  left: var(--sidebar-w);
+  top: var(--total-top);
+  right: 0;
+  bottom: 0;
+  background: var(--canvas-bg);
+  overflow: auto;
+  transition: left var(--dur) var(--ease);
+  /* Subtle grid background */
+  background-image:
+    radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
-.graphFloatingBtn{
-position:fixed;
-bottom:30px;
-right:30px;
-width:55px;
-height:55px;
-border-radius:50%;
-border:none;
-background:#22c55e;
-color:#fff;
-font-size:20px;
-cursor:pointer;
-z-index:5000;
-}
-/* Scroll mode enabled container */
+#canvasContainer.full { left: 0; }
+
 #canvasContainer.scrollMode {
-  overflow-y: auto;       /* vertical scroll */
+  overflow: auto;
   cursor: grab;
 }
 
-/* Optional: change cursor while panning */
-#canvasContainer.scrollMode:active {
-  cursor: grabbing;
-}
-#recordingPanel{
-position:fixed;
-top:0;
-right:0;
-width:300px;
-height:100%;
-background:#ffffff;
-box-shadow:-2px 0 10px rgba(0,0,0,0.2);
-transform:translateX(100%);
-transition:0.3s;
-z-index:9999;
+#canvasContainer.scrollMode:active { cursor: grabbing; }
+
+canvas {
+  display: block;
+  margin: 20px auto;
+  background: #fff;
+  touch-action: none;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-xl);
 }
 
-#recordingHeader{
-padding:12px;
-background:#222;
-color:white;
-display:flex;
-justify-content:space-between;
+/* ============================================================
+   SHAPE PANEL
+   ============================================================ */
+#shapePanel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid var(--ribbon-border);
+  position: absolute;
+  top: calc(var(--total-top) + 2px);
+  left: calc(var(--sidebar-w) + 8px);
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-md);
+  z-index: 500;
+  min-width: 200px;
+  animation: dropIn 0.15s var(--ease);
 }
 
-#recordingList{
-padding:10px;
-overflow:auto;
-height:calc(100% - 50px);
+#shapePanel.hidden { display: none; }
+
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.recordItem{
-border-bottom:1px solid #ddd;
-padding:10px;
+#shapePanel button {
+  width: 36px;
+  height: 36px;
+  background: var(--ribbon-bg);
+  border: 1px solid var(--ribbon-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-ribbon);
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
 
-.recordItem button{
-margin:4px;
-}
-.panel{
- position:fixed;
- right:0;
- top:0;
- width:420px;
- height:100%;
- background:#fff;
- box-shadow:-4px 0 10px rgba(0,0,0,0.2);
- padding:20px;
- overflow:auto;
- transform:translateX(100%);
- transition:0.3s;
- z-index:9999;
+#shapePanel button:hover {
+  background: var(--ribbon-active);
+  border-color: var(--accent);
+  color: var(--accent-2);
+  transform: scale(1.08);
 }
 
-.panel.open{
- transform:translateX(0);
+/* ============================================================
+   GRAPH PANEL
+   ============================================================ */
+#graphPanel {
+  position: fixed;
+  top: 72px;
+  right: 32px;
+  width: 640px;
+  height: 540px;
+  background: #fff;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  z-index: 5000;
+  overflow: hidden;
+  border: 1px solid #e0e4ee;
+  animation: panelSlideIn 0.2s var(--ease);
 }
 
-#storageTable{
- width:100%;
- border-collapse:collapse;
+#graphPanel.hidden { display: none; }
+
+@keyframes panelSlideIn {
+  from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-#storageTable td,#storageTable th{
- border-bottom:1px solid #ddd;
- padding:8px;
- font-size:13px;
+#graphHeader {
+  background: var(--chrome);
+  color: var(--text-primary);
+  padding: 0 14px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: move;
+  user-select: none;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  flex-shrink: 0;
 }
+
+#graphHeader span {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#graphHeader span::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--accent);
+}
+
+#closeGraphBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+#closeGraphBtn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+#graphControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #f7f8fa;
+  border-bottom: 1px solid #e8eaf0;
+  flex-shrink: 0;
+}
+
+#functionInput {
+  flex: 1;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--ribbon-border);
+  border-radius: var(--radius-sm);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-ribbon);
+  background: #fff;
+  outline: none;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+#functionInput:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+#graphControls button {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--ribbon-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--text-ribbon);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+#graphControls button:hover { background: var(--ribbon-hover); border-color: #bbc2d4; }
+
+#plotBtn { background: var(--accent); color: #fff; border-color: var(--accent); }
+#plotBtn:hover { background: var(--accent-2); border-color: var(--accent-2); }
+
+#graphContainer { flex: 1; overflow: hidden; }
+
+/* Floating graph button */
+.graphFloatingBtn {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: var(--success);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  z-index: 5000;
+  box-shadow: 0 4px 16px rgba(34,197,94,0.4);
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.graphFloatingBtn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 24px rgba(34,197,94,0.5);
+}
+
+/* ============================================================
+   SLIDESHOW CONTROLS
+   ============================================================ */
+#slideshowControls {
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15,18,25,0.88);
+  backdrop-filter: blur(12px);
+  padding: 8px 12px;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: var(--shadow-lg);
+  gap: 6px;
+  display: none;
+  align-items: center;
+  z-index: 9999;
+}
+
+#slideshowControls button {
+  height: 32px;
+  padding: 0 14px;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease);
+}
+
+#slideshowControls button:hover { background: rgba(255,255,255,0.2); }
+
+#exitSlide { color: #fca5a5 !important; border-color: rgba(240,75,75,0.4) !important; }
+#exitSlide:hover { background: rgba(240,75,75,0.25) !important; }
+
+/* ============================================================
+   RECORDING PANEL
+   ============================================================ */
+#recordingPanel {
+  position: fixed;
+  top: 0; right: 0;
+  width: 300px;
+  height: 100%;
+  background: var(--chrome-2);
+  border-left: 1px solid var(--chrome-border);
+  box-shadow: var(--shadow-lg);
+  transform: translateX(100%);
+  transition: transform 0.28s var(--ease);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+}
+
+#recordingPanel.open { transform: translateX(0); }
+
+#recordingHeader {
+  padding: 0 14px;
+  height: 48px;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--chrome-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+#recordingHeader span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#recordingHeader span::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  background: var(--danger);
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 6px var(--danger);
+}
+
+#closeRecordingPanel {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 15px;
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+#closeRecordingPanel:hover { background: var(--chrome-hover); color: var(--text-primary); }
+
+#recordingList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+#recordingList::-webkit-scrollbar { width: 4px; }
+#recordingList::-webkit-scrollbar-thumb { background: var(--chrome-4); border-radius: 2px; }
+
+.recordItem {
+  background: var(--chrome-3);
+  border: 1px solid var(--chrome-border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 8px;
+  transition: border-color var(--dur) var(--ease);
+}
+
+.recordItem:hover { border-color: var(--accent); }
+
+.recordItem-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.recordItem button {
+  height: 26px;
+  padding: 0 10px;
+  margin: 2px 4px 2px 0;
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-4);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.recordItem button:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ============================================================
+   STORAGE PANEL
+   ============================================================ */
+.panel {
+  position: fixed;
+  right: 0; top: 0;
+  width: 440px;
+  height: 100%;
+  background: #fff;
+  border-left: 1px solid var(--ribbon-border);
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.28s var(--ease);
+  z-index: 9999;
+  box-shadow: var(--shadow-xl);
+}
+
+.panel.open { transform: translateX(0); }
+
+.panel-header-bar {
+  height: 52px;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--chrome-border);
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.panel-header-bar h2 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.panel-header-bar button {
+  height: 28px;
+  padding: 0 12px;
+  background: var(--chrome-4);
+  border: 1px solid var(--chrome-border);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--dur) var(--ease);
+}
+
+.panel-header-bar button:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.panel-body-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 18px;
+}
+
+.panel-body-scroll::-webkit-scrollbar { width: 5px; }
+.panel-body-scroll::-webkit-scrollbar-thumb { background: #d4d8e2; border-radius: 3px; }
+
+#storageInfo {
+  margin-bottom: 14px;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+#storageTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+#storageTable thead th {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8b95a8;
+  border-bottom: 1px solid #e8eaf0;
+}
+
+#storageTable tbody td {
+  padding: 10px 10px;
+  border-bottom: 1px solid #f0f2f7;
+  color: #2d3748;
+  vertical-align: middle;
+}
+
+#storageTable tbody tr:hover td { background: #f7f9fc; }
+
+/* ============================================================
+   RECORDING INDICATOR & TIMER
+   ============================================================ */
+#recordingIndicator {
+  position: fixed;
+  top: calc(var(--total-top) + 12px);
+  right: 16px;
+  background: var(--danger);
+  color: white;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 12px;
+  display: none;
+  z-index: 9999;
+  box-shadow: 0 2px 10px rgba(240,75,75,0.4);
+  animation: pulseRec 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseRec {
+  0%, 100% { box-shadow: 0 2px 10px rgba(240,75,75,0.4); }
+  50%       { box-shadow: 0 2px 18px rgba(240,75,75,0.7); }
+}
+
+#recordTimer {
+  position: fixed;
+  top: calc(var(--total-top) + 46px);
+  right: 16px;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  display: none;
+  z-index: 9999;
+}
+
+/* ============================================================
+   SECURITY PANEL
+   ============================================================ */
+#securityPanel {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: radial-gradient(ellipse at 50% 40%, #0f1520 0%, #060810 100%);
+  display: none;
+  z-index: 999999;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+#securityPanel h2 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+  color: #fff;
+}
+
+#securityPanel p {
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  margin-bottom: 28px;
+}
+
+/* ============================================================
+   CLOUD BUTTONS (Export Tab)
+   ============================================================ */
+.cloud-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--ribbon-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--text-ribbon);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.cloud-btn:hover { background: var(--ribbon-hover); border-color: #bbc2d4; }
+
+/* ============================================================
+   TOOLTIP (CSS-only)
+   ============================================================ */
+[title] { position: relative; }
+
+/* ============================================================
+   GOOGLE SIGN-IN
+   ============================================================ */
+#g_id_onload,
+.g_id_signin {
+  /* positioned via JS or left inline */
+}
+
+/* ============================================================
+   SCROLLBARS
+   ============================================================ */
+#canvasContainer::-webkit-scrollbar { width: 8px; height: 8px; }
+#canvasContainer::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); border-radius: 4px; }
+#canvasContainer::-webkit-scrollbar-track { background: transparent; }
 </style>
 </head>
 <body>
 
-<!-- ================= TABS ================= -->
-
+<!-- ======================================================
+     RIBBON TABS
+     ====================================================== -->
 <div id="ribbonTabs">
-<button class="tabBtn active" data-tab="drawingTab">Drawing</button>
-<button class="tabBtn" data-tab="insertTab">Insert</button>
-<button class="tabBtn" data-tab="slideshowTab">Slideshow</button>
-<button class="tabBtn" data-tab="videoTab">Video</button>
-<button class="tabBtn" data-tab="exportTab">Export</button>
-<button onclick="openStoragePanel()">Storage</button>
+  <button class="tabBtn active" data-tab="drawingTab">
+    <i class="fa fa-pen-nib"></i> Drawing
+  </button>
+  <button class="tabBtn" data-tab="insertTab">
+    <i class="fa fa-shapes"></i> Insert
+  </button>
+  <button class="tabBtn" data-tab="slideshowTab">
+    <i class="fa fa-tv"></i> Slideshow
+  </button>
+  <button class="tabBtn" data-tab="videoTab">
+    <i class="fa fa-video"></i> Video
+  </button>
+  <button class="tabBtn" data-tab="exportTab">
+    <i class="fa fa-file-export"></i> Export
+  </button>
+  <button class="storage-tab-btn" onclick="openStoragePanel()">
+    <i class="fa fa-database"></i> Storage
+  </button>
 </div>
 
-<!-- ================= DRAWING TAB ================= -->
-
+<!-- ======================================================
+     DRAWING TAB
+     ====================================================== -->
 <div id="drawingTab" class="ribbonPanel active">
-<div class="group">
-<button id="toggleBtn"><i class="fa fa-bars"></i></button>
+
+  <div class="group">
+    <button id="toggleBtn" class="icon-btn" title="Toggle Sidebar">
+      <i class="fa fa-sidebar"></i><i class="fa fa-bars"></i>
+    </button>
+  </div>
+
+  <div class="group">
+    <button id="penBtn" class="icon-btn" title="Pen">
+      <i class="fa fa-pen"></i>
+    </button>
+    <button id="eraserBtn" class="icon-btn" title="Eraser">
+      <i class="fa fa-eraser"></i>
+    </button>
+    <button id="highlighterBtn" class="icon-btn" title="Highlighter">
+      <i class="fas fa-highlighter"></i>
+    </button>
+    <input type="color" id="colorPicker" value="#000000" title="Stroke Color">
+    <input type="number" id="sizePicker" value="3" min="1" max="50" title="Size">
+  </div>
+
+  <div class="group">
+    <input type="color" id="bgPicker" value="#ffffff" title="Canvas Background">
+  </div>
+
+  <div class="group">
+    <button id="undoBtn" class="icon-btn" title="Undo">
+      <i class="fa fa-rotate-left"></i>
+    </button>
+    <button id="redoBtn" class="icon-btn" title="Redo">
+      <i class="fa fa-rotate-right"></i>
+    </button>
+  </div>
+
+  <div class="group">
+    <button id="addPageBtn" class="icon-btn" title="Add Page">
+      <i class="fa fa-file-circle-plus"></i>
+    </button>
+    <button id="deletePageBtn" class="icon-btn" title="Delete Page">
+      <i class="fa fa-trash"></i>
+    </button>
+  </div>
+
+  <div class="group">
+    <button id="clearBtn" class="icon-btn" title="Clear All">
+      <i class="fa fa-trash-can"></i>
+    </button>
+    <button id="zoomInBtn" class="icon-btn" title="Zoom In">
+      <i class="fa fa-magnifying-glass-plus"></i>
+    </button>
+    <button id="zoomOutBtn" class="icon-btn" title="Zoom Out">
+      <i class="fa fa-magnifying-glass-minus"></i>
+    </button>
+  </div>
+
+  <div class="group">
+    <button id="selectStrokeBtn" class="icon-btn" title="Select Strokes">
+      <i class="fa fa-mouse-pointer"></i>
+    </button>
+    <button id="cutStrokeBtn" class="icon-btn" title="Cut Strokes">
+      <i class="fa fa-scissors"></i>
+    </button>
+    <button id="toggleScrollBtn" title="Scroll Mode">
+      <i class="fa fa-hand"></i> Scroll
+    </button>
+  </div>
+
 </div>
 
-<div class="group">
-<button id="penBtn"><i class="fa fa-pen"></i></button>
-<button id="eraserBtn"><i class="fa fa-eraser"></i></button>
-<button id="highlighterBtn"><i class="fas fa-highlighter"></i></button>
-<input type="color" id="colorPicker" value="#000000">
-<input type="number" id="sizePicker" value="3" min="1" max="50">
-</div>
-
-<div class="group">
-<input type="color" id="bgPicker" value="#ffffff">
-</div>
-
-<div class="group">
-<button id="undoBtn"><i class="fa fa-rotate-left"></i></button>
-<button id="redoBtn"><i class="fa fa-rotate-right"></i></button>
-</div>
-
-<div class="group">
-<button id="addPageBtn"><i class="fa fa-file-circle-plus"></i></button>
-<button id="deletePageBtn"><i class="fa fa-trash"></i></button>
-</div>
-<div class="group">
-  <button id="clearBtn" title="Clear All"><i class="fa fa-trash-can"></i></button>
-  <button id="zoomInBtn" title="Zoom In"><i class="fa fa-magnifying-glass-plus"></i></button>
-  <button id="zoomOutBtn" title="Zoom Out"><i class="fa fa-magnifying-glass-minus"></i></button>
-</div>
-<div class="group">
-  <button id="selectStrokeBtn"><i class="fa fa-mouse-pointer"></i></button>
-  <button id="cutStrokeBtn"><i class="fa fa-scissors"></i></button>
-<button id="toggleScrollBtn">🖱️ Scroll Mode</button>
-</div>
-</div>
-
-<!-- ================= INSERT TAB ================= -->
-
+<!-- ======================================================
+     INSERT TAB
+     ====================================================== -->
 <div id="insertTab" class="ribbonPanel">
-<div class="group">
-<button id="imageBtn"><i class="fa fa-image"></i></button>
-<input type="file" id="imageInput" hidden accept="image/*">
-<button id="cutImageBtn">
-  <i class="fas fa-scissors"></i> Cut Image
-</button>
-<!-- Toggle Button to Open/Close Shape Panel -->
-<button id="shapeToggleBtn"><i class="fa-regular fa-square"></i> Shapes</button>
+  <div class="group">
+    <button id="imageBtn" class="icon-btn" title="Insert Image">
+      <i class="fa fa-image"></i>
+    </button>
+    <input type="file" id="imageInput" hidden accept="image/*">
 
-<!-- Shape Panel -->
-<div id="shapePanel" class="hidden">
-<button id="rectBtn"><i class="fa-regular fa-square"></i></button>
-<button id="circleBtn"><i class="fa-regular fa-circle"></i></button>
+    <button id="cutImageBtn" title="Cut Image">
+      <i class="fas fa-scissors"></i> Cut Image
+    </button>
 
-<button id="lineBtn"><i class="fa-solid fa-slash"></i></button>
-<button id="arrowBtn"><i class="fa-solid fa-arrow-right"></i></button>
+    <button id="shapeToggleBtn" title="Shapes">
+      <i class="fa-regular fa-square"></i> Shapes
+    </button>
 
-<button id="paraBtn"><i class="fa-solid fa-diamond"></i></button>
-<button id="rhombusBtn"><i class="fa-regular fa-gem"></i></button>
-<button id="trapBtn"><i class="fa-solid fa-up-down"></i></button>
+    <!-- Shape Panel (dropdown) -->
+    <div id="shapePanel" class="hidden">
+      <button id="rectBtn"     title="Rectangle"><i class="fa-regular fa-square"></i></button>
+      <button id="circleBtn"   title="Circle">   <i class="fa-regular fa-circle"></i></button>
+      <button id="lineBtn"     title="Line">      <i class="fa-solid fa-slash"></i></button>
+      <button id="arrowBtn"    title="Arrow">     <i class="fa-solid fa-arrow-right"></i></button>
+      <button id="paraBtn"     title="Parallelogram"><i class="fa-solid fa-diamond"></i></button>
+      <button id="rhombusBtn"  title="Rhombus">   <i class="fa-regular fa-gem"></i></button>
+      <button id="trapBtn"     title="Trapezoid"> <i class="fa-solid fa-up-down"></i></button>
+      <button id="cubeBtn"     title="Cube">      <i class="fa-solid fa-cube"></i></button>
+      <button id="cylinderBtn" title="Cylinder">  <i class="fa-solid fa-database"></i></button>
+      <button id="sphereBtn"   title="Sphere">    <i class="fa-solid fa-circle-dot"></i></button>
+      <button id="coneBtn"     title="Cone">      <i class="fa-solid fa-ice-cream"></i></button>
+      <button id="pyramidBtn"  title="Pyramid">   <i class="fa-solid fa-mountain"></i></button>
+    </div>
 
-<button id="cubeBtn"><i class="fa-solid fa-cube"></i></button>
-<button id="cylinderBtn"><i class="fa-solid fa-database"></i></button>
-<button id="sphereBtn"><i class="fa-solid fa-circle-dot"></i></button>
-<button id="coneBtn"><i class="fa-solid fa-ice-cream"></i></button>
-<button id="pyramidBtn"><i class="fa-solid fa-mountain"></i></button>
+    <button id="deleteShapeBtn" class="icon-btn" title="Delete Shape">
+      <i class="fa fa-xmark"></i>
+    </button>
+  </div>
 </div>
-<button id="deleteShapeBtn"><i class="fa fa-xmark"></i></button>
-</div>
-</div>
+
+<!-- ======================================================
+     GRAPH PANEL (floating)
+     ====================================================== -->
 <div id="graphPanel" class="hidden">
   <div id="graphHeader">
     <span>Advanced Graph Panel</span>
-    <button id="closeGraphBtn">✖</button>
+    <button id="closeGraphBtn"><i class="fa fa-xmark"></i></button>
   </div>
-
   <div id="graphControls">
-    <input id="functionInput" placeholder="Enter function: x^2, sin(x), x^3-2*x">
-    <button id="plotBtn">Plot</button>
+    <input id="functionInput" placeholder="e.g. x^2, sin(x), x^3-2*x">
+    <button id="plotBtn"><i class="fa fa-chart-line"></i> Plot</button>
     <button id="clearGraphBtn">Clear</button>
     <button id="themeBtn">Dark</button>
-    <button id="exportGraphBtn">Export</button>
-<button id="insertGraphBtn">Insert to Canvas</button>
+    <button id="exportGraphBtn"><i class="fa fa-download"></i></button>
+    <button id="insertGraphBtn"><i class="fa fa-canvas"></i> Insert</button>
   </div>
-
   <div id="graphContainer"></div>
 </div>
 
-<button id="openGraphBtn" class="graphFloatingBtn">
-  📈
+<button id="openGraphBtn" class="graphFloatingBtn" title="Open Graph">
+  <i class="fa fa-chart-line"></i>
 </button>
 
-<!-- ================= SLIDESHOW TAB ================= -->
-
+<!-- ======================================================
+     SLIDESHOW TAB
+     ====================================================== -->
 <div id="slideshowTab" class="ribbonPanel">
-<div class="group">
-<button id="slideshowBtn"><i class="fa fa-play"></i></button>
-</div>
-</div>
-
-<!-- ================= VIDEO TAB ================= -->
-
-<div id="videoTab" class="ribbonPanel">
-
   <div class="group">
-
-    <button id="startRecordBtn" title="Start Recording">
-      <i class="fa fa-circle"></i>
+    <button id="slideshowBtn" title="Start Slideshow">
+      <i class="fa fa-play"></i> Start Slideshow
     </button>
+  </div>
+</div>
 
-    <button id="pauseRecordBtn" title="Pause Recording">
+<!-- ======================================================
+     VIDEO TAB
+     ====================================================== -->
+<div id="videoTab" class="ribbonPanel">
+  <div class="group">
+    <button id="startRecordBtn" title="Start Recording">
+      <i class="fa fa-circle" style="color:var(--danger);"></i> Record
+    </button>
+    <button id="pauseRecordBtn" class="icon-btn" title="Pause Recording">
       <i class="fa fa-pause"></i>
     </button>
-
-    <button id="resumeRecordBtn" title="Resume Recording">
+    <button id="resumeRecordBtn" class="icon-btn" title="Resume Recording">
       <i class="fa fa-play"></i>
     </button>
-
-    <button id="stopRecordBtn" disabled title="Stop Recording">
+    <button id="stopRecordBtn" class="icon-btn" disabled title="Stop Recording">
       <i class="fa fa-stop"></i>
     </button>
-<button id="openRecordingPanel">
-<i class="fa fa-video"></i>
-</button>
-
+    <button id="openRecordingPanel" class="icon-btn" title="Recording History">
+      <i class="fa fa-video"></i>
+    </button>
   </div>
-
 </div>
 
-
-<!-- ================= RECORDING INDICATOR ================= -->
-
-<div id="recordingIndicator"
-style="
-position:fixed;
-top:20px;
-right:20px;
-background:#ff0000;
-color:white;
-padding:6px 12px;
-border-radius:8px;
-font-weight:bold;
-display:none;
-z-index:9999;
-">
-🔴 Recording...
-</div>
-
-
-<!-- ================= RECORD TIMER ================= -->
-
-<div id="recordTimer"
-style="
-position:fixed;
-top:55px;
-right:20px;
-background:#000;
-color:#fff;
-padding:6px 12px;
-border-radius:8px;
-font-family:monospace;
-display:none;
-z-index:9999;
-">
-00:00
-</div>
-
-<!-- ================= EXPORT TAB ================= -->
-
+<!-- ======================================================
+     EXPORT TAB
+     ====================================================== -->
 <div id="exportTab" class="ribbonPanel">
-<div class="group">
-<button id="pngBtn"><i class="fa fa-file-image"></i></button>
-<button id="pdfBtn"><i class="fa fa-file-pdf"></i></button>
-<button id="pptBtn"><i class="fa fa-file-powerpoint"></i></button>
-<button onclick="saveBoardToCloud()">☁ Save Cloud</button>
-<button onclick="loadBoardFromCloud()">☁ Load Cloud</button>
-</div>
+  <div class="group">
+    <button id="pngBtn" title="Export PNG">
+      <i class="fa fa-file-image"></i> PNG
+    </button>
+    <button id="pdfBtn" title="Export PDF">
+      <i class="fa fa-file-pdf"></i> PDF
+    </button>
+    <button id="pptBtn" title="Export PPT">
+      <i class="fa fa-file-powerpoint"></i> PPT
+    </button>
+    <button class="cloud-btn" onclick="saveBoardToCloud()">
+      <i class="fa fa-cloud-arrow-up"></i> Save Cloud
+    </button>
+    <button class="cloud-btn" onclick="loadBoardFromCloud()">
+      <i class="fa fa-cloud-arrow-down"></i> Load Cloud
+    </button>
+  </div>
 </div>
 
-<!-- ================= SIDEBAR ================= -->
-
+<!-- ======================================================
+     SIDEBAR (Page Thumbnails)
+     ====================================================== -->
 <div id="sidebar"></div>
 
-<!-- ================= CANVAS ================= -->
-
+<!-- ======================================================
+     CANVAS
+     ====================================================== -->
 <div id="canvasContainer">
-<canvas id="board" width="1600" height="2000"></canvas>
+  <canvas id="board" width="1600" height="2000"></canvas>
 </div>
+
+<!-- ======================================================
+     RECORDING PANEL
+     ====================================================== -->
 <div id="recordingPanel">
-
-<div id="recordingHeader">
-<span>Recording History</span>
-<button id="closeRecordingPanel">✖</button>
+  <div id="recordingHeader">
+    <span>Recording History</span>
+    <button id="closeRecordingPanel"><i class="fa fa-xmark"></i></button>
+  </div>
+  <div id="recordingList"></div>
 </div>
 
-<div id="recordingList"></div>
-
-</div>
+<!-- ======================================================
+     STORAGE PANEL
+     ====================================================== -->
 <div id="storagePanel" class="panel">
-
-<h2>Cloud Storage</h2>
-
-<div id="storageInfo"></div>
-
-<table id="storageTable">
-
-<thead>
-<tr>
-<th>File</th>
-<th>Size</th>
-<th>Updated</th>
-<th>Action</th>
-</tr>
-</thead>
-
-<tbody></tbody>
-
-</table>
-
-<button onclick="closeStoragePanel()">Close</button>
-
+  <div class="panel-header-bar">
+    <h2><i class="fa fa-database" style="margin-right:8px;opacity:0.6;"></i>Cloud Storage</h2>
+    <button onclick="closeStoragePanel()"><i class="fa fa-xmark"></i> Close</button>
+  </div>
+  <div class="panel-body-scroll">
+    <div id="storageInfo"></div>
+    <table id="storageTable">
+      <thead>
+        <tr>
+          <th>File</th>
+          <th>Size</th>
+          <th>Updated</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
 </div>
 
-<!-- ================= SLIDESHOW CONTROLS ================= -->
-
+<!-- ======================================================
+     SLIDESHOW CONTROLS
+     ====================================================== -->
 <div id="slideshowControls">
-<button id="prevSlide">Prev</button>
-<button id="nextSlide">Next</button>
-<button id="exitSlide">Exit</button>
+  <button id="prevSlide"><i class="fa fa-chevron-left"></i> Prev</button>
+  <button id="nextSlide">Next <i class="fa fa-chevron-right"></i></button>
+  <button id="exitSlide"><i class="fa fa-xmark"></i> Exit</button>
 </div>
+
+<!-- ======================================================
+     RECORDING INDICATOR & TIMER
+     ====================================================== -->
+<div id="recordingIndicator">
+  <i class="fa fa-circle" style="font-size:9px;"></i> Recording
+</div>
+
+<div id="recordTimer" style="display:none;">00:00</div>
+
+<!-- ======================================================
+     GOOGLE SIGN-IN
+     ====================================================== -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <div id="g_id_onload"
      data-client_id="104112968849-oehrp6bnkkqvei19vu2v2krbjbscf84p.apps.googleusercontent.com"
      data-callback="handleCredentialResponse">
 </div>
-
 <div class="g_id_signin" data-type="standard"></div>
-<div id="securityPanel" style="
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-background:#111;
-display:none;
-z-index:999999;
-align-items:center;
-justify-content:center;
-flex-direction:column;
-color:white;
-font-family:sans-serif;
-">
 
-<h2>Security Lock</h2>
-<p>Draw pattern to continue</p>
-
-<div id="patternLock"></div>
-
+<!-- ======================================================
+     SECURITY PANEL
+     ====================================================== -->
+<div id="securityPanel">
+  <h2><i class="fa fa-shield-halved" style="margin-right:10px;color:var(--accent);"></i>Security Lock</h2>
+  <p>Draw your pattern to continue</p>
+  <div id="patternLock"></div>
 </div>
 <script>
 /* BOARD ID SYSTEM */
