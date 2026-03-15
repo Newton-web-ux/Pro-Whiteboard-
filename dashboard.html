@@ -1043,38 +1043,91 @@ if(savedTheme === "dark"){
 });
 </script>
 <script>
-const CLOUD_URL = "https://script.google.com/macros/s/AKfycbw82UwpNuXgSek0pG83bx603P_nk8GkKkjnxHwo6ojygx4uf_aCtbRAlwsFZTWaRSZL/exec";
+// ============================================================
+//  CLOUD SYNC — Save & Load user data (projects/folders/boards)
+//  as a JSON file in Google Drive via an Apps Script Web App.
+//
+//  HOW TO USE
+//  1. Open https://script.google.com  → New project
+//  2. Paste the Apps Script code from apps_script_backend.gs
+//  3. Deploy → New deployment → Web app
+//       Execute as  → Me
+//       Who has access → Anyone
+//  4. Copy the /exec URL into CLOUD_URL below.
+// ============================================================
 
-function saveCloud(){
+const CLOUD_URL =
+  "https://script.google.com/macros/s/AKfycbw0H820eqMY8WjrgwFBDJfBq-JzfFsEJ868DVphTWBpuQFLXps2wcb9HOg6NXgTffDG/exec";
+  // ↑ Replace with your own deployed /exec URL
 
-if(!currentUser) return;
+// ----------------------------------------------------------
+//  saveCloud()
+//  Sends the full data object (projects, folders, boards,
+//  trash) to the Apps Script endpoint as a JSON string.
+//  Uses mode:"no-cors" to avoid CORS pre-flight blocks —
+//  the response is opaque but the write still succeeds.
+// ----------------------------------------------------------
+function saveCloud() {
+  if (!currentUser) return;
 
-fetch(CLOUD_URL,{
-method:"POST",
-mode:"no-cors",
-body:new URLSearchParams({
-userId:currentUser.sub,
-data:JSON.stringify(data)
-})
-});
+  const payload = new URLSearchParams({
+    userId: currentUser.sub,
+    data:   JSON.stringify(data)
+  });
+
+  fetch(CLOUD_URL, {
+    method: "POST",
+    mode:   "no-cors",   // opaque response — expected & fine
+    body:   payload
+  })
+  .then(() => console.log("☁️  saveCloud: data sent (opaque response is normal)"))
+  .catch(err => console.error("❌ saveCloud error:", err));
 }
-async function loadCloud(){
 
-if(!currentUser) return;
+// ----------------------------------------------------------
+//  loadCloud()
+//  Fetches the user's saved JSON from the Apps Script
+//  endpoint and merges it into the local `data` object.
+//  Called once after a successful Google login.
+// ----------------------------------------------------------
+async function loadCloud() {
+  if (!currentUser) return;
 
-let res = await fetch(
-CLOUD_URL + "?userId=" + currentUser.sub
-);
+  try {
+    const res = await fetch(
+      `${CLOUD_URL}?userId=${encodeURIComponent(currentUser.sub)}`
+    );
 
-let cloudData = await res.json();
+    if (!res.ok) {
+      console.warn("⚠️ loadCloud: server returned", res.status);
+      return;
+    }
 
-if(cloudData && cloudData.projects){
+    const cloudData = await res.json();
 
-data = cloudData;
+    // Only update if the response looks like valid app data
+    if (cloudData && Array.isArray(cloudData.projects)) {
+      data = {
+        projects: cloudData.projects || [],
+        folders:  cloudData.folders  || [],
+        boards:   cloudData.boards   || [],
+        trash:    cloudData.trash    || []
+      };
 
-save();
-render();
+      // Persist to localStorage as a local cache
+      localStorage.setItem(getKey(), JSON.stringify(data));
+
+      render();
+      console.log("☁️  loadCloud: data restored from Drive");
+    } else {
+      console.log("ℹ️  loadCloud: no cloud data found for this user yet");
+    }
+
+  } catch (err) {
+    console.error("❌ loadCloud error:", err);
+  }
 }
+
 </script>
 </body>
 </html>
