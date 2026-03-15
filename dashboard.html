@@ -1005,6 +1005,11 @@ body.dark .contact-icon.telegram { background: #082040; color: #38bdf8; }
         <div class="stat-value" id="statTrash">0</div>
         <div class="stat-sub">Items in bin</div>
       </div>
+      <div class="stat-card">
+      <div class="stat-label">Folders</div>
+      <div class="stat-value" id="statFolders">0</div>
+      <div class="stat-sub">Total folders</div>
+   </div>
     </div>
 
     <!-- Welcome -->
@@ -1502,7 +1507,10 @@ data.boards=data.boards.filter(b=>b.parent!==parentID);
 function render() {
   const tree = document.getElementById("tree");
   tree.innerHTML = "";
-  renderLevel(null, tree); // start from top-level (parentID=null)
+
+  renderLevel(null, tree);
+
+  updateStats(); // ← important
 }
 
 function renderLevel(parentID, container) {
@@ -1862,6 +1870,22 @@ async function loadCloud() {
   }
 }
 
+</script>
+<script>
+function updateStats(){
+
+  document.getElementById("statProjects").textContent = data.projects.length;
+
+  document.getElementById("statBoards").textContent = data.boards.length;
+
+  document.getElementById("statTrash").textContent = data.trash.length;
+
+  const folderStat = document.getElementById("statFolders");
+  if(folderStat){
+    folderStat.textContent = data.folders.length;
+  }
+
+}
 </script>
 </body>
 </html>
