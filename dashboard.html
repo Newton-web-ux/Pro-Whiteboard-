@@ -655,64 +655,107 @@ function renameFolder(id){
   render();
 }
 
-function moveToTrash(item, type) {
-  data.trash.push({ ...item, type });
+function moveToTrash(item,type){
 
-  if (type === "project") {
-    data.projects = data.projects.filter(p => p.id !== item.id);
-    // Also move all child folders and boards to trash
-    moveChildrenToTrash(item.id);
-  } else if (type === "folder") {
-    data.folders = data.folders.filter(f => f.id !== item.id);
-    moveChildrenToTrash(item.id);
-  } else if (type === "board") {
-    data.boards = data.boards.filter(b => b.id !== item.id);
-  }
+data.trash.push({...item,type});
 
-  save();
-  render();
-  renderTrash();
+if(type==="project"){
+data.projects=data.projects.filter(p=>p.id!==item.id);
+moveChildrenToTrash(item.id);
 }
 
-function moveChildrenToTrash(parentID) {
-  // Move child folders
-  data.folders.filter(f => f.parent === parentID).forEach(f => moveToTrash(f, "folder"));
-  // Move child boards
-  data.boards.filter(b => b.parent === parentID).forEach(b => moveToTrash(b, "board"));
+if(type==="folder"){
+data.folders=data.folders.filter(f=>f.id!==item.id);
+moveChildrenToTrash(item.id);
 }
 
-function restoreItem(item) {
-  if (item.type === "project") data.projects.push(item);
-  else if (item.type === "folder") data.folders.push(item);
-  else if (item.type === "board") data.boards.push(item);
-
-  data.trash = data.trash.filter(t => t.id !== item.id);
-  save();
-  render();
-  renderTrash();
+if(type==="board"){
+data.boards=data.boards.filter(b=>b.id!==item.id);
 }
 
-function deleteForever(item) {
-  data.trash = data.trash.filter(t => t.id !== item.id);
-
-  // Delete child items if project or folder
-  if (item.type === "project" || item.type === "folder") {
-    deleteChildren(item.id);
-  }
-
-  localStorage.removeItem("whiteboardData_" + item.id);
-  save();
-  renderTrash();
+save();
+render();
+renderTrash();
 }
 
-function deleteChildren(parentID) {
-  // Delete child folders
-  data.folders.filter(f => f.parent === parentID).forEach(f => {
-    deleteChildren(f.id);
-    data.folders = data.folders.filter(fd => fd.id !== f.id);
-  });
-  // Delete child boards
-  data.boards = data.boards.filter(b => b.parent !== parentID);
+function moveChildrenToTrash(parentID){
+
+// child folders
+const childFolders=data.folders.filter(f=>f.parent===parentID);
+
+childFolders.forEach(folder=>{
+moveToTrash(folder,"folder");
+});
+
+// child boards
+const childBoards=data.boards.filter(b=>b.parent===parentID);
+
+childBoards.forEach(board=>{
+moveToTrash(board,"board");
+});
+
+}
+function restoreItem(item){
+
+if(item.type==="project"){
+data.projects.push(item);
+restoreChildren(item.id);
+}
+
+if(item.type==="folder"){
+data.folders.push(item);
+restoreChildren(item.id);
+}
+
+if(item.type==="board"){
+data.boards.push(item);
+}
+
+data.trash=data.trash.filter(t=>t.id!==item.id);
+
+save();
+render();
+renderTrash();
+
+}
+function restoreChildren(parentID){
+
+data.trash
+.filter(t=>t.parent===parentID)
+.forEach(child=>{
+
+restoreItem(child);
+
+});
+
+}
+
+function deleteForever(item){
+
+data.trash=data.trash.filter(t=>t.id!==item.id);
+
+if(item.type==="project" || item.type==="folder"){
+deleteChildren(item.id);
+}
+
+localStorage.removeItem("whiteboardData_"+item.id);
+
+save();
+renderTrash();
+
+}
+
+function deleteChildren(parentID){
+
+data.folders
+.filter(f=>f.parent===parentID)
+.forEach(f=>{
+deleteChildren(f.id);
+data.folders=data.folders.filter(fd=>fd.id!==f.id);
+});
+
+data.boards=data.boards.filter(b=>b.parent!==parentID);
+
 }
 // ========== RENDER FUNCTIONS ==========
 
