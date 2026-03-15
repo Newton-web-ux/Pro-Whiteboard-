@@ -2,494 +2,1228 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Pro Whiteboard – Dashboard</title>
-
 <meta name="description" content="Pro Whiteboard is a professional online whiteboard for teachers, students, and teams to draw, teach, collaborate, and record lessons.">
-
-<meta name="theme-color" content="#1976d2">
-
+<meta name="theme-color" content="#0f172a">
 <link rel="icon" href="icon-192.png">
-
 <link rel="manifest" href="manifest.json">
-
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/patternLock/0.5.0/patternLock.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/patternLock/0.5.0/patternLock.min.js"></script>
+
 <style>
-/* ============ RESET & BODY ============ */
-body{
-  margin:0;
-  font-family:'Segoe UI',sans-serif;
-  background:#f4f6f9;
-  color:#333;
-  display:flex;
-  height:100vh;
-  overflow:hidden;
+/* ============ CSS VARIABLES ============ */
+:root {
+  --bg: #f8fafc;
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e2e8f0;
+  --surface: #ffffff;
+  --surface-hover: #f1f5f9;
+  --border: #e2e8f0;
+  --border-hover: #94a3b8;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-light: #eff6ff;
+  --accent-border: #bfdbfe;
+  --danger: #ef4444;
+  --success: #10b981;
+  --panel-bg: #ffffff;
+  --panel-border: #e2e8f0;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.06);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --sidebar-w: 264px;
+  --transition: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.dark {
+  --bg: #0d1117;
+  --sidebar-bg: #161b22;
+  --sidebar-border: #21262d;
+  --surface: #1c2128;
+  --surface-hover: #22272e;
+  --border: #30363d;
+  --border-hover: #484f58;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --text-subtle: #484f58;
+  --accent: #2f81f7;
+  --accent-hover: #388bfd;
+  --accent-light: #0d2044;
+  --accent-border: #1f4a8a;
+  --danger: #f85149;
+  --success: #3fb950;
+  --panel-bg: #161b22;
+  --panel-border: #21262d;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.5);
+}
+
+/* ============ RESET & BASE ============ */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.5;
+  transition: background var(--transition), color var(--transition);
 }
 
 /* ============ SIDEBAR ============ */
-#sidebar{
-  width:280px;
-  background:#ffffff;
-  border-right:1px solid #ddd;
-  padding:20px;
-  overflow-y:auto;
-  box-shadow:2px 0 8px rgba(0,0,0,0.05);
+#sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: background var(--transition), border-color var(--transition);
+  position: relative;
+  z-index: 10;
 }
 
-#sidebar h2{
-  margin-top:0;
-  font-size:18px;
-  color:#1976d2;
-  margin-bottom:15px;
+.sidebar-header {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
-#sidebar button{
-  background:#1976d2;
-  border:none;
-  padding:10px 16px;
-  border-radius:8px;
-  color:white;
-  cursor:pointer;
-  margin:6px 0;
-  width:100%;
-  font-size:14px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
-  transition:0.2s;
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  text-decoration: none;
 }
 
-#sidebar button:hover{
-  background:#1565c0;
+.sidebar-logo-icon {
+  width: 32px;
+  height: 32px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.35);
 }
 
-#sidebar hr{
-  margin:20px 0;
-  border:0;
-  border-top:1px solid #ddd;
+.sidebar-logo-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.3px;
 }
 
-/* ============ USER INFO ============ */
-#userInfo{
-  display:flex;
-  align-items:center;
-  margin-top:15px;
-  justify-content:space-between;
+.sidebar-logo-badge {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: auto;
 }
 
-#userInfo img{
-  width:35px;
-  height:35px;
-  border-radius:50%;
-  vertical-align:middle;
-  margin-right:10px;
-  object-fit:cover;
+/* Search */
+.search-wrapper {
+  position: relative;
 }
 
-/* ============ MAIN AREA ============ */
-#main{
-  flex:1;
-  padding:30px 50px;
-  overflow:auto;
-  position:relative;
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-subtle);
+  font-size: 12px;
+  pointer-events: none;
 }
 
-#main h1{
-  margin-top:0;
-  font-size:28px;
-  color:#1976d2;
+#searchInput {
+  width: 100%;
+  padding: 8px 10px 8px 30px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
 }
 
-#main p{
-  font-size:15px;
-  margin-bottom:20px;
+#searchInput::placeholder { color: var(--text-subtle); }
+
+#searchInput:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+
+/* Sidebar nav sections */
+.sidebar-nav {
+  padding: 10px 10px 6px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  padding: 0 6px;
+  margin: 8px 0 4px;
+}
+
+/* Buttons */
+.sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  font-family: inherit;
+  font-weight: 450;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  text-align: left;
+  position: relative;
+}
+
+.sidebar-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.sidebar-btn .btn-icon {
+  width: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-subtle);
+  flex-shrink: 0;
+  transition: color var(--transition);
+}
+
+.sidebar-btn:hover .btn-icon { color: var(--accent); }
+
+.sidebar-btn.primary {
+  background: var(--accent);
+  color: white;
+  font-weight: 500;
+}
+
+.sidebar-btn.primary .btn-icon { color: rgba(255,255,255,0.8); }
+.sidebar-btn.primary:hover { background: var(--accent-hover); color: white; }
+.sidebar-btn.primary:hover .btn-icon { color: white; }
+
+.btn-group {
+  display: flex;
+  gap: 4px;
+  padding: 0 10px 6px;
+}
+
+.btn-group .sidebar-btn {
+  flex: 1;
+  justify-content: center;
+  padding: 7px 6px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+}
+
+.btn-group .sidebar-btn:hover { border-color: var(--border-hover); }
+
+/* User info */
+.sidebar-user {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+#userInfo {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+#userInfo img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+
+#userName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#userInfo .sign-out-btn {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--transition), color var(--transition);
+  white-space: nowrap;
+}
+
+#userInfo .sign-out-btn:hover {
+  background: var(--danger);
+  color: white;
+  border-color: var(--danger);
+}
+
+#gSignInDiv {
+  padding: 4px 0;
+}
+
+/* Tree area */
+.sidebar-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.tree-empty {
+  text-align: center;
+  color: var(--text-subtle);
+  font-size: 12px;
+  padding: 24px 12px;
+}
+
+.tree-empty i {
+  display: block;
+  font-size: 28px;
+  margin-bottom: 8px;
+  opacity: 0.4;
 }
 
 /* ============ TREE ITEMS ============ */
-.item{
-  padding:10px 12px;
-  margin:4px 0;
-  background:#fff;
-  border:1px solid #e0e0e0;
-  border-radius:8px;
-  cursor:pointer;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  transition:.2s;
+.item {
+  padding: 8px 10px;
+  margin: 2px 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background var(--transition), border-color var(--transition);
+  font-size: 13.5px;
+  color: var(--text);
 }
 
-.item:hover{
-  background:#f0f7ff;
-  border-color:#1976d2;
-  box-shadow:0 2px 8px rgba(0,0,0,0.05);
+.item:hover {
+  background: var(--surface-hover);
+  border-color: var(--border);
 }
 
-.children{
-  margin-left:20px;
+.item.active {
+  background: var(--accent-light);
+  border-color: var(--accent-border);
+  color: var(--accent);
 }
 
-/* ============ TRASH & FORM PANEL ============ */
-.trash-panel{
-  position:fixed;
-  right:-400px; /* hidden initially */
-  top:0;
-  width:360px;
-  height:100%;
-  background:#fff;
-  border-left:1px solid #ddd;
-  padding:20px;
-  overflow:auto;
-  box-shadow:-4px 0 15px rgba(0,0,0,0.1);
-  border-radius:8px 0 0 8px;
-  transition: right 0.3s ease;
-  z-index:1000;
+.item .item-icon {
+  margin-right: 7px;
+  font-size: 12px;
+  color: var(--text-subtle);
 }
 
-.trash-panel.show{
-  right:0;
+.item.active .item-icon { color: var(--accent); }
+
+.children {
+  margin-left: 18px;
+  border-left: 1px solid var(--border);
+  padding-left: 8px;
 }
 
-.trash-panel h2{
-  margin-top:0;
-  font-size:20px;
-  color:#1976d2;
-  display:flex;
-  align-items:center;
-  gap:10px;
+/* ============ MAIN AREA ============ */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
 }
 
-.trash-item{
-  background:#fafafa;
-  padding:12px;
-  margin:10px 0;
-  border:1px solid #eee;
-  border-radius:8px;
-  font-size:14px;
+.main-topbar {
+  height: 52px;
+  background: var(--sidebar-bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
-.small-btn{
-  padding:6px 10px;
-  font-size:12px;
-  margin-top:5px;
-  border-radius:5px;
-  cursor:pointer;
-  border:none;
-  background:#1976d2;
-  color:white;
-  transition:0.2s;
+.topbar-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
-.small-btn:hover{
-  background:#1565c0;
+.topbar-breadcrumb span:last-child {
+  color: var(--text);
+  font-weight: 500;
 }
 
-/* ============ FORM IFRAME ============ */
-#formPanel iframe{
-  width:100%;
-  height:80vh;
-  border:0;
-  border-radius:6px;
+.topbar-sep { color: var(--text-subtle); }
+
+.topbar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* ============ SCROLLBAR STYLING ============ */
-#sidebar::-webkit-scrollbar, .trash-panel::-webkit-scrollbar{
-  width:8px;
+.topbar-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  transition: all var(--transition);
+  font-family: inherit;
 }
 
-#sidebar::-webkit-scrollbar-thumb, .trash-panel::-webkit-scrollbar-thumb{
-  background:rgba(0,0,0,0.2);
-  border-radius:4px;
+.topbar-icon-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+  border-color: var(--border-hover);
 }
 
-#sidebar::-webkit-scrollbar-track, .trash-panel::-webkit-scrollbar-track{
-  background:transparent;
-}
-/* SEARCH BAR */
-
-.searchBox{
-margin-bottom:12px;
+.main-content {
+  flex: 1;
+  overflow: auto;
+  padding: 32px 40px;
 }
 
-#searchInput{
-width:100%;
-padding:8px 10px;
-border-radius:8px;
-border:1px solid #ccc;
-font-size:14px;
-outline:none;
+/* Welcome / empty state */
+.welcome-card {
+  max-width: 560px;
+  margin: 40px auto 0;
+  text-align: center;
 }
 
-#searchInput:focus{
-border-color:#1976d2;
-box-shadow:0 0 4px rgba(25,118,210,0.3);
-}
-/* ================= DARK MODE ================= */
-
-body.dark{
-background:#1e1e1e;
-color:#e0e0e0;
-}
-
-body.dark #sidebar{
-background:#252526;
-border-right:1px solid #333;
+.welcome-graphic {
+  width: 64px;
+  height: 64px;
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 28px;
+  color: var(--accent);
 }
 
-body.dark #main{
-background:#1e1e1e;
+.welcome-card h1 {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 8px;
+  letter-spacing: -0.4px;
 }
 
-body.dark .item{
-background:#2d2d2d;
-border-color:#444;
-color:#ddd;
+.welcome-card p {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0 0 28px;
+  line-height: 1.6;
 }
 
-body.dark .item:hover{
-background:#3a3a3a;
-border-color:#1976d2;
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
-body.dark .trash-panel{
-background:#252526;
-border-left:1px solid #333;
+.qa-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 12px;
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: center;
 }
 
-body.dark input{
-background:#2d2d2d;
-color:#eee;
-border:1px solid #444;
+.qa-card:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
-body.dark button{
-background:#1976d2;
+.qa-card i {
+  font-size: 20px;
+  color: var(--accent);
+  margin-bottom: 8px;
+  display: block;
 }
 
-body.dark button:hover{
-background:#1565c0;
+.qa-card span {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
-/* ============ SECONDARY BUTTONS ============ */
-#sidebar .secondary-btn{
-  background:#f0f4f8;
-  color:#444;
-  border:1px solid #ddd;
+.qa-card:hover span { color: var(--accent); }
+
+/* Stats row */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
 }
 
-#sidebar .secondary-btn:hover{
-  background:#e3eaf3;
-  border-color:#aaa;
-  color:#222;
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
 }
 
-body.dark #sidebar .secondary-btn{
-  background:#2d2d2d;
-  color:#bbb;
-  border:1px solid #444;
+.stat-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
 }
 
-body.dark #sidebar .secondary-btn:hover{
-  background:#3a3a3a;
-  color:#eee;
+.stat-value {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+}
+
+.stat-sub {
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  margin-top: 2px;
+}
+
+/* ============ SLIDE-OUT PANELS ============ */
+.side-panel {
+  position: fixed;
+  right: -420px;
+  top: 0;
+  width: 380px;
+  height: 100%;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--panel-border);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+  transition: right 0.28s cubic-bezier(0.4,0,0.2,1), background var(--transition);
+  z-index: 1000;
+}
+
+.side-panel.show { right: 0; }
+
+.panel-header {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.panel-header-icon {
+  width: 28px;
+  height: 28px;
+  background: var(--accent-light);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  letter-spacing: -0.2px;
+}
+
+.panel-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 16px;
+  transition: all var(--transition);
+  line-height: 1;
+}
+
+.panel-close:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+}
+
+/* Trash items */
+.trash-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  font-size: 13.5px;
+  color: var(--text);
+  transition: border-color var(--transition);
+}
+
+.trash-item:hover { border-color: var(--border-hover); }
+
+.trash-item-name {
+  font-weight: 500;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trash-item-name i { color: var(--text-subtle); font-size: 12px; }
+
+.trash-item-actions { display: flex; gap: 6px; }
+
+.small-btn {
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  font-family: inherit;
+  transition: all var(--transition);
+}
+
+.small-btn:hover { background: var(--accent); border-color: var(--accent); color: white; }
+
+.small-btn.danger:hover { background: var(--danger); border-color: var(--danger); }
+
+/* Form Panel */
+#formPanel .panel-body { padding: 0; }
+
+#formPanel iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+/* Guide styles */
+.guide-section {
+  margin-bottom: 20px;
+}
+
+.guide-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  margin-bottom: 2px;
+  transition: background var(--transition);
+}
+
+.guide-section-header:hover { background: var(--surface-hover); }
+
+.guide-badge {
+  width: 22px;
+  height: 22px;
+  background: var(--accent);
+  color: white;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.guide-section-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.guide-content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.guide-content ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.guide-content li { margin-bottom: 6px; }
+
+/* Contact panel */
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  transition: border-color var(--transition), background var(--transition);
+  text-decoration: none;
+  color: var(--text);
+}
+
+.contact-item:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-light);
+}
+
+.contact-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.contact-icon.phone { background: #dcfce7; color: #16a34a; }
+.contact-icon.email { background: #dbeafe; color: #2563eb; }
+.contact-icon.instagram { background: #fce7f3; color: #db2777; }
+.contact-icon.youtube { background: #fee2e2; color: #dc2626; }
+.contact-icon.telegram { background: #dbeafe; color: #0284c7; }
+
+body.dark .contact-icon.phone { background: #052e16; color: #4ade80; }
+body.dark .contact-icon.email { background: #0d2044; color: #60a5fa; }
+body.dark .contact-icon.instagram { background: #4a0020; color: #f472b6; }
+body.dark .contact-icon.youtube { background: #450a0a; color: #fca5a5; }
+body.dark .contact-icon.telegram { background: #082040; color: #38bdf8; }
+
+.contact-info { flex: 1; }
+.contact-info strong { display: block; font-size: 13px; font-weight: 600; color: var(--text); }
+.contact-info span { font-size: 12.5px; color: var(--text-muted); }
+
+.contact-arrow { color: var(--text-subtle); font-size: 11px; }
+
+/* Security panel */
+#securityPanel {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: #080c12;
+  display: none;
+  z-index: 999999;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+/* Overlay backdrop */
+.panel-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  z-index: 999;
+  backdrop-filter: blur(2px);
+}
+
+.panel-backdrop.show { display: block; }
+
+/* ============ SCROLLBARS ============ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+/* ============ ANIMATIONS ============ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.welcome-card { animation: fadeInUp 0.35s ease; }
+.stats-row { animation: fadeInUp 0.35s 0.1s ease both; }
+
+/* ============ DIVIDER ============ */
+.sidebar-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 10px;
+}
+
+/* ============ TOOLTIP ============ */
+[data-tooltip] { position: relative; }
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: var(--text);
+  color: var(--bg);
+  font-size: 11px;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+[data-tooltip]:hover::after { opacity: 1; }
+
+/* ============ PANEL SECTION LABEL ============ */
+.panel-section-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  margin: 16px 0 6px;
+}
+
+.panel-section-label:first-child { margin-top: 0; }
+
+/* ============ EMPTY TRASH STATE ============ */
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-subtle);
+}
+
+.empty-state i {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 10px;
+  opacity: 0.4;
+}
+
+.empty-state p {
+  font-size: 13px;
+  margin: 0;
 }
 </style>
 </head>
 <body>
 
+<!-- BACKDROP -->
+<div class="panel-backdrop" id="backdrop" onclick="closeAllPanels()"></div>
+
 <!-- SIDEBAR -->
 <div id="sidebar">
- <h2><i class="fa fa-folder"></i> Explorer</h2>
 
-
-<div class="searchBox">
-<input type="text" id="searchInput" placeholder="Search projects, folders, boards..." onkeyup="searchExplorer()">
-</div>
-
-<button id="newProjectBtn" onclick="createProject()">
-  <i class="fa fa-briefcase"></i> New Project
-</button>
-  <button id="newFolderBtn" onclick="createFolder()"><i class="fa fa-plus"></i> New Folder</button>
-  <button id="newBoardBtn" onclick="createBoard()"><i class="fa fa-columns"></i> New Board</button>
-  <button class="secondary-btn" onclick="toggleTrash()"><i class="fa fa-trash"></i> Trash</button>
-  <button class="secondary-btn" onclick="toggleFormPanel()"><i class="fa fa-file-alt"></i> Feedback</button>
-
-<button onclick="toggleTheme()" id="themeToggle">
-<i class="fa fa-moon"></i> Dark Mode
-</button>
-<button onclick="toggleContactPanel()" class="secondary-btn">
-<i class="fa fa-address-book"></i> Contact
-</button>
-<button onclick="toggleGuidePanel()" class="secondary-btn">
-<i class="fa fa-book"></i> User Guide
-</button>
-  <hr>
- <div id="gSignInDiv"></div>
-  <div id="userInfo" style="display:none;">
-    <div style="display:flex; align-items:center;">
-      <img id="userPic">
-      <span id="userName"></span>
+  <!-- Header: Logo + Search -->
+  <div class="sidebar-header">
+    <a class="sidebar-logo" href="#">
+      <div class="sidebar-logo-icon"><i class="fa fa-pen-nib"></i></div>
+      <span class="sidebar-logo-text">Pro Whiteboard</span>
+      <span class="sidebar-logo-badge">PRO</span>
+    </a>
+    <div class="search-wrapper">
+      <i class="fa fa-search search-icon"></i>
+      <input type="text" id="searchInput" placeholder="Search projects, folders, boards…" onkeyup="searchExplorer()">
     </div>
-    <button onclick="signOut()">Sign Out</button>
   </div>
 
-  <hr>
-  <div id="tree"></div>
+  <!-- Primary Actions -->
+  <div class="sidebar-nav">
+    <div class="nav-section-label">Create</div>
+    <button class="sidebar-btn primary" id="newProjectBtn" onclick="createProject()">
+      <span class="btn-icon"><i class="fa fa-briefcase"></i></span> New Project
+    </button>
+    <div class="btn-group">
+      <button class="sidebar-btn" id="newFolderBtn" onclick="createFolder()" data-tooltip="New Folder">
+        <span class="btn-icon"><i class="fa fa-folder-plus"></i></span> Folder
+      </button>
+      <button class="sidebar-btn" id="newBoardBtn" onclick="createBoard()" data-tooltip="New Board">
+        <span class="btn-icon"><i class="fa fa-columns"></i></span> Board
+      </button>
+    </div>
+
+    <div class="nav-section-label" style="margin-top:14px;">Tools</div>
+    <button class="sidebar-btn" onclick="toggleTheme()" id="themeToggle">
+      <span class="btn-icon"><i class="fa fa-moon"></i></span> <span id="themeLabel">Dark Mode</span>
+    </button>
+    <button class="sidebar-btn" onclick="toggleTrash()">
+      <span class="btn-icon"><i class="fa fa-trash-alt"></i></span> Trash
+    </button>
+    <button class="sidebar-btn" onclick="toggleFormPanel()">
+      <span class="btn-icon"><i class="fa fa-comment-alt"></i></span> Feedback
+    </button>
+    <button class="sidebar-btn" onclick="toggleContactPanel()">
+      <span class="btn-icon"><i class="fa fa-address-book"></i></span> Contact
+    </button>
+    <button class="sidebar-btn" onclick="toggleGuidePanel()">
+      <span class="btn-icon"><i class="fa fa-book-open"></i></span> User Guide
+    </button>
+  </div>
+
+  <!-- Google Sign In / User -->
+  <div class="sidebar-user">
+    <div id="gSignInDiv"></div>
+    <div id="userInfo">
+      <img id="userPic" src="" alt="User">
+      <span id="userName"></span>
+      <button class="sign-out-btn" onclick="signOut()">Sign out</button>
+    </div>
+  </div>
+
+  <!-- File Tree -->
+  <div class="sidebar-tree" id="tree">
+    <div class="tree-empty">
+      <i class="fa fa-layer-group"></i>
+      No items yet.<br>Create a project to get started.
+    </div>
+  </div>
+
 </div>
 
 <!-- MAIN AREA -->
 <div id="main">
-  <h1>Pro Whiteboard Dashboard</h1>
-  <p>Select or create Project,boards and folders from the left panel.</p>
+  <!-- Topbar -->
+  <div class="main-topbar">
+    <div class="topbar-breadcrumb">
+      <i class="fa fa-home" style="font-size:12px;"></i>
+      <span class="topbar-sep"><i class="fa fa-chevron-right" style="font-size:10px;"></i></span>
+      <span>Dashboard</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="topbar-icon-btn" onclick="toggleTheme()" data-tooltip="Toggle Theme"><i class="fa fa-adjust"></i></button>
+      <button class="topbar-icon-btn" onclick="toggleGuidePanel()" data-tooltip="User Guide"><i class="fa fa-question-circle"></i></button>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="main-content">
+    <!-- Stats -->
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card">
+        <div class="stat-label">Projects</div>
+        <div class="stat-value" id="statProjects">0</div>
+        <div class="stat-sub">Active workspaces</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Boards</div>
+        <div class="stat-value" id="statBoards">0</div>
+        <div class="stat-sub">Total whiteboards</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Trash</div>
+        <div class="stat-value" id="statTrash">0</div>
+        <div class="stat-sub">Items in bin</div>
+      </div>
+    </div>
+
+    <!-- Welcome -->
+    <div class="welcome-card">
+      <div class="welcome-graphic"><i class="fa fa-pen-fancy"></i></div>
+      <h1>Welcome to Pro Whiteboard</h1>
+      <p>Your professional workspace for teaching, collaborating, and creating.<br>Start by creating a project or opening a board from the sidebar.</p>
+      <div class="quick-actions">
+        <div class="qa-card" onclick="createProject()">
+          <i class="fa fa-briefcase"></i>
+          <span>New Project</span>
+        </div>
+        <div class="qa-card" onclick="createFolder()">
+          <i class="fa fa-folder-plus"></i>
+          <span>New Folder</span>
+        </div>
+        <div class="qa-card" onclick="createBoard()">
+          <i class="fa fa-chalkboard"></i>
+          <span>New Board</span>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- TRASH PANEL -->
-<div id="trashPanel" class="trash-panel">
-  <div style="display:flex; justify-content:space-between; align-items:center;">
-    <h2><i class="fa fa-trash"></i> Trash</h2>
-    <span style="font-size:22px; cursor:pointer;" onclick="toggleTrash()">×</span>
+<div id="trashPanel" class="side-panel">
+  <div class="panel-header">
+    <div class="panel-header-icon"><i class="fa fa-trash-alt"></i></div>
+    <h2>Trash</h2>
+    <button class="panel-close" onclick="toggleTrash()">×</button>
   </div>
-  <div id="trashList"></div>
+  <div class="panel-body">
+    <div id="trashList">
+      <div class="empty-state">
+        <i class="fa fa-check-circle"></i>
+        <p>Trash is empty</p>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- FORM PANEL -->
-<div id="formPanel" class="trash-panel">
-  <div style="display:flex; justify-content:space-between; align-items:center;">
-    <h2><i class="fa fa-file-alt"></i> Feedback / Registration Form</h2>
-    <span style="font-size:22px; cursor:pointer;" onclick="toggleFormPanel()">×</span>
+<div id="formPanel" class="side-panel">
+  <div class="panel-header">
+    <div class="panel-header-icon"><i class="fa fa-comment-alt"></i></div>
+    <h2>Feedback &amp; Registration</h2>
+    <button class="panel-close" onclick="toggleFormPanel()">×</button>
   </div>
-  <iframe 
-    src="https://docs.google.com/forms/d/e/1FAIpQLSea6fWKaZFJ1p46Nn2DBJFlVCqpFp6vtpAVTVC-Sbf0gnR7gQ/viewform?embedded=true" 
-    marginheight="0" marginwidth="0">Loading…</iframe>
+  <div class="panel-body">
+    <iframe
+      src="https://docs.google.com/forms/d/e/1FAIpQLSea6fWKaZFJ1p46Nn2DBJFlVCqpFp6vtpAVTVC-Sbf0gnR7gQ/viewform?embedded=true"
+      marginheight="0" marginwidth="0">Loading…</iframe>
+  </div>
 </div>
+
 <!-- USER GUIDE PANEL -->
-<div id="userGuidePanel" class="trash-panel">
-  <div style="display:flex; justify-content:space-between; align-items:center;">
-    <h2><i class="fa fa-book"></i> User Guide</h2>
-    <span style="font-size:22px; cursor:pointer;" onclick="toggleGuidePanel()">×</span>
+<div id="userGuidePanel" class="side-panel">
+  <div class="panel-header">
+    <div class="panel-header-icon"><i class="fa fa-book-open"></i></div>
+    <h2>User Guide</h2>
+    <button class="panel-close" onclick="toggleGuidePanel()">×</button>
   </div>
-  <div style="padding:10px 0; max-height:calc(100% - 60px); overflow:auto; line-height:1.6; font-size:14px;">
-    
-    <h3>1. Drawing Tab</h3>
-    <ul>
-      <li>Click Pen and select your appropriate thickness and colour.</li>
-      <li>Draw on the canvas with your finger or stylus pen.</li>
-      <li>To erase, click eraser icon and drag over the portion of the drawing that you want to erase. You can control the eraser thickness by the same size control box of pen.</li>
-      <li>You can use Undo-redo by clicking once.</li>
-      <li>To add page, click add page icon next after redo button.</li>
-      <li>To delete page, select the page and click the delete page icon next to the add page.</li>
-<li>To move and cut stokes, click on the select icon next to the zoom out button and then select your stokes that you want to move or cut by selecting it through rectangular selecting box. After that, move your stokes as you want and to cut, click the cut button after selecting stokes.</li>
-<li> To hide left sidebar, click the first button in Drawing Tab.</li>
-<li> To scroll the Canvas, click Scroll mode button once and scroll the canvas up-down and left-right. </li>
-    </ul>
-    
-    <h3>2. Insert Tab</h3>
-    <ul>
-      <li>To add image/file, go to Insert tab and click on the first button (Image icon) and go to your browser and select the image/file and click select. The selected image/file will upload on the canvas. To move and resize, drag the corner handle and move/resize the image/file.</li>
-      <li>To add shapes, go to the insert tab and click shape icon which will open a shape panel from which you can select your required shape. After selecting the specific shape, drag over the canvas with your appropriate direction and orientation.</li>
-      <li>To delete a shape, select the shape first and then click delete button next after the shapes button in insert tab.</li>
-    </ul>
-    
-    <h3>3. Slideshow Tab</h3>
-    <ul>
-      <li>To work in slideshow/preview mode, go to Slideshow tab and click the start icon and then click on the back button on your device and then you will see Prev, Next, Exit buttons. To exit from slideshow, click Exit button.</li>
-    </ul>
-    
-    <h3>4. Video Tab</h3>
-    <ul>
-      <li>To record your work as a video with audio, go to Video Tab and click the first button and then click the next button successively. It will give you a video which is basically a trial. Delete it from browser and do the same process again which will give you a proper video with audio as recording.</li>
-<li> To pause and resume the video, click pause and resume button. To see recordings, click last button to open the recording panel which will consist all videos which can be downloaded by clicking restore. </li> </ul>
-    
-    <h3>5. Export Tab</h3>
-    <ul>
-      <li>To Export your work as PNG, PDF, and PPT, go to Export Tab and select your appropriate choice of export. After exporting, it will store in your browser.</li>
-      <li><b>How to get your exported whiteboard:</b> Go to your browser where you have opened the whiteboard, click the three-dot menu, and go to Downloads.</li>
-      <li>To work in cloud, click Save Cloud — this stores everything in the cloud and loads automatically when you reopen.</li>
-      <li>To see storage, click the Storage tab which opens a panel showing the board in JSON format with storage usage.</li>
-    </ul>
+  <div class="panel-body">
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">1</div>
+        <span class="guide-section-title">Drawing Tab</span>
+        <i class="fa fa-chevron-down" style="margin-left:auto; font-size:11px; color:var(--text-subtle);"></i>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li>Click <strong>Pen</strong> and select your appropriate thickness and colour.</li>
+          <li>Draw on the canvas with your finger or stylus pen.</li>
+          <li>To erase, click the <strong>eraser icon</strong> and drag over the portion you want to erase. Control thickness with the same size box.</li>
+          <li>Use <strong>Undo / Redo</strong> by clicking once.</li>
+          <li>To add a page, click the <strong>Add Page</strong> icon after the redo button.</li>
+          <li>To delete a page, select it and click the <strong>Delete Page</strong> icon.</li>
+          <li>To move/cut strokes, use the <strong>Select</strong> icon, draw a rectangular selection, then drag or cut.</li>
+          <li>To hide the sidebar, click the first button in Drawing Tab.</li>
+          <li>To scroll the canvas, click <strong>Scroll Mode</strong> and scroll up/down/left/right.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">2</div>
+        <span class="guide-section-title">Insert Tab</span>
+        <i class="fa fa-chevron-down" style="margin-left:auto; font-size:11px; color:var(--text-subtle);"></i>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li>To add an image/file, click the <strong>Image icon</strong> in Insert tab, browse to your file, and click Select. Drag corner handles to resize.</li>
+          <li>To add shapes, click the <strong>Shape icon</strong> to open the shape panel, select a shape, then drag on the canvas.</li>
+          <li>To delete a shape, select it first then click the <strong>Delete</strong> button.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">3</div>
+        <span class="guide-section-title">Slideshow Tab</span>
+        <i class="fa fa-chevron-down" style="margin-left:auto; font-size:11px; color:var(--text-subtle);"></i>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li>Go to <strong>Slideshow Tab</strong> and click the start icon. Press Back on your device to reveal Prev / Next / Exit buttons.</li>
+          <li>Click <strong>Exit</strong> to leave slideshow mode.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">4</div>
+        <span class="guide-section-title">Video Tab</span>
+        <i class="fa fa-chevron-down" style="margin-left:auto; font-size:11px; color:var(--text-subtle);"></i>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li>Go to <strong>Video Tab</strong> and click the first button, then the next button. The first recording is a trial — delete it and repeat for a proper recording with audio.</li>
+          <li>Use <strong>Pause / Resume</strong> buttons to control recording. Click the last button to open the Recordings panel and download via <em>Restore</em>.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">5</div>
+        <span class="guide-section-title">Export Tab</span>
+        <i class="fa fa-chevron-down" style="margin-left:auto; font-size:11px; color:var(--text-subtle);"></i>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li>Export your work as <strong>PNG, PDF, or PPT</strong> from the Export Tab. Files are saved to your browser downloads.</li>
+          <li><strong>To retrieve exports:</strong> Click the three-dot menu in your browser → Downloads.</li>
+          <li>Click <strong>Save Cloud</strong> to sync to cloud storage — auto-loaded on next open.</li>
+          <li>Click <strong>Storage</strong> to view the board JSON and storage usage.</li>
+        </ul>
+      </div>
+    </div>
 
   </div>
 </div>
-<div id="contactPanel" class="trash-panel">
 
-<div style="display:flex; justify-content:space-between; align-items:center;">
-<h2><i class="fa fa-address-book"></i> Contact & Social</h2>
-<span style="font-size:22px; cursor:pointer;" onclick="toggleContactPanel()">×</span>
+<!-- CONTACT PANEL -->
+<div id="contactPanel" class="side-panel">
+  <div class="panel-header">
+    <div class="panel-header-icon"><i class="fa fa-address-book"></i></div>
+    <h2>Contact &amp; Social</h2>
+    <button class="panel-close" onclick="toggleContactPanel()">×</button>
+  </div>
+  <div class="panel-body">
+
+    <div class="panel-section-label">Get in Touch</div>
+    <a href="tel:8167738344" class="contact-item">
+      <div class="contact-icon phone"><i class="fa fa-phone"></i></div>
+      <div class="contact-info">
+        <strong>Phone</strong>
+        <span>8167738344</span>
+      </div>
+      <i class="fa fa-chevron-right contact-arrow"></i>
+    </a>
+
+    <a href="mailto:prowhiteboard@email.com" class="contact-item">
+      <div class="contact-icon email"><i class="fa fa-envelope"></i></div>
+      <div class="contact-info">
+        <strong>Email</strong>
+        <span>prowhiteboard@email.com</span>
+      </div>
+      <i class="fa fa-chevron-right contact-arrow"></i>
+    </a>
+
+    <div class="panel-section-label">Follow Us</div>
+    <a href="https://instagram.com/prowhiteboard2026" target="_blank" class="contact-item">
+      <div class="contact-icon instagram"><i class="fab fa-instagram"></i></div>
+      <div class="contact-info">
+        <strong>Instagram</strong>
+        <span>@prowhiteboard2026</span>
+      </div>
+      <i class="fa fa-chevron-right contact-arrow"></i>
+    </a>
+
+    <a href="https://youtube.com/@ProWhiteboard" target="_blank" class="contact-item">
+      <div class="contact-icon youtube"><i class="fab fa-youtube"></i></div>
+      <div class="contact-info">
+        <strong>YouTube</strong>
+        <span>@ProWhiteboard</span>
+      </div>
+      <i class="fa fa-chevron-right contact-arrow"></i>
+    </a>
+
+    <a href="https://t.me/ProWhiteboard" target="_blank" class="contact-item">
+      <div class="contact-icon telegram"><i class="fab fa-telegram"></i></div>
+      <div class="contact-info">
+        <strong>Telegram</strong>
+        <span>Pro Whiteboard</span>
+      </div>
+      <i class="fa fa-chevron-right contact-arrow"></i>
+    </a>
+
+  </div>
 </div>
 
-<div style="padding-top:10px; line-height:1.8; font-size:15px;">
-
-<p>
-<i class="fa fa-phone"></i> 
-<b>Phone:</b> 
-<a href="tel:8167738344">8167738344</a>
-</p>
-
-<p>
-<i class="fa fa-envelope"></i> 
-<b>Email:</b> 
-<a href="mailto:prowhiteboard2026@gmail.com">prowhiteboard2026@gmail.com</a>
-</p>
-
-<hr>
-
-<p>
-<i class="fab fa-instagram"></i> 
-<b>Instagram:</b><br>
-<a href="https://instagram.com/prowhiteboard2026" target="_blank">
-@prowhiteboard2026
-</a>
-</p>
-
-<p>
-<i class="fab fa-youtube"></i> 
-<b>YouTube:</b><br>
-<a href="https://youtube.com/@ProWhiteboard" target="_blank">
-@ProWhiteboard
-</a>
-</p>
-
-<p>
-<i class="fab fa-telegram"></i> 
-<b>Telegram:</b><br>
-<a href="https://t.me/ProWhiteboard" target="_blank">
-Pro Whiteboard
-</a>
-</p>
-
-</div>
-
-</div>
-
+<!-- SECURITY PANEL (original structure preserved) -->
 <div id="securityPanel" style="
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-background:#111;
-display:none;
-z-index:999999;
-align-items:center;
-justify-content:center;
-flex-direction:column;
-color:white;
-font-family:sans-serif;
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background:#080c12;
+  display:none;
+  z-index:999999;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
 ">
-
-<h2>Security Lock</h2>
-<p>Draw pattern to continue</p>
-
-<div id="patternLock"></div>
-
 </div>
 <script>
 // ========== GOOGLE LOGIN ==========
