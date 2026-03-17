@@ -2640,8 +2640,11 @@ async function loadBoardCloud(){
  redraw();
 }
 window.addEventListener("DOMContentLoaded", async () => {
-  await loadBoardCloud();   // load from cloud first
-  saveToLocalStorage();     // then cache locally
+  await loadBoardCloud();
+  saveToLocalStorage();
+  setInterval(async () => {
+    await loadBoardCloud();
+  }, 5000); // refresh every 5 seconds
 });
 
 /* BUTTONS */
@@ -2980,25 +2983,47 @@ panel.style.display="flex";
 /* ================= SHARE SYSTEM ================= */
 
 function createSharableBoard(){
-
-  const newBoard = generateBoardID();
-
-  const newURL =
-    window.location.origin +
-    window.location.pathname +
-    "?board=" + newBoard;
-
-  window.location.href = newURL;
+  clearTimeout(saveTimer);
+  fetch(CLOUD_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      action: "saveBoard",
+      boardId: boardID,
+      board: serializeBoard()
+    })
+  }).then(() => {
+    navigator.clipboard.writeText(window.location.href);
+    alert("Board saved & link copied! 🚀");
+  });
 }
-
 function copyShareLink(){
-  navigator.clipboard.writeText(window.location.href);
-  alert("Link copied! 🚀");
+  clearTimeout(saveTimer);
+  fetch(CLOUD_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      action: "saveBoard",
+      boardId: boardID,
+      board: serializeBoard()
+    })
+  }).then(() => {
+    navigator.clipboard.writeText(window.location.href);
+    alert("Link copied! 🚀");
+  });
 }
 
 function shareWhatsApp(){
-  const link = encodeURIComponent(window.location.href);
-  window.open(`https://wa.me/?text=Join my whiteboard: ${link}`);
+  clearTimeout(saveTimer);
+  fetch(CLOUD_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      action: "saveBoard",
+      boardId: boardID,
+      board: serializeBoard()
+    })
+  }).then(() => {
+    const link = encodeURIComponent(window.location.href);
+    window.open(`https://wa.me/?text=Join my whiteboard: ${link}`);
+  });
 }
 </script>
 </body>
