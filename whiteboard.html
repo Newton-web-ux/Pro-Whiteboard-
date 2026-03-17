@@ -1020,6 +1020,9 @@ canvas {
     <div class="group">
       <button class="btn-text" onclick="saveBoardToCloud()"><i class="fa fa-cloud-arrow-up"></i> Save</button>
       <button class="btn-text" onclick="loadBoardFromCloud()"><i class="fa fa-cloud-arrow-down"></i> Load</button>
+<button onclick="createSharableBoard()">New Board</button>
+<button onclick="copyShareLink()">Copy Link</button>
+<button onclick="shareWhatsApp()">WhatsApp</button>
     </div>
   </div>
 
@@ -1135,9 +1138,31 @@ canvas {
 <div class="g_id_signin" data-type="standard" style="display:none"></div>
 
 <script>
-/* BOARD ID SYSTEM */
-const params = new URLSearchParams(window.location.search);
-const boardID = params.get("board") || "default";
+/* ================= BOARD ID SYSTEM (UPDATED) ================= */
+
+function generateBoardID(){
+  return "board_" + Math.random().toString(36).substr(2,9);
+}
+
+function getBoardIdFromURL(){
+  const params = new URLSearchParams(window.location.search);
+  return params.get("board");
+}
+
+let boardID = getBoardIdFromURL();
+
+if(!boardID){
+  boardID = generateBoardID();
+
+  const newURL =
+    window.location.origin +
+    window.location.pathname +
+    "?board=" + boardID;
+
+  // Update URL without reload
+  window.history.replaceState({}, "", newURL);
+}
+
 const storageKey = "whiteboardData_" + boardID;
 /* TAB SWITCHING */
 document.querySelectorAll(".tabBtn").forEach(btn=>{
@@ -2552,43 +2577,41 @@ function saveBoardCloud(){
 
  clearTimeout(saveTimer);
 
- saveTimer=setTimeout(()=>{
+ saveTimer = setTimeout(()=>{
 
   fetch(CLOUD_URL,{
    method:"POST",
    body:JSON.stringify({
     action:"saveBoard",
-    userId:USER_ID,
-    board:serializeBoard()
+    boardId: boardID,   // ✅ IMPORTANT CHANGE
+    board: serializeBoard()
    })
   });
 
  },700);
-
 }
 
 /* LOAD BOARD */
 
 async function loadBoardCloud(){
 
- let res=await fetch(CLOUD_URL,{
+ let res = await fetch(CLOUD_URL,{
   method:"POST",
   body:JSON.stringify({
    action:"loadBoard",
-   userId:USER_ID
+   boardId: boardID   // ✅ IMPORTANT CHANGE
   })
  });
 
- let data=await res.json();
+ let data = await res.json();
 
  if(!data.pages) return;
 
- pages=data.pages.map(p=>{
+ pages = data.pages.map(p=>{
 
   let images=[];
 
   (p.images||[]).forEach(imgData=>{
-
    let img=new Image();
    img.src=imgData.src;
 
@@ -2599,7 +2622,6 @@ async function loadBoardCloud(){
     w:imgData.w,
     h:imgData.h
    });
-
   });
 
   return{
@@ -2616,8 +2638,11 @@ async function loadBoardCloud(){
  current=data.current||0;
 
  redraw();
-
 }
+window.addEventListener("DOMContentLoaded", async () => {
+  await loadBoardCloud();   // load from cloud first
+  saveToLocalStorage();     // then cache locally
+});
 
 /* BUTTONS */
 
@@ -2950,6 +2975,31 @@ panel.style.display="flex";
 
 });
 
+</script>
+<script>
+/* ================= SHARE SYSTEM ================= */
+
+function createSharableBoard(){
+
+  const newBoard = generateBoardID();
+
+  const newURL =
+    window.location.origin +
+    window.location.pathname +
+    "?board=" + newBoard;
+
+  window.location.href = newURL;
+}
+
+function copyShareLink(){
+  navigator.clipboard.writeText(window.location.href);
+  alert("Link copied! 🚀");
+}
+
+function shareWhatsApp(){
+  const link = encodeURIComponent(window.location.href);
+  window.open(`https://wa.me/?text=Join my whiteboard: ${link}`);
+}
 </script>
 </body>
 </html>
