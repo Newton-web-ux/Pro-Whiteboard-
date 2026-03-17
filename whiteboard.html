@@ -1020,9 +1020,6 @@ canvas {
     <div class="group">
       <button class="btn-text" onclick="saveBoardToCloud()"><i class="fa fa-cloud-arrow-up"></i> Save</button>
       <button class="btn-text" onclick="loadBoardFromCloud()"><i class="fa fa-cloud-arrow-down"></i> Load</button>
-<button onclick="createSharableBoard()">New Board</button>
-<button onclick="copyShareLink()">Copy Link</button>
-<button onclick="shareWhatsApp()">WhatsApp</button>
     </div>
   </div>
 
@@ -1138,37 +1135,9 @@ canvas {
 <div class="g_id_signin" data-type="standard" style="display:none"></div>
 
 <script>
-/* ================== BOARD SYSTEM (FULL FINAL) ================== */
-
-// Generate unique board ID
-function generateBoardID(){
-  return "board_" + Math.random().toString(36).substr(2,9);
-}
-
-// Get board from URL
-function getBoardIdFromURL(){
-  const params = new URLSearchParams(window.location.search);
-  return params.get("board");
-}
-
-// Initialize board
-let boardID = getBoardIdFromURL();
-
-if(!boardID){
-  boardID = generateBoardID();
-
-  const newURL =
-    window.location.origin +
-    window.location.pathname +
-    "?board=" + boardID;
-
-  // Set URL without reload
-  window.history.replaceState({}, "", newURL);
-}
-
-console.log("Board ID:", boardID);
-
-// Local storage key
+/* BOARD ID SYSTEM */
+const params = new URLSearchParams(window.location.search);
+const boardID = params.get("board") || "default";
 const storageKey = "whiteboardData_" + boardID;
 /* TAB SWITCHING */
 document.querySelectorAll(".tabBtn").forEach(btn=>{
@@ -2555,117 +2524,101 @@ const USER_ID=getUserId();
 
 /* SERIALIZE BOARD */
 
-/* ================== CLOUD SAVE ================== */
-
-let saveTimer = null;
-
 function serializeBoard(){
-  return JSON.stringify({
-    pages: pages.map(p => ({
-      bg: p.bg,
-      strokes: p.strokes,
-      shapes: p.shapes || [],
-      images: p.images.map(img => ({
-        src: img.img.src,
-        x: img.x,
-        y: img.y,
-        w: img.w,
-        h: img.h
-      }))
-    })),
-    current: current
-  });
+
+ return JSON.stringify({
+  pages: pages.map(p=>({
+   bg:p.bg,
+   strokes:p.strokes,
+   shapes:p.shapes||[],
+   images:p.images.map(img=>({
+    src:img.img.src,
+    x:img.x,
+    y:img.y,
+    w:img.w,
+    h:img.h
+   }))
+  })),
+  current: current
+ });
+
 }
 
-// SAVE
+/* SAVE BOARD */
+
+let saveTimer=null;
+
 function saveBoardCloud(){
 
-  clearTimeout(saveTimer);
+ clearTimeout(saveTimer);
 
-  saveTimer = setTimeout(()=>{
+ saveTimer=setTimeout(()=>{
 
-    fetch(CLOUD_URL,{
-      method:"POST",
-      body:JSON.stringify({
-        action:"saveBoard",
-        boardId: boardID,   // 🔥 KEY CHANGE
-        board: serializeBoard()
-      })
-    });
+  fetch(CLOUD_URL,{
+   method:"POST",
+   body:JSON.stringify({
+    action:"saveBoard",
+    userId:USER_ID,
+    board:serializeBoard()
+   })
+  });
 
-  },700);
+ },700);
+
 }
 
 /* LOAD BOARD */
 
-/* ================== CLOUD LOAD ================== */
-
 async function loadBoardCloud(){
 
-  let res = await fetch(CLOUD_URL,{
-    method:"POST",
-    body:JSON.stringify({
-      action:"loadBoard",
-      boardId: boardID   // 🔥 KEY CHANGE
-    })
-  });
+ let res=await fetch(CLOUD_URL,{
+  method:"POST",
+  body:JSON.stringify({
+   action:"loadBoard",
+   userId:USER_ID
+  })
+ });
 
-  let data = await res.json();
+ let data=await res.json();
 
-  if(!data.pages){
-    console.log("No cloud data");
-    return;
-  }
+ if(!data.pages) return;
 
-  pages = data.pages.map(p => {
+ pages=data.pages.map(p=>{
 
-    let images = [];
+  let images=[];
 
-    (p.images || []).forEach(imgData => {
-      let img = new Image();
-      img.src = imgData.src;
+  (p.images||[]).forEach(imgData=>{
 
-      images.push({
-        img: img,
-        x: imgData.x,
-        y: imgData.y,
-        w: imgData.w,
-        h: imgData.h
-      });
-    });
+   let img=new Image();
+   img.src=imgData.src;
 
-    return {
-      bg: p.bg || "#fff",
-      strokes: p.strokes || [],
-      shapes: p.shapes || [],
-      images: images,
-      undo: [],
-      redo: []
-    };
+   images.push({
+    img:img,
+    x:imgData.x,
+    y:imgData.y,
+    w:imgData.w,
+    h:imgData.h
+   });
 
   });
 
-  current = data.current || 0;
+  return{
+   bg:p.bg||"#fff",
+   strokes:p.strokes||[],
+   shapes:p.shapes||[],
+   images:images,
+   undo:[],
+   redo:[]
+  };
 
-  redraw();
+ });
+
+ current=data.current||0;
+
+ redraw();
+
 }
-window.addEventListener("DOMContentLoaded", async () => {
 
-  await loadBoardCloud();   // load from cloud first
-
-  if(!pages || !pages.length){
-    pages = [{
-      bg:"#ffffff",
-      strokes:[],
-      images:[],
-      shapes:[],
-      undo:[],
-      redo:[]
-    }];
-  }
-
-  redraw();
-});
 /* BUTTONS */
 
 function saveBoardToCloud(){
@@ -2997,32 +2950,6 @@ panel.style.display="flex";
 
 });
 
-</script>
-<script>
-/* ================= SHARE SYSTEM ================= */
-// Create new board
-function createNewBoard(){
-  const newBoard = generateBoardID();
-
-  const newURL =
-    window.location.origin +
-    window.location.pathname +
-    "?board=" + newBoard;
-
-  window.location.href = newURL;
-}
-
-// Copy link
-function copyLink(){
-  navigator.clipboard.writeText(window.location.href);
-  alert("Link copied! 🚀");
-}
-
-// WhatsApp share
-function shareWhatsApp(){
-  const link = encodeURIComponent(window.location.href);
-  window.open(`https://wa.me/?text=Join my whiteboard: ${link}`);
-}
 </script>
 </body>
 </html>
