@@ -1138,17 +1138,20 @@ canvas {
 <div class="g_id_signin" data-type="standard" style="display:none"></div>
 
 <script>
-/* ================= BOARD ID SYSTEM (UPDATED) ================= */
+/* ================== BOARD SYSTEM (FULL FINAL) ================== */
 
+// Generate unique board ID
 function generateBoardID(){
   return "board_" + Math.random().toString(36).substr(2,9);
 }
 
+// Get board from URL
 function getBoardIdFromURL(){
   const params = new URLSearchParams(window.location.search);
   return params.get("board");
 }
 
+// Initialize board
 let boardID = getBoardIdFromURL();
 
 if(!boardID){
@@ -1159,10 +1162,13 @@ if(!boardID){
     window.location.pathname +
     "?board=" + boardID;
 
-  // Update URL without reload
+  // Set URL without reload
   window.history.replaceState({}, "", newURL);
 }
 
+console.log("Board ID:", boardID);
+
+// Local storage key
 const storageKey = "whiteboardData_" + boardID;
 /* TAB SWITCHING */
 document.querySelectorAll(".tabBtn").forEach(btn=>{
@@ -2549,104 +2555,117 @@ const USER_ID=getUserId();
 
 /* SERIALIZE BOARD */
 
+/* ================== CLOUD SAVE ================== */
+
+let saveTimer = null;
+
 function serializeBoard(){
-
- return JSON.stringify({
-  pages: pages.map(p=>({
-   bg:p.bg,
-   strokes:p.strokes,
-   shapes:p.shapes||[],
-   images:p.images.map(img=>({
-    src:img.img.src,
-    x:img.x,
-    y:img.y,
-    w:img.w,
-    h:img.h
-   }))
-  })),
-  current: current
- });
-
+  return JSON.stringify({
+    pages: pages.map(p => ({
+      bg: p.bg,
+      strokes: p.strokes,
+      shapes: p.shapes || [],
+      images: p.images.map(img => ({
+        src: img.img.src,
+        x: img.x,
+        y: img.y,
+        w: img.w,
+        h: img.h
+      }))
+    })),
+    current: current
+  });
 }
 
-/* SAVE BOARD */
-
-let saveTimer=null;
-
+// SAVE
 function saveBoardCloud(){
 
- clearTimeout(saveTimer);
+  clearTimeout(saveTimer);
 
- saveTimer = setTimeout(()=>{
+  saveTimer = setTimeout(()=>{
 
-  fetch(CLOUD_URL,{
-   method:"POST",
-   body:JSON.stringify({
-    action:"saveBoard",
-    boardId: boardID,   // ✅ IMPORTANT CHANGE
-    board: serializeBoard()
-   })
-  });
+    fetch(CLOUD_URL,{
+      method:"POST",
+      body:JSON.stringify({
+        action:"saveBoard",
+        boardId: boardID,   // 🔥 KEY CHANGE
+        board: serializeBoard()
+      })
+    });
 
- },700);
+  },700);
 }
 
 /* LOAD BOARD */
 
+/* ================== CLOUD LOAD ================== */
+
 async function loadBoardCloud(){
 
- let res = await fetch(CLOUD_URL,{
-  method:"POST",
-  body:JSON.stringify({
-   action:"loadBoard",
-   boardId: boardID   // ✅ IMPORTANT CHANGE
-  })
- });
-
- let data = await res.json();
-
- if(!data.pages) return;
-
- pages = data.pages.map(p=>{
-
-  let images=[];
-
-  (p.images||[]).forEach(imgData=>{
-   let img=new Image();
-   img.src=imgData.src;
-
-   images.push({
-    img:img,
-    x:imgData.x,
-    y:imgData.y,
-    w:imgData.w,
-    h:imgData.h
-   });
+  let res = await fetch(CLOUD_URL,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"loadBoard",
+      boardId: boardID   // 🔥 KEY CHANGE
+    })
   });
 
-  return{
-   bg:p.bg||"#fff",
-   strokes:p.strokes||[],
-   shapes:p.shapes||[],
-   images:images,
-   undo:[],
-   redo:[]
-  };
+  let data = await res.json();
 
- });
+  if(!data.pages){
+    console.log("No cloud data");
+    return;
+  }
 
- current=data.current||0;
+  pages = data.pages.map(p => {
 
- redraw();
+    let images = [];
+
+    (p.images || []).forEach(imgData => {
+      let img = new Image();
+      img.src = imgData.src;
+
+      images.push({
+        img: img,
+        x: imgData.x,
+        y: imgData.y,
+        w: imgData.w,
+        h: imgData.h
+      });
+    });
+
+    return {
+      bg: p.bg || "#fff",
+      strokes: p.strokes || [],
+      shapes: p.shapes || [],
+      images: images,
+      undo: [],
+      redo: []
+    };
+
+  });
+
+  current = data.current || 0;
+
+  redraw();
 }
 window.addEventListener("DOMContentLoaded", async () => {
-  await loadBoardCloud();
-  saveToLocalStorage();
-  setInterval(async () => {
-    await loadBoardCloud();
-  }, 5000); // refresh every 5 seconds
-});
 
+  await loadBoardCloud();   // load from cloud first
+
+  if(!pages || !pages.length){
+    pages = [{
+      bg:"#ffffff",
+      strokes:[],
+      images:[],
+      shapes:[],
+      undo:[],
+      redo:[]
+    }];
+  }
+
+  redraw();
+});
 /* BUTTONS */
 
 function saveBoardToCloud(){
@@ -2981,49 +3000,28 @@ panel.style.display="flex";
 </script>
 <script>
 /* ================= SHARE SYSTEM ================= */
+// Create new board
+function createNewBoard(){
+  const newBoard = generateBoardID();
 
-function createSharableBoard(){
-  clearTimeout(saveTimer);
-  fetch(CLOUD_URL, {
-    method: "POST",
-    body: JSON.stringify({
-      action: "saveBoard",
-      boardId: boardID,
-      board: serializeBoard()
-    })
-  }).then(() => {
-    navigator.clipboard.writeText(window.location.href);
-    alert("Board saved & link copied! 🚀");
-  });
-}
-function copyShareLink(){
-  clearTimeout(saveTimer);
-  fetch(CLOUD_URL, {
-    method: "POST",
-    body: JSON.stringify({
-      action: "saveBoard",
-      boardId: boardID,
-      board: serializeBoard()
-    })
-  }).then(() => {
-    navigator.clipboard.writeText(window.location.href);
-    alert("Link copied! 🚀");
-  });
+  const newURL =
+    window.location.origin +
+    window.location.pathname +
+    "?board=" + newBoard;
+
+  window.location.href = newURL;
 }
 
+// Copy link
+function copyLink(){
+  navigator.clipboard.writeText(window.location.href);
+  alert("Link copied! 🚀");
+}
+
+// WhatsApp share
 function shareWhatsApp(){
-  clearTimeout(saveTimer);
-  fetch(CLOUD_URL, {
-    method: "POST",
-    body: JSON.stringify({
-      action: "saveBoard",
-      boardId: boardID,
-      board: serializeBoard()
-    })
-  }).then(() => {
-    const link = encodeURIComponent(window.location.href);
-    window.open(`https://wa.me/?text=Join my whiteboard: ${link}`);
-  });
+  const link = encodeURIComponent(window.location.href);
+  window.open(`https://wa.me/?text=Join my whiteboard: ${link}`);
 }
 </script>
 </body>
