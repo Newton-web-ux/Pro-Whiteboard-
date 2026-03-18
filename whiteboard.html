@@ -3066,7 +3066,7 @@ panel.style.display="flex";
 })();
 </script>
 <script>
-/* CAMERA OVERLAY — draws camera onto canvas every frame */
+/* CAMERA OVERLAY — redraws full canvas + camera bubble every frame */
 function startCameraOverlay(videoEl) {
   cameraVideoEl = videoEl;
   cameraOverlayActive = true;
@@ -3074,29 +3074,31 @@ function startCameraOverlay(videoEl) {
   function drawLoop() {
     if (!cameraOverlayActive) return;
 
+    // ✅ ALWAYS redraw strokes/shapes/images first so nothing gets lost
+    redraw();
+
+    // Then draw camera bubble on top
     if (cameraVideoEl && cameraVideoEl.readyState >= 2) {
-      const size = 160;        // bubble size in pixels
-      const margin = 20;       // distance from corner
+      const size = 160;
+      const margin = 20;
       const x = canvas.width - size - margin;
       const y = canvas.height - size - margin;
       const radius = size / 2;
 
+      // Circular clip for camera
       ctx.save();
-
-      // Draw circular clip
       ctx.beginPath();
       ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
       ctx.closePath();
       ctx.clip();
 
-      // Flip horizontally (mirror) to match bubble appearance
+      // Mirror effect
       ctx.translate(x + size, y);
       ctx.scale(-1, 1);
       ctx.drawImage(cameraVideoEl, 0, 0, size, size);
-
       ctx.restore();
 
-      // Draw red border ring around bubble
+      // Red border ring
       ctx.save();
       ctx.beginPath();
       ctx.arc(x + radius, y + radius, radius + 3, 0, Math.PI * 2);
@@ -3110,16 +3112,6 @@ function startCameraOverlay(videoEl) {
   }
 
   drawLoop();
-}
-
-function stopCameraOverlay() {
-  cameraOverlayActive = false;
-  if (cameraAnimFrame) {
-    cancelAnimationFrame(cameraAnimFrame);
-    cameraAnimFrame = null;
-  }
-  // Redraw canvas cleanly without camera overlay
-  redraw();
 }
 </script>
 </body>
