@@ -660,6 +660,60 @@ canvas {
 .recordItem button:hover { background: var(--bg-active); color: var(--text-primary); }
 
 /* =============================================
+   CAMERA BUBBLE
+   ============================================= */
+#cameraBubble {
+  position: fixed;
+  bottom: 40px;
+  right: 24px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--danger);
+  box-shadow: 0 0 0 4px rgba(248,113,113,0.3), var(--shadow-lg);
+  z-index: 9998;
+  display: none;
+  cursor: grab;
+  animation: bubblePulse 1.4s infinite;
+  background: #000;
+  transition: width .2s, height .2s, border-radius .2s;
+}
+#cameraBubble:active { cursor: grabbing; }
+#cameraBubble video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* mirror effect */
+  pointer-events: none;
+}
+#cameraBubble .bubble-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  border: none;
+  color: #fff;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity .2s;
+}
+#cameraBubble:hover .bubble-close { opacity: 1; }
+#cameraBubble.show { display: block; }
+
+@keyframes bubblePulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(248,113,113,0.3), var(--shadow-lg); }
+  50%       { box-shadow: 0 0 0 8px rgba(248,113,113,0.15), var(--shadow-lg); }
+}
+/* =============================================
    STORAGE PANEL
    ============================================= */
 .panel {
@@ -1112,6 +1166,11 @@ canvas {
 </div>
 <div id="recordTimer">00:00</div>
 
+<!-- ================= CAMERA BUBBLE ================= -->
+<div id="cameraBubble">
+  <video id="bubbleVideo" autoplay muted playsinline></video>
+  <button class="bubble-close" id="closeBubble" title="Hide camera">✕</button>
+</div>
 <!-- ================= STATUS BAR ================= -->
 <div id="statusBar">
   <span><i class="fa fa-pen"></i> <span id="statusTool">pen</span></span>
@@ -2725,14 +2784,34 @@ startRecordBtn.onclick=async()=>{
 
 const canvasStream=canvas.captureStream(30);
 
-audioStream=await navigator.mediaDevices.getUserMedia({audio:true});
+// Request audio + video for camera bubble
+let cameraStream;
+try {
+  cameraStream = await navigator.mediaDevices.getUserMedia({audio:true, video:true});
+} catch(e) {
+  // fallback: audio only if camera denied
+  cameraStream = await navigator.mediaDevices.getUserMedia({audio:true});
+}
+
+audioStream = cameraStream;
+
+// Show camera bubble
+const bubble = document.getElementById("cameraBubble");
+const bubbleVideo = document.getElementById("bubbleVideo");
+bubbleVideo.srcObject = cameraStream;
+bubble.classList.add("show");
 
 const combinedStream=new MediaStream([
 ...canvasStream.getTracks(),
-...audioStream.getTracks()
+...cameraStream.getAudioTracks()
 ]);
 
-mediaRecorder=new MediaRecorder(combinedStream);
+const chosenType = document.getElementById("formatPicker") 
+  ? document.getElementById("formatPicker").value 
+  : "video/webm";
+const mimeType = MediaRecorder.isTypeSupported(chosenType) ? chosenType : "video/webm";
+
+mediaRecorder=new MediaRecorder(combinedStream, {mimeType});
 
 recordedChunks=[];
 
@@ -2742,15 +2821,16 @@ if(e.data.size>0) recordedChunks.push(e.data);
 
 mediaRecorder.onstop=()=>{
 
-const blob=new Blob(recordedChunks,{type:"video/webm"});
-
+const blob=new Blob(recordedChunks,{type:mimeType});
 const url=URL.createObjectURL(blob);
+const ext = mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : "webm";
 
 let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
 
 history.push({
 id:Date.now(),
 url:url,
+ext:ext,
 date:new Date().toLocaleString()
 });
 
@@ -2762,7 +2842,7 @@ loadRecordingHistory();
 
 mediaRecorder.start();
 
-recordingIndicator.style.display="block";
+recordingIndicator.style.display="flex";
 recordTimer.style.display="block";
 
 seconds=0;
@@ -2806,13 +2886,17 @@ timerInterval=setInterval(updateTimer,1000);
 stopRecordBtn.onclick=()=>{
 
 mediaRecorder.stop();
-
 audioStream.getTracks().forEach(t=>t.stop());
 
 clearInterval(timerInterval);
 
 recordingIndicator.style.display="none";
 recordTimer.style.display="none";
+
+// Hide camera bubble
+const bubble = document.getElementById("cameraBubble");
+bubble.classList.remove("show");
+document.getElementById("bubbleVideo").srcObject = null;
 
 startRecordBtn.disabled=false;
 stopRecordBtn.disabled=true;
@@ -2950,6 +3034,38 @@ panel.style.display="flex";
 
 });
 
+</script>
+<script>
+/* CAMERA BUBBLE — drag & close */
+(function(){
+  const bubble = document.getElementById("cameraBubble");
+  const closeBtn = document.getElementById("closeBubble");
+
+  let dragging = false, ox = 0, oy = 0;
+
+  bubble.addEventListener("pointerdown", e=>{
+    if(e.target === closeBtn) return;
+    dragging = true;
+    ox = e.clientX - bubble.getBoundingClientRect().left;
+    oy = e.clientY - bubble.getBoundingClientRect().top;
+    bubble.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  bubble.addEventListener("pointermove", e=>{
+    if(!dragging) return;
+    bubble.style.right = "auto";
+    bubble.style.bottom = "auto";
+    bubble.style.left = (e.clientX - ox) + "px";
+    bubble.style.top  = (e.clientY - oy) + "px";
+  });
+
+  bubble.addEventListener("pointerup", ()=>{ dragging=false; });
+
+  closeBtn.addEventListener("click", ()=>{
+    bubble.classList.remove("show");
+  });
+})();
 </script>
 </body>
 </html>
