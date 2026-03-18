@@ -660,60 +660,6 @@ canvas {
 .recordItem button:hover { background: var(--bg-active); color: var(--text-primary); }
 
 /* =============================================
-   CAMERA BUBBLE
-   ============================================= */
-#cameraBubble {
-  position: fixed;
-  bottom: 40px;
-  right: 24px;
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 3px solid var(--danger);
-  box-shadow: 0 0 0 4px rgba(248,113,113,0.3), var(--shadow-lg);
-  z-index: 9998;
-  display: none;
-  cursor: grab;
-  animation: bubblePulse 1.4s infinite;
-  background: #000;
-  transition: width .2s, height .2s, border-radius .2s;
-}
-#cameraBubble:active { cursor: grabbing; }
-#cameraBubble video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scaleX(-1); /* mirror effect */
-  pointer-events: none;
-}
-#cameraBubble .bubble-close {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.6);
-  border: none;
-  color: #fff;
-  font-size: 10px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
-  opacity: 0;
-  transition: opacity .2s;
-}
-#cameraBubble:hover .bubble-close { opacity: 1; }
-#cameraBubble.show { display: block; }
-
-@keyframes bubblePulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(248,113,113,0.3), var(--shadow-lg); }
-  50%       { box-shadow: 0 0 0 8px rgba(248,113,113,0.15), var(--shadow-lg); }
-}
-/* =============================================
    STORAGE PANEL
    ============================================= */
 .panel {
@@ -1166,11 +1112,6 @@ canvas {
 </div>
 <div id="recordTimer">00:00</div>
 
-<!-- ================= CAMERA BUBBLE ================= -->
-<div id="cameraBubble">
-  <video id="bubbleVideo" autoplay muted playsinline></video>
-  <button class="bubble-close" id="closeBubble" title="Hide camera">✕</button>
-</div>
 <!-- ================= STATUS BAR ================= -->
 <div id="statusBar">
   <span><i class="fa fa-pen"></i> <span id="statusTool">pen</span></span>
@@ -2707,99 +2648,46 @@ closeRecordingPanel.onclick=()=>{
 recordingPanel.style.transform="translateX(100%)";
 };
 function loadRecordingHistory(){
-  let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
-  recordingList.innerHTML = "";
 
-  history.reverse().forEach(r => {
-    let div = document.createElement("div");
-    div.className = "recordItem";
-    div.innerHTML = `
-      <div>${r.date}</div>
-      <button onclick="restoreRecording(${r.id})">Restore</button>
-      <button onclick="shareRecording(${r.id})">${r.shareUrl ? "Copy Link" : "Share"}</button>
-      <button onclick="deleteRecording(${r.id})">Delete</button>
-    `;
-    recordingList.appendChild(div);
-  });
+let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
+
+recordingList.innerHTML="";
+
+history.reverse().forEach(r=>{
+
+let div=document.createElement("div");
+
+div.className="recordItem";
+
+div.innerHTML=`
+<div>${r.date}</div>
+
+<button onclick="restoreRecording('${r.url}')">Restore</button>
+<button onclick="deleteRecording(${r.id})">Delete</button>
+`;
+
+recordingList.appendChild(div);
+
+});
+
 }
+function restoreRecording(url){
 
-async function shareRecording(id) {
-  let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
-  const record = history.find(r => r.id === id);
-  if (!record) return;
+const a=document.createElement("a");
 
-  // Already uploaded — just copy the link
-  if (record.shareUrl) {
-    await navigator.clipboard.writeText(record.shareUrl);
-    event.target.textContent = "Copied!";
-    setTimeout(() => event.target.textContent = "Copy Link", 2000);
-    return;
-  }
+a.href=url;
 
-  const btn = event.target;
-  btn.disabled = true;
-  btn.textContent = "Uploading...";
+a.download="whiteboard_recording.webm";
 
-  try {
-    // Fetch the blob from the local blob URL
-    const response = await fetch(record.url);
-    const blob = await response.blob();
+a.click();
 
-    // Upload to file.io — no account needed, returns a real public URL
-    const formData = new FormData();
-    formData.append("file", blob, `recording.${record.ext || "webm"}`);
-
-    const res = await fetch("https://file.io/?expires=1w", {
-      method: "POST",
-      body: formData
-    });
-
-    const data = await res.json();
-
-    if (data.success && data.link) {
-      await navigator.clipboard.writeText(data.link);
-      btn.textContent = "Copied!";
-      setTimeout(() => { btn.textContent = "Copy Link"; btn.disabled = false; }, 2000);
-
-      // Cache the public URL so future shares are instant
-      record.shareUrl = data.link;
-      localStorage.setItem("recordingHistory", JSON.stringify(
-        history.map(r => r.id === record.id ? record : r)
-      ));
-      loadRecordingHistory();
-    } else {
-      throw new Error(data.message || "Upload failed");
-    }
-
-  } catch (err) {
-    console.error("Share error:", err);
-    btn.textContent = "Failed ✕";
-    btn.disabled = false;
-    setTimeout(() => btn.textContent = "Share", 2000);
-    alert("Share failed: " + err.message + "\n\nTip: Make sure you have recorded something first.");
-  }
 }
-function restoreRecording(id) {
-  let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
-  const record = history.find(r => r.id === id);
-  if (!record) return;
+function shareRecording(url){
 
-  // Restore canvas drawing
-  if (record.snapshot) {
-    const img = new Image();
-    img.onload = () => {
-      const ctx = canvas.getContext("2d");
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-    };
-    img.src = record.snapshot;
-  }
+navigator.clipboard.writeText(url);
 
-  // Also download the video
-  const a = document.createElement("a");
-  a.href = record.url;
-  a.download = `whiteboard_recording.${record.ext || "webm"}`;
-  a.click();
+alert("Recording link copied!");
+
 }
 function deleteRecording(id){
 
@@ -2837,34 +2725,14 @@ startRecordBtn.onclick=async()=>{
 
 const canvasStream=canvas.captureStream(30);
 
-// Request audio + video for camera bubble
-let cameraStream;
-try {
-  cameraStream = await navigator.mediaDevices.getUserMedia({audio:true, video:true});
-} catch(e) {
-  // fallback: audio only if camera denied
-  cameraStream = await navigator.mediaDevices.getUserMedia({audio:true});
-}
-
-audioStream = cameraStream;
-
-// Show camera bubble
-const bubble = document.getElementById("cameraBubble");
-const bubbleVideo = document.getElementById("bubbleVideo");
-bubbleVideo.srcObject = cameraStream;
-bubble.classList.add("show");
+audioStream=await navigator.mediaDevices.getUserMedia({audio:true});
 
 const combinedStream=new MediaStream([
 ...canvasStream.getTracks(),
-...cameraStream.getAudioTracks()
+...audioStream.getTracks()
 ]);
 
-const chosenType = document.getElementById("formatPicker") 
-  ? document.getElementById("formatPicker").value 
-  : "video/webm";
-const mimeType = MediaRecorder.isTypeSupported(chosenType) ? chosenType : "video/webm";
-
-mediaRecorder=new MediaRecorder(combinedStream, {mimeType});
+mediaRecorder=new MediaRecorder(combinedStream);
 
 recordedChunks=[];
 
@@ -2872,29 +2740,29 @@ mediaRecorder.ondataavailable=e=>{
 if(e.data.size>0) recordedChunks.push(e.data);
 };
 
-mediaRecorder.onstop = () => {
-  const blob = new Blob(recordedChunks, { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const ext = mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : "webm";
+mediaRecorder.onstop=()=>{
 
-  // Save canvas drawing snapshot alongside the recording
-  const canvasSnapshot = canvas.toDataURL("image/png");
+const blob=new Blob(recordedChunks,{type:"video/webm"});
 
-  let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
-  history.push({
-    id: Date.now(),
-    url,
-    ext,
-    date: new Date().toLocaleString(),
-    snapshot: canvasSnapshot   // ← add this
-  });
-  localStorage.setItem("recordingHistory", JSON.stringify(history));
-  loadRecordingHistory();
+const url=URL.createObjectURL(blob);
+
+let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
+
+history.push({
+id:Date.now(),
+url:url,
+date:new Date().toLocaleString()
+});
+
+localStorage.setItem("recordingHistory",JSON.stringify(history));
+
+loadRecordingHistory();
+
 };
 
 mediaRecorder.start();
 
-recordingIndicator.style.display="flex";
+recordingIndicator.style.display="block";
 recordTimer.style.display="block";
 
 seconds=0;
@@ -2938,17 +2806,13 @@ timerInterval=setInterval(updateTimer,1000);
 stopRecordBtn.onclick=()=>{
 
 mediaRecorder.stop();
+
 audioStream.getTracks().forEach(t=>t.stop());
 
 clearInterval(timerInterval);
 
 recordingIndicator.style.display="none";
 recordTimer.style.display="none";
-
-// Hide camera bubble
-const bubble = document.getElementById("cameraBubble");
-bubble.classList.remove("show");
-document.getElementById("bubbleVideo").srcObject = null;
 
 startRecordBtn.disabled=false;
 stopRecordBtn.disabled=true;
@@ -3086,38 +2950,6 @@ panel.style.display="flex";
 
 });
 
-</script>
-<script>
-/* CAMERA BUBBLE — drag & close */
-(function(){
-  const bubble = document.getElementById("cameraBubble");
-  const closeBtn = document.getElementById("closeBubble");
-
-  let dragging = false, ox = 0, oy = 0;
-
-  bubble.addEventListener("pointerdown", e=>{
-    if(e.target === closeBtn) return;
-    dragging = true;
-    ox = e.clientX - bubble.getBoundingClientRect().left;
-    oy = e.clientY - bubble.getBoundingClientRect().top;
-    bubble.setPointerCapture(e.pointerId);
-    e.preventDefault();
-  });
-
-  bubble.addEventListener("pointermove", e=>{
-    if(!dragging) return;
-    bubble.style.right = "auto";
-    bubble.style.bottom = "auto";
-    bubble.style.left = (e.clientX - ox) + "px";
-    bubble.style.top  = (e.clientY - oy) + "px";
-  });
-
-  bubble.addEventListener("pointerup", ()=>{ dragging=false; });
-
-  closeBtn.addEventListener("click", ()=>{
-    bubble.classList.remove("show");
-  });
-})();
 </script>
 </body>
 </html>
