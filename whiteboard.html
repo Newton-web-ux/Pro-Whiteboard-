@@ -2892,13 +2892,21 @@ clearInterval(timerInterval);
 recordingIndicator.style.display="none";
 recordTimer.style.display="none";
 
-// Stop camera overlay on canvas
+// 1. Stop overlay FIRST (nulls cameraVideoEl, cancels RAF, redraws clean)
 stopCameraOverlay();
 
-// Hide camera bubble
+// 2. THEN kill the video stream and hide the bubble UI
 const bubble = document.getElementById("cameraBubble");
+const bubbleVideo = document.getElementById("bubbleVideo");
+bubbleVideo.pause();
+bubbleVideo.srcObject = null;
 bubble.classList.remove("show");
-document.getElementById("bubbleVideo").srcObject = null;
+// Reset position for next recording session
+bubble.style.left = "";
+bubble.style.top  = "";
+bubble.style.right  = "24px";
+bubble.style.bottom = "40px";
+
 startRecordBtn.disabled=false;
 stopRecordBtn.disabled=true;
 
@@ -3038,17 +3046,18 @@ panel.style.display="flex";
 </script>
 <script>
 /* ============================================================
-   CAMERA OVERLAY — correct architecture
-   - Does NOT fight with redraw()
-   - redraw() draws canvas content, then drawCameraOnCanvas()
-     stamps the bubble on top as a final step
-   - RAF loop only runs when recording is active
+   CAMERA OVERLAY
+   drawCameraOnCanvas() — stamps camera bubble at end of redraw()
+   startCameraOverlay() — starts RAF loop for live camera update
+   stopCameraOverlay()  — fully tears down, no lingering frames
    ============================================================ */
 
-/* Called at the very end of every redraw() to stamp camera */
 function drawCameraOnCanvas() {
+  // Guard: only draw if actively recording AND video is ready
   if (!cameraOverlayActive) return;
-  if (!cameraVideoEl || cameraVideoEl.readyState < 2) return;
+  if (!cameraVideoEl) return;
+  if (cameraVideoEl.readyState < 2) return;
+  if (cameraVideoEl.videoWidth === 0) return;
 
   const size   = 160;
   const margin = 20;
@@ -3056,20 +3065,22 @@ function drawCameraOnCanvas() {
   const y      = canvas.height - size - margin;
   const radius = size / 2;
 
-  // Circular clip
   ctx.save();
+
+  // Circular clip
   ctx.beginPath();
   ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
   ctx.closePath();
   ctx.clip();
 
-  // Mirror the video (selfie view)
+  // Mirror (selfie view)
   ctx.translate(x + size, y);
   ctx.scale(-1, 1);
   ctx.drawImage(cameraVideoEl, 0, 0, size, size);
+
   ctx.restore();
 
-  // Red border ring
+  // Red border ring — drawn outside clip so it's not cut off
   ctx.save();
   ctx.beginPath();
   ctx.arc(x + radius, y + radius, radius + 3, 0, Math.PI * 2);
@@ -3079,36 +3090,53 @@ function drawCameraOnCanvas() {
   ctx.restore();
 }
 
-/* RAF loop — only refreshes the camera stamp, does NOT call redraw() */
 function startCameraOverlay(videoEl) {
-  cameraVideoEl      = videoEl;
-  cameraOverlayActive = true;
-
-  function loop() {
-    if (!cameraOverlayActive) return;
-
-    // Re-stamp camera bubble on top of current canvas content
-    // without wiping anything — redraw() is called by the normal
-    // drawing events and will call drawCameraOnCanvas() itself
-    drawCameraOnCanvas();
-
-    cameraAnimFrame = requestAnimationFrame(loop);
-  }
-
-  loop();
-}
-
-function stopCameraOverlay() {
-  cameraOverlayActive = false;
-
+  // Always cancel any previous loop before starting a new one
   if (cameraAnimFrame) {
     cancelAnimationFrame(cameraAnimFrame);
     cameraAnimFrame = null;
   }
 
+  cameraVideoEl       = videoEl;
+  cameraOverlayActive = true;
+
+  function loop() {
+    // Stop immediately if deactivated
+    if (!cameraOverlayActive) {
+      cameraAnimFrame = null;
+      return;
+    }
+    // Just stamp — never call redraw() here
+    drawCameraOnCanvas();
+    cameraAnimFrame = requestAnimationFrame(loop);
+  }
+
+  // Wait for video to be truly ready before starting loop
+  if (videoEl.readyState >= 2) {
+    loop();
+  } else {
+    videoEl.addEventListener("canplay", function onReady() {
+      videoEl.removeEventListener("canplay", onReady);
+      if (cameraOverlayActive) loop();
+    });
+  }
+}
+
+function stopCameraOverlay() {
+  // 1. Deactivate flag first — stops the loop on next frame check
+  cameraOverlayActive = false;
+
+  // 2. Cancel the pending RAF immediately
+  if (cameraAnimFrame) {
+    cancelAnimationFrame(cameraAnimFrame);
+    cameraAnimFrame = null;
+  }
+
+  // 3. Null the video reference so drawCameraOnCanvas() is a no-op
   cameraVideoEl = null;
 
-  // Clean final redraw with no camera bubble
+  // 4. Final clean redraw — camera bubble will NOT appear
+  //    because cameraOverlayActive is false and cameraVideoEl is null
   redraw();
 }
 </script>
