@@ -2879,22 +2879,26 @@ if(cameraVideoEl) startCameraOverlay(cameraVideoEl); // resume overlay
 };
 /* STOP */
 
-mediaRecorder.onstop = () => {
-  const blob = new Blob(recordedChunks, { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const ext = mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : "webm";
+stopRecordBtn.onclick=()=>{
 
-  // ✅ ADD THIS: trigger download
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `recording-${Date.now()}.${ext}`;
-  a.click();
+mediaRecorder.stop();
+audioStream.getTracks().forEach(t=>t.stop());
 
-  // existing history logic...
-  let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
-  history.push({ id: Date.now(), url, ext, date: new Date().toLocaleString() });
-  localStorage.setItem("recordingHistory", JSON.stringify(history));
-  loadRecordingHistory();
+clearInterval(timerInterval);
+
+recordingIndicator.style.display="none";
+recordTimer.style.display="none";
+
+// Stop camera overlay on canvas
+stopCameraOverlay();
+
+// Hide camera bubble
+const bubble = document.getElementById("cameraBubble");
+bubble.classList.remove("show");
+document.getElementById("bubbleVideo").srcObject = null;
+startRecordBtn.disabled=false;
+stopRecordBtn.disabled=true;
+
 };
 </script>
 <script>
