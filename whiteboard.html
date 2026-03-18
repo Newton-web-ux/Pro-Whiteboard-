@@ -2724,9 +2724,6 @@ function loadRecordingHistory(){
 }
 
 async function shareRecording(id) {
-  const CLOUD_NAME = "djrssf08w";
-  const UPLOAD_PRESET = "mtimnmd7";
-
   let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
   const record = history.find(r => r.id === id);
   if (!record) return;
@@ -2744,41 +2741,42 @@ async function shareRecording(id) {
   btn.textContent = "Uploading...";
 
   try {
+    // Fetch the blob from the local blob URL
     const response = await fetch(record.url);
     const blob = await response.blob();
 
+    // Upload to file.io — no account needed, returns a real public URL
     const formData = new FormData();
     formData.append("file", blob, `recording.${record.ext || "webm"}`);
-    formData.append("upload_preset", UPLOAD_PRESET);
-    formData.append("resource_type", "video");
 
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, {
+    const res = await fetch("https://file.io/?expires=1w", {
       method: "POST",
       body: formData
     });
 
     const data = await res.json();
 
-    if (data.secure_url) {
-      await navigator.clipboard.writeText(data.secure_url);
+    if (data.success && data.link) {
+      await navigator.clipboard.writeText(data.link);
       btn.textContent = "Copied!";
       setTimeout(() => { btn.textContent = "Copy Link"; btn.disabled = false; }, 2000);
 
       // Cache the public URL so future shares are instant
-      record.shareUrl = data.secure_url;
+      record.shareUrl = data.link;
       localStorage.setItem("recordingHistory", JSON.stringify(
         history.map(r => r.id === record.id ? record : r)
       ));
       loadRecordingHistory();
     } else {
-      throw new Error(data.error?.message || "Upload failed");
+      throw new Error(data.message || "Upload failed");
     }
 
   } catch (err) {
-    console.error(err);
+    console.error("Share error:", err);
     btn.textContent = "Failed ✕";
     btn.disabled = false;
     setTimeout(() => btn.textContent = "Share", 2000);
+    alert("Share failed: " + err.message + "\n\nTip: Make sure you have recorded something first.");
   }
 }
 function restoreRecording(id) {
