@@ -2803,13 +2803,6 @@ function restoreRecording(id) {
   a.download = `whiteboard_recording.${record.ext || "webm"}`;
   a.click();
 }
-function shareRecording(url){
-
-navigator.clipboard.writeText(url);
-
-alert("Recording link copied!");
-
-}
 function deleteRecording(id){
 
 let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
