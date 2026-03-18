@@ -2707,39 +2707,101 @@ closeRecordingPanel.onclick=()=>{
 recordingPanel.style.transform="translateX(100%)";
 };
 function loadRecordingHistory(){
+  let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
+  recordingList.innerHTML = "";
 
-let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
-
-recordingList.innerHTML="";
-
-history.reverse().forEach(r=>{
-
-let div=document.createElement("div");
-
-div.className="recordItem";
-
-div.innerHTML=`
-<div>${r.date}</div>
-
-<button onclick="restoreRecording('${r.url}')">Restore</button>
-<button onclick="deleteRecording(${r.id})">Delete</button>
-`;
-
-recordingList.appendChild(div);
-
-});
-
+  history.reverse().forEach(r => {
+    let div = document.createElement("div");
+    div.className = "recordItem";
+    div.innerHTML = `
+      <div>${r.date}</div>
+      <button onclick="restoreRecording(${r.id})">Restore</button>
+      <button onclick="shareRecording(${r.id})">${r.shareUrl ? "Copy Link" : "Share"}</button>
+      <button onclick="deleteRecording(${r.id})">Delete</button>
+    `;
+    recordingList.appendChild(div);
+  });
 }
-function restoreRecording(url){
 
-const a=document.createElement("a");
+async function shareRecording(id) {
+  const CLOUD_NAME = "djrssf08w";
+  const UPLOAD_PRESET = "mtimnmd7";
 
-a.href=url;
+  let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
+  const record = history.find(r => r.id === id);
+  if (!record) return;
 
-a.download="whiteboard_recording.webm";
+  // Already uploaded — just copy the link
+  if (record.shareUrl) {
+    await navigator.clipboard.writeText(record.shareUrl);
+    event.target.textContent = "Copied!";
+    setTimeout(() => event.target.textContent = "Copy Link", 2000);
+    return;
+  }
 
-a.click();
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = "Uploading...";
 
+  try {
+    const response = await fetch(record.url);
+    const blob = await response.blob();
+
+    const formData = new FormData();
+    formData.append("file", blob, `recording.${record.ext || "webm"}`);
+    formData.append("upload_preset", UPLOAD_PRESET);
+    formData.append("resource_type", "video");
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await res.json();
+
+    if (data.secure_url) {
+      await navigator.clipboard.writeText(data.secure_url);
+      btn.textContent = "Copied!";
+      setTimeout(() => { btn.textContent = "Copy Link"; btn.disabled = false; }, 2000);
+
+      // Cache the public URL so future shares are instant
+      record.shareUrl = data.secure_url;
+      localStorage.setItem("recordingHistory", JSON.stringify(
+        history.map(r => r.id === record.id ? record : r)
+      ));
+      loadRecordingHistory();
+    } else {
+      throw new Error(data.error?.message || "Upload failed");
+    }
+
+  } catch (err) {
+    console.error(err);
+    btn.textContent = "Failed ✕";
+    btn.disabled = false;
+    setTimeout(() => btn.textContent = "Share", 2000);
+  }
+}
+function restoreRecording(id) {
+  let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
+  const record = history.find(r => r.id === id);
+  if (!record) return;
+
+  // Restore canvas drawing
+  if (record.snapshot) {
+    const img = new Image();
+    img.onload = () => {
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+    };
+    img.src = record.snapshot;
+  }
+
+  // Also download the video
+  const a = document.createElement("a");
+  a.href = record.url;
+  a.download = `whiteboard_recording.${record.ext || "webm"}`;
+  a.click();
 }
 function shareRecording(url){
 
@@ -2780,102 +2842,76 @@ recordTimer.innerText=m+":"+s;
 
 /* START RECORD */
 
-startRecordBtn.onclick = async () => {
+startRecordBtn.onclick=async()=>{
 
-  // 1. Get camera + audio
-  let cameraStream;
-  try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-  } catch(e) {
-    cameraStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  }
-  audioStream = cameraStream;
+const canvasStream=canvas.captureStream(30);
 
-  // 2. Show the camera bubble as before
-  const bubble = document.getElementById("cameraBubble");
-  const bubbleVideo = document.getElementById("bubbleVideo");
-  bubbleVideo.srcObject = cameraStream;
-  bubble.classList.add("show");
+// Request audio + video for camera bubble
+let cameraStream;
+try {
+  cameraStream = await navigator.mediaDevices.getUserMedia({audio:true, video:true});
+} catch(e) {
+  // fallback: audio only if camera denied
+  cameraStream = await navigator.mediaDevices.getUserMedia({audio:true});
+}
 
-  // 3. Create a composite canvas (same size as your whiteboard canvas)
-  const composite = document.createElement("canvas");
-  composite.width = canvas.width;
-  composite.height = canvas.height;
-  const ctx = composite.getContext("2d");
+audioStream = cameraStream;
 
-  // 4. Create a hidden video element to draw camera frames from
-  const camVideo = document.createElement("video");
-  camVideo.srcObject = cameraStream;
-  camVideo.muted = true;
-  camVideo.play();
+// Show camera bubble
+const bubble = document.getElementById("cameraBubble");
+const bubbleVideo = document.getElementById("bubbleVideo");
+bubbleVideo.srcObject = cameraStream;
+bubble.classList.add("show");
 
-  // 5. Draw loop: copy whiteboard + camera pip onto composite canvas
-  const BUBBLE_SIZE = 160; // px
-  const PADDING = 16;
-  function drawFrame() {
-    ctx.drawImage(canvas, 0, 0);
-    // Draw camera pip in bottom-right corner
-    if (camVideo.readyState >= 2) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(
-        composite.width - PADDING - BUBBLE_SIZE / 2,
-        composite.height - PADDING - BUBBLE_SIZE / 2,
-        BUBBLE_SIZE / 2, 0, Math.PI * 2
-      );
-      ctx.clip();
-      ctx.drawImage(
-        camVideo,
-        composite.width - PADDING - BUBBLE_SIZE,
-        composite.height - PADDING - BUBBLE_SIZE,
-        BUBBLE_SIZE, BUBBLE_SIZE
-      );
-      ctx.restore();
-    }
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      requestAnimationFrame(drawFrame);
-    }
-  }
+const combinedStream=new MediaStream([
+...canvasStream.getTracks(),
+...cameraStream.getAudioTracks()
+]);
 
-  // 6. Record the composite stream (video from composite + audio from camera)
-  const compositeStream = new MediaStream([
-    ...composite.captureStream(30).getTracks(),
-    ...cameraStream.getAudioTracks()
-  ]);
+const chosenType = document.getElementById("formatPicker") 
+  ? document.getElementById("formatPicker").value 
+  : "video/webm";
+const mimeType = MediaRecorder.isTypeSupported(chosenType) ? chosenType : "video/webm";
 
-  const chosenType = document.getElementById("formatPicker")
-    ? document.getElementById("formatPicker").value
-    : "video/webm";
-  const mimeType = MediaRecorder.isTypeSupported(chosenType) ? chosenType : "video/webm";
+mediaRecorder=new MediaRecorder(combinedStream, {mimeType});
 
-  mediaRecorder = new MediaRecorder(compositeStream, { mimeType });
-  recordedChunks = [];
+recordedChunks=[];
 
-  mediaRecorder.ondataavailable = e => {
-    if (e.data.size > 0) recordedChunks.push(e.data);
-  };
+mediaRecorder.ondataavailable=e=>{
+if(e.data.size>0) recordedChunks.push(e.data);
+};
 
-  mediaRecorder.onstop = () => {
-    const blob = new Blob(recordedChunks, { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const ext = mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : "webm";
+mediaRecorder.onstop = () => {
+  const blob = new Blob(recordedChunks, { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const ext = mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : "webm";
 
-    let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
-    history.push({ id: Date.now(), url, ext, date: new Date().toLocaleString() });
-    localStorage.setItem("recordingHistory", JSON.stringify(history));
-    loadRecordingHistory();
-  };
+  // Save canvas drawing snapshot alongside the recording
+  const canvasSnapshot = canvas.toDataURL("image/png");
 
-  mediaRecorder.start();
-  drawFrame(); // ← start the composite draw loop
+  let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
+  history.push({
+    id: Date.now(),
+    url,
+    ext,
+    date: new Date().toLocaleString(),
+    snapshot: canvasSnapshot   // ← add this
+  });
+  localStorage.setItem("recordingHistory", JSON.stringify(history));
+  loadRecordingHistory();
+};
 
-  recordingIndicator.style.display = "flex";
-  recordTimer.style.display = "block";
-  seconds = 0;
-  timerInterval = setInterval(updateTimer, 1000);
+mediaRecorder.start();
 
-  startRecordBtn.disabled = true;
-  stopRecordBtn.disabled = false;
+recordingIndicator.style.display="flex";
+recordTimer.style.display="block";
+
+seconds=0;
+timerInterval=setInterval(updateTimer,1000);
+
+startRecordBtn.disabled=true;
+stopRecordBtn.disabled=false;
+
 };
 
 /* PAUSE */
