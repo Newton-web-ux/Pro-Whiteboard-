@@ -1221,6 +1221,9 @@ let audioStream;
 
 let seconds=0;
 let timerInterval;
+let cameraOverlayActive = false;
+let cameraVideoEl = null;
+let cameraAnimFrame = null;
 
 let selectedShape=null;
 let shapeDragging=false;
@@ -2799,8 +2802,9 @@ audioStream = cameraStream;
 const bubble = document.getElementById("cameraBubble");
 const bubbleVideo = document.getElementById("bubbleVideo");
 bubbleVideo.srcObject = cameraStream;
+try { await bubbleVideo.play(); } catch(e) {}
 bubble.classList.add("show");
-
+startCameraOverlay(bubbleVideo);
 const combinedStream=new MediaStream([
 ...canvasStream.getTracks(),
 ...cameraStream.getAudioTracks()
@@ -2856,31 +2860,23 @@ stopRecordBtn.disabled=false;
 /* PAUSE */
 
 pauseRecordBtn.onclick=()=>{
-
 if(mediaRecorder && mediaRecorder.state==="recording"){
-
 mediaRecorder.pause();
-
 clearInterval(timerInterval);
-
+cameraOverlayActive = false; // pause overlay too
+if(cameraAnimFrame) cancelAnimationFrame(cameraAnimFrame);
 }
-
 };
 
 /* RESUME */
 
 resumeRecordBtn.onclick=()=>{
-
 if(mediaRecorder && mediaRecorder.state==="paused"){
-
 mediaRecorder.resume();
-
 timerInterval=setInterval(updateTimer,1000);
-
+if(cameraVideoEl) startCameraOverlay(cameraVideoEl); // resume overlay
 }
-
 };
-
 /* STOP */
 
 stopRecordBtn.onclick=()=>{
@@ -2893,11 +2889,13 @@ clearInterval(timerInterval);
 recordingIndicator.style.display="none";
 recordTimer.style.display="none";
 
+// Stop camera overlay on canvas
+stopCameraOverlay();
+
 // Hide camera bubble
 const bubble = document.getElementById("cameraBubble");
 bubble.classList.remove("show");
 document.getElementById("bubbleVideo").srcObject = null;
-
 startRecordBtn.disabled=false;
 stopRecordBtn.disabled=true;
 
@@ -3066,6 +3064,63 @@ panel.style.display="flex";
     bubble.classList.remove("show");
   });
 })();
+</script>
+<script>
+/* CAMERA OVERLAY — draws camera onto canvas every frame */
+function startCameraOverlay(videoEl) {
+  cameraVideoEl = videoEl;
+  cameraOverlayActive = true;
+
+  function drawLoop() {
+    if (!cameraOverlayActive) return;
+
+    if (cameraVideoEl && cameraVideoEl.readyState >= 2) {
+      const size = 160;        // bubble size in pixels
+      const margin = 20;       // distance from corner
+      const x = canvas.width - size - margin;
+      const y = canvas.height - size - margin;
+      const radius = size / 2;
+
+      ctx.save();
+
+      // Draw circular clip
+      ctx.beginPath();
+      ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+
+      // Flip horizontally (mirror) to match bubble appearance
+      ctx.translate(x + size, y);
+      ctx.scale(-1, 1);
+      ctx.drawImage(cameraVideoEl, 0, 0, size, size);
+
+      ctx.restore();
+
+      // Draw red border ring around bubble
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x + radius, y + radius, radius + 3, 0, Math.PI * 2);
+      ctx.strokeStyle = "#f87171";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    cameraAnimFrame = requestAnimationFrame(drawLoop);
+  }
+
+  drawLoop();
+}
+
+function stopCameraOverlay() {
+  cameraOverlayActive = false;
+  if (cameraAnimFrame) {
+    cancelAnimationFrame(cameraAnimFrame);
+    cameraAnimFrame = null;
+  }
+  // Redraw canvas cleanly without camera overlay
+  redraw();
+}
 </script>
 </body>
 </html>
