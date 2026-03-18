@@ -1594,8 +1594,32 @@ p.strokes.forEach(s=>{
 
 updateThumbs();
 
-// Stamp camera bubble on top if recording
-drawCameraOnCanvas();
+  // ✅ Camera overlay — always drawn last so it appears in exported video
+  if (cameraOverlayActive && cameraVideoEl && cameraVideoEl.readyState >= 2) {
+    const size = 160;
+    const margin = 20;
+    const x = canvas.width - size - margin;
+    const y = canvas.height - size - margin;
+    const radius = size / 2;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.translate(x + size, y);
+    ctx.scale(-1, 1);
+    ctx.drawImage(cameraVideoEl, 0, 0, size, size);
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x + radius, y + radius, radius + 3, 0, Math.PI * 2);
+    ctx.strokeStyle = "#f87171";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 /* POINTER EVENTS */
@@ -2892,21 +2916,13 @@ clearInterval(timerInterval);
 recordingIndicator.style.display="none";
 recordTimer.style.display="none";
 
-// 1. Stop overlay FIRST (nulls cameraVideoEl, cancels RAF, redraws clean)
+// Stop camera overlay on canvas
 stopCameraOverlay();
 
-// 2. THEN kill the video stream and hide the bubble UI
+// Hide camera bubble
 const bubble = document.getElementById("cameraBubble");
-const bubbleVideo = document.getElementById("bubbleVideo");
-bubbleVideo.pause();
-bubbleVideo.srcObject = null;
 bubble.classList.remove("show");
-// Reset position for next recording session
-bubble.style.left = "";
-bubble.style.top  = "";
-bubble.style.right  = "24px";
-bubble.style.bottom = "40px";
-
+document.getElementById("bubbleVideo").srcObject = null;
 startRecordBtn.disabled=false;
 stopRecordBtn.disabled=true;
 
@@ -3045,118 +3061,104 @@ panel.style.display="flex";
 
 </script>
 <script>
-/* ============================================================
-   CAMERA OVERLAY — simple & reliable
-   
-   No RAF loop. No fighting with redraw().
-   
-   How it works:
-   - redraw() always calls drawCameraOnCanvas() at the end
-     so camera appears in every user-triggered repaint
-   - A simple setInterval re-stamps camera every 33ms (30fps)
-     for the live feed between drawing events
-   - setInterval only stamps — never wipes or redraws
-   ============================================================ */
+/* CAMERA BUBBLE — drag & close */
+(function(){
+  const bubble = document.getElementById("cameraBubble");
+  const closeBtn = document.getElementById("closeBubble");
 
-let _cameraInterval = null;
+  let dragging = false, ox = 0, oy = 0;
 
-function drawCameraOnCanvas() {
-  if (!cameraOverlayActive) return;
-  if (!cameraVideoEl) return;
-  if (cameraVideoEl.readyState < 2) return;
-  if (cameraVideoEl.videoWidth === 0) return;
+  bubble.addEventListener("pointerdown", e=>{
+    if(e.target === closeBtn) return;
+    dragging = true;
+    ox = e.clientX - bubble.getBoundingClientRect().left;
+    oy = e.clientY - bubble.getBoundingClientRect().top;
+    bubble.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
 
-  const size   = 160;
-  const margin = 20;
-  const x      = canvas.width  - size - margin;
-  const y      = canvas.height - size - margin;
-  const radius = size / 2;
+  bubble.addEventListener("pointermove", e=>{
+    if(!dragging) return;
+    bubble.style.right = "auto";
+    bubble.style.bottom = "auto";
+    bubble.style.left = (e.clientX - ox) + "px";
+    bubble.style.top  = (e.clientY - oy) + "px";
+  });
 
-  // Black background circle (so no canvas bleedthrough)
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
-  ctx.fillStyle = "#000";
-  ctx.fill();
-  ctx.restore();
+  bubble.addEventListener("pointerup", ()=>{ dragging=false; });
 
-  // Circular clipped video frame
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.clip();
-  ctx.translate(x + size, y);
-  ctx.scale(-1, 1); // mirror
-  ctx.drawImage(cameraVideoEl, 0, 0, size, size);
-  ctx.restore();
-
-  // Red border ring
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(x + radius, y + radius, radius + 3, 0, Math.PI * 2);
-  ctx.strokeStyle = "#f87171";
-  ctx.lineWidth   = 4;
-  ctx.stroke();
-  ctx.restore();
-}
-
+  closeBtn.addEventListener("click", ()=>{
+    bubble.classList.remove("show");
+  });
+})();
+</script>
+<script>
+/* CAMERA OVERLAY — draws camera onto canvas every frame */
 function startCameraOverlay(videoEl) {
-  // Cancel any existing interval
-  if (_cameraInterval) {
-    clearInterval(_cameraInterval);
-    _cameraInterval = null;
-  }
-  // Cancel legacy RAF if any
-  if (cameraAnimFrame) {
-    cancelAnimationFrame(cameraAnimFrame);
-    cameraAnimFrame = null;
-  }
-
-  cameraVideoEl       = videoEl;
+  cameraVideoEl = videoEl;
   cameraOverlayActive = true;
 
-  function beginStamping() {
-    // Stamp camera every 33ms (30fps) between drawing events
-    // This does NOT call redraw() — only stamps on top
-    _cameraInterval = setInterval(() => {
-      if (!cameraOverlayActive) {
-        clearInterval(_cameraInterval);
-        _cameraInterval = null;
-        return;
-      }
-      drawCameraOnCanvas();
-    }, 33);
+  function drawLoop() {
+    if (!cameraOverlayActive) return;
+
+    if (cameraVideoEl && cameraVideoEl.readyState >= 2) {
+      const size = 160;        // bubble size in pixels
+      const margin = 20;       // distance from corner
+      const x = canvas.width - size - margin;
+      const y = canvas.height - size - margin;
+      const radius = size / 2;
+
+      ctx.save();
+
+      // Draw circular clip
+      ctx.beginPath();
+      ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+
+      // Flip horizontally (mirror) to match bubble appearance
+      ctx.translate(x + size, y);
+      ctx.scale(-1, 1);
+      ctx.drawImage(cameraVideoEl, 0, 0, size, size);
+
+      ctx.restore();
+
+      // Draw red border ring around bubble
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x + radius, y + radius, radius + 3, 0, Math.PI * 2);
+      ctx.strokeStyle = "#f87171";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    cameraAnimFrame = requestAnimationFrame(drawLoop);
   }
 
-  if (videoEl.readyState >= 2) {
-    beginStamping();
-  } else {
-    videoEl.addEventListener("canplay", function onReady() {
-      videoEl.removeEventListener("canplay", onReady);
-      if (cameraOverlayActive) beginStamping();
-    });
-  }
+  drawLoop();
 }
 
 function stopCameraOverlay() {
-  // 1. Kill the interval
-  if (_cameraInterval) {
-    clearInterval(_cameraInterval);
-    _cameraInterval = null;
-  }
-  // 2. Kill legacy RAF if any
+  cameraOverlayActive = false;
   if (cameraAnimFrame) {
     cancelAnimationFrame(cameraAnimFrame);
     cameraAnimFrame = null;
   }
-
-  // 3. Deactivate flags
-  cameraOverlayActive = false;
-  cameraVideoEl       = null;
-
-  // 4. Clean redraw — no camera bubble
+  // Redraw canvas cleanly without camera overlay
   redraw();
+}
+function startCameraOverlay(videoEl) {
+  cameraVideoEl = videoEl;
+  cameraOverlayActive = true;
+
+  function drawLoop() {
+    if (!cameraOverlayActive) return;
+    redraw(); // redraw now handles painting the camera at the end
+    cameraAnimFrame = requestAnimationFrame(drawLoop);
+  }
+
+  drawLoop();
 }
 </script>
 </body>
