@@ -1218,7 +1218,7 @@ let selectedImage=null,dragging=false,resizing=false,offsetX=0,offsetY=0;
 let mediaRecorder;
 let recordedChunks=[];
 let audioStream;
-let canvasVideoTrack = null; // track for on-demand frame push
+let liveRecorder = null; // LiveRecorder instance
 
 let seconds=0;
 let timerInterval;
@@ -1242,7 +1242,6 @@ let panPointerId = null;
 let panStartX = 0, panStartY = 0;
 let scrollStartX = 0, scrollStartY = 0;
 let toolBeforeScroll = "pen";
-let isRendering = false;
 /* LOCAL STORAGE – PER BOARD */
 
 function saveToLocalStorage(){
@@ -1588,17 +1587,16 @@ p.strokes.forEach(s=>{
     ctx.globalAlpha = 1; // reset for next element
 });
 
+/* ===== STROKE SELECTION HIGHLIGHT ===== */
 if(selectedStrokes.length){
   highlightSelectedStrokes();
 }
 
-/* ===== DRAW CAMERA BUBBLE ONTO CANVAS (for recorded video) ===== */
-drawCameraBubbleOnCanvas();
+/* ===== DRAW LIVE CAMERA BUBBLE ONTO CANVAS ===== */
+if(liveRecorder) liveRecorder.drawBubble(ctx, canvas);
 
-/* ===== PUSH FRAME INTO VIDEO STREAM (on-demand capture) ===== */
-if(canvasVideoTrack && isRendering){
-  try { canvasVideoTrack.requestFrame(); } catch(e){}
-}
+/* ===== PUSH FRAME INTO VIDEO STREAM ===== */
+if(liveRecorder) liveRecorder.pushFrame();
 
 updateThumbs();
 }
@@ -2456,7 +2454,9 @@ selectStrokeBtn.onclick = () => {
   tool = "selectStroke";
 };
 
-// penBtn.onclick already assigned above
+penBtn.onclick = () => {
+  tool = "pen";
+};
 function normalizeBox(box){
   return {
     x: Math.min(box.x, box.x + box.w),
@@ -2709,7 +2709,7 @@ function cloudAutoSaveTrigger(){
 <script>
 openRecordingPanel.onclick=()=>{
 recordingPanel.style.transform="translateX(0)";
-loadRecordingHistory();
+loadRecordings();
 };
 
 closeRecordingPanel.onclick=()=>{
@@ -2775,174 +2775,325 @@ loadRecordingHistory();
 });
 </script>
 <script>
-/* RECORDING */
-function updateTimer(){
+/* =============================================================
+   LiveRecorder — encapsulates all recording logic cleanly
+   
+   HOW IT WORKS:
+   • canvas.captureStream(0)  → on-demand mode (no auto-ticking)
+   • Every redraw() calls liveRecorder.pushFrame() which calls
+     videoTrack.requestFrame() — so EVERY pixel change (stroke,
+     erase, shape, image) is explicitly pushed into the stream.
+   • The RAF renderLoop() runs at 60fps during recording, which
+     continuously calls redraw() → pushFrame(), keeping the
+     camera bubble animation smooth and live in the video.
+   • Camera video is drawn directly onto the canvas via
+     drawBubble(), so it's captured by captureStream.
+   ============================================================= */
 
-seconds++;
+class LiveRecorder {
 
-let m=Math.floor(seconds/60).toString().padStart(2,"0");
-let s=(seconds%60).toString().padStart(2,"0");
+  constructor(canvasEl, videoEl, bubbleEl) {
+    this.canvas     = canvasEl;
+    this.videoEl    = videoEl;   // <video id="bubbleVideo">
+    this.bubbleEl   = bubbleEl;  // <div id="cameraBubble">
 
-recordTimer.innerText=m+":"+s;
+    this.mediaRecorder  = null;
+    this.chunks         = [];
+    this.cameraStream   = null;
+    this.videoTrack     = null;   // canvas stream video track
+    this.rafId          = null;
 
-}
+    // Timer
+    this.seconds        = 0;
+    this.timerInterval  = null;
 
-/* START RECORD */
+    // Camera bubble position on canvas (bottom-right default)
+    this.bubble = { x: null, y: null, size: 160, pad: 24, dragging: false, ox: 0, oy: 0 };
 
-startRecordBtn.onclick = async () => {
+    // Bind canvas drag listeners for bubble repositioning
+    this._onPointerDown = this._bubblePointerDown.bind(this);
+    this._onPointerMove = this._bubblePointerMove.bind(this);
+    this._onPointerUp   = this._bubblePointerUp.bind(this);
+  }
 
-if(mediaRecorder && mediaRecorder.state !== "inactive") return; // prevent double-start
+  /* ── PUBLIC: start ── */
+  async start() {
+    if(this.mediaRecorder && this.mediaRecorder.state !== "inactive") return;
 
-// Use captureStream(0) = on-demand mode.
-// Every redraw() calls canvasVideoTrack.requestFrame() to push
-// that exact frame into the stream — nothing is ever missed.
-const canvasStream = canvas.captureStream(0);
-canvasVideoTrack = canvasStream.getVideoTracks()[0];
+    // 1. Request camera + mic
+    try {
+      this.cameraStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    } catch(e) {
+      try {
+        this.cameraStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch(err) {
+        alert("Microphone access is required to record."); return;
+      }
+    }
 
-// camera
-let cameraStream;
-try {
-  cameraStream = await navigator.mediaDevices.getUserMedia({audio:true, video:true});
-} catch(e) {
-  try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({audio:true});
-  } catch(err) {
-    alert("Microphone access is required to record.");
-    return;
+    // 2. Show DOM camera bubble (for the presenter's preview)
+    this.videoEl.srcObject = this.cameraStream;
+    this.bubbleEl.classList.add("show");
+
+    // 3. Reset bubble canvas position
+    this.bubble.x = null;
+    this.bubble.y = null;
+
+    // 4. Set up on-demand canvas stream (captureStream(0))
+    //    captureStream(0) means: "only capture when I call requestFrame()"
+    //    This guarantees every single redraw() is captured — nothing missed.
+    const canvasStream = this.canvas.captureStream(0);
+    this.videoTrack = canvasStream.getVideoTracks()[0];
+
+    // 5. Combine canvas video + mic audio into one stream
+    const combined = new MediaStream([
+      ...canvasStream.getTracks(),
+      ...this.cameraStream.getAudioTracks()
+    ]);
+
+    // 6. Pick best supported MIME type
+    const mimeType = ["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm","video/mp4"]
+      .find(t => MediaRecorder.isTypeSupported(t)) || "video/webm";
+
+    // 7. Create MediaRecorder
+    this.chunks = [];
+    this.mediaRecorder = new MediaRecorder(combined, { mimeType });
+
+    this.mediaRecorder.ondataavailable = e => {
+      if(e.data.size > 0) this.chunks.push(e.data);
+    };
+
+    this.mediaRecorder.onstop = () => this._onStop(mimeType);
+
+    this.mediaRecorder.start(100); // collect a chunk every 100ms
+
+    // 8. Start RAF render loop — redraws canvas every frame,
+    //    which in turn calls pushFrame() to feed the stream
+    this._startRenderLoop();
+
+    // 9. Start timer display
+    this.seconds = 0;
+    this._updateTimerDisplay();
+    this.timerInterval = setInterval(() => {
+      this.seconds++;
+      this._updateTimerDisplay();
+    }, 1000);
+
+    // 10. Register canvas drag listeners for bubble
+    this.canvas.addEventListener("pointerdown", this._onPointerDown, true);
+    this.canvas.addEventListener("pointermove", this._onPointerMove, true);
+    this.canvas.addEventListener("pointerup",   this._onPointerUp,   true);
+
+    // 11. Update UI
+    recordingIndicator.style.display = "flex";
+    recordTimer.style.display = "block";
+    startRecordBtn.disabled = true;
+    stopRecordBtn.disabled  = false;
+  }
+
+  /* ── PUBLIC: pause ── */
+  pause() {
+    if(this.mediaRecorder?.state === "recording") {
+      this.mediaRecorder.pause();
+      clearInterval(this.timerInterval);
+      this._stopRenderLoop();
+      recordingIndicator.style.opacity = "0.4";
+    }
+  }
+
+  /* ── PUBLIC: resume ── */
+  resume() {
+    if(this.mediaRecorder?.state === "paused") {
+      this.mediaRecorder.resume();
+      this.timerInterval = setInterval(() => {
+        this.seconds++;
+        this._updateTimerDisplay();
+      }, 1000);
+      this._startRenderLoop();
+      recordingIndicator.style.opacity = "1";
+    }
+  }
+
+  /* ── PUBLIC: stop ── */
+  stop() {
+    if(!this.mediaRecorder || this.mediaRecorder.state === "inactive") return;
+
+    this.mediaRecorder.stop();
+    this.cameraStream?.getTracks().forEach(t => t.stop());
+    this.videoTrack = null; // stop pushing frames
+
+    clearInterval(this.timerInterval);
+    this._stopRenderLoop();
+
+    // Hide DOM bubble
+    this.bubbleEl.classList.remove("show");
+    this.videoEl.srcObject = null;
+
+    // Hide recording UI
+    recordingIndicator.style.display  = "none";
+    recordingIndicator.style.opacity  = "1";
+    recordTimer.style.display         = "none";
+    recordTimer.innerText             = "00:00";
+
+    // Update buttons
+    startRecordBtn.disabled = false;
+    stopRecordBtn.disabled  = true;
+
+    // Remove canvas drag listeners
+    this.canvas.removeEventListener("pointerdown", this._onPointerDown, true);
+    this.canvas.removeEventListener("pointermove", this._onPointerMove, true);
+    this.canvas.removeEventListener("pointerup",   this._onPointerUp,   true);
+  }
+
+  /* ── PUBLIC: pushFrame — called at end of every redraw() ── */
+  pushFrame() {
+    if(this.videoTrack && this.mediaRecorder?.state === "recording") {
+      try { this.videoTrack.requestFrame(); } catch(e) {}
+    }
+  }
+
+  /* ── PUBLIC: drawBubble — called inside redraw() to paint camera onto canvas ── */
+  drawBubble(ctx, canvas) {
+    if(!this.videoTrack) return;                          // not recording
+    if(!this.videoEl?.srcObject) return;                  // no camera
+    if(this.videoEl.readyState < 2) return;               // video not ready
+
+    const b  = this.bubble;
+    if(b.x === null) {
+      b.x = canvas.width  - b.size - b.pad;
+      b.y = canvas.height - b.size - b.pad;
+    }
+    const r  = b.size / 2;
+    const cx = b.x + r;
+    const cy = b.y + r;
+
+    ctx.save();
+
+    // Drop shadow
+    ctx.shadowColor    = "rgba(0,0,0,0.6)";
+    ctx.shadowBlur     = 20;
+    ctx.shadowOffsetY  = 4;
+
+    // Circular clip
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.clip();
+
+    // Draw mirrored video
+    ctx.translate(cx, cy);
+    ctx.scale(-1, 1);
+    ctx.drawImage(this.videoEl, -r, -r, b.size, b.size);
+    ctx.scale(-1, 1);
+    ctx.translate(-cx, -cy);
+
+    ctx.restore();
+
+    // Pulsing red border
+    const pulse = 0.3 + 0.15 * Math.sin(Date.now() / 280);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle   = "#f87171";
+    ctx.lineWidth     = 4;
+    ctx.shadowColor   = `rgba(248,113,113,${pulse})`;
+    ctx.shadowBlur    = 14;
+    ctx.stroke();
+    ctx.restore();
+
+    // LIVE label
+    ctx.save();
+    ctx.font      = "bold 12px 'DM Sans', sans-serif";
+    ctx.fillStyle = "rgba(248,113,113,0.95)";
+    ctx.shadowColor = "rgba(0,0,0,0.7)";
+    ctx.shadowBlur  = 4;
+    ctx.fillText("● LIVE", cx - r + 9, cy - r + 19);
+    ctx.restore();
+  }
+
+  /* ── PRIVATE: RAF render loop ── */
+  _startRenderLoop() {
+    if(this.rafId) return;
+    const loop = () => {
+      if(!this.rafId) return;
+      redraw(); // redraw() calls pushFrame() and drawBubble() at its end
+      this.rafId = requestAnimationFrame(loop);
+    };
+    this.rafId = requestAnimationFrame(loop);
+  }
+
+  _stopRenderLoop() {
+    if(this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+  }
+
+  /* ── PRIVATE: save & download on stop ── */
+  _onStop(mimeType) {
+    const ext  = mimeType.includes("mp4") ? "mp4" : "webm";
+    const blob = new Blob(this.chunks, { type: mimeType });
+    const url  = URL.createObjectURL(blob);
+
+    // Auto-download
+    const a = document.createElement("a");
+    a.href     = url;
+    a.download = "recording_" + new Date().toISOString().slice(0,19).replace(/[:T]/g,"-") + "." + ext;
+    a.click();
+
+    // Save to history
+    let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
+    history.push({ id: Date.now(), url, ext, date: new Date().toLocaleString() });
+    localStorage.setItem("recordingHistory", JSON.stringify(history));
+    loadRecordingHistory();
+  }
+
+  /* ── PRIVATE: timer display ── */
+  _updateTimerDisplay() {
+    const m = String(Math.floor(this.seconds / 60)).padStart(2, "0");
+    const s = String(this.seconds % 60).padStart(2, "0");
+    recordTimer.innerText = m + ":" + s;
+  }
+
+  /* ── PRIVATE: drag bubble on canvas ── */
+  _bubblePointerDown(e) {
+    const p = pos(e);
+    const b = this.bubble;
+    if(b.x === null) return;
+    const r = b.size / 2, cx = b.x + r, cy = b.y + r;
+    if(Math.hypot(p.x - cx, p.y - cy) <= r) {
+      b.dragging = true;
+      b.ox = p.x - b.x;
+      b.oy = p.y - b.y;
+      e.stopImmediatePropagation();
+    }
+  }
+
+  _bubblePointerMove(e) {
+    if(!this.bubble.dragging) return;
+    const p = pos(e);
+    const b = this.bubble;
+    b.x = Math.max(0, Math.min(this.canvas.width  - b.size, p.x - b.ox));
+    b.y = Math.max(0, Math.min(this.canvas.height - b.size, p.y - b.oy));
+  }
+
+  _bubblePointerUp() {
+    this.bubble.dragging = false;
   }
 }
 
-audioStream = cameraStream;
-
-// show camera bubble
-const bubble = document.getElementById("cameraBubble");
-const bubbleVideo = document.getElementById("bubbleVideo");
-
-bubbleVideo.srcObject = cameraStream;
-bubble.classList.add("show");
-
-// Reset camera bubble canvas position for fresh recording
-camBubble.x = null;
-camBubble.y = null;
-
-// ✅ START LOOP (IMPORTANT)
-isRendering = true;
-renderLoop();
-
-// combine audio + canvas
-const combinedStream = new MediaStream([
-  ...canvasStream.getTracks(),
-  ...cameraStream.getAudioTracks()
-]);
-
-mediaRecorder = new MediaRecorder(combinedStream);
-
-recordedChunks = [];
-
-mediaRecorder.ondataavailable = e=>{
-  if(e.data.size>0) recordedChunks.push(e.data);
+/* ── Wire up buttons ── */
+startRecordBtn.onclick  = () => {
+  liveRecorder = new LiveRecorder(
+    canvas,
+    document.getElementById("bubbleVideo"),
+    document.getElementById("cameraBubble")
+  );
+  liveRecorder.start();
 };
 
-mediaRecorder.onstop = ()=>{
-  const blob = new Blob(recordedChunks, { type: "video/webm" });
-  const url = URL.createObjectURL(blob);
-
-  // Auto-download the recording
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "whiteboard_recording_" + new Date().toISOString().slice(0,19).replace(/[:T]/g,"-") + ".webm";
-  a.click();
-
-  // Save to recording history in localStorage
-  let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
-  history.push({ id: Date.now(), date: new Date().toLocaleString(), url: url });
-  localStorage.setItem("recordingHistory", JSON.stringify(history));
-  loadRecordingHistory();
-
-  console.log("Recording saved:", url);
-};
-
-mediaRecorder.start();
-
-// ✅ Show recording indicator & timer
-seconds = 0;
-recordTimer.innerText = "00:00";
-recordingIndicator.classList.add("show");
-recordingIndicator.style.display = "flex";
-recordTimer.style.display = "block";
-timerInterval = setInterval(updateTimer, 1000);
-
-// ✅ Update button states
-startRecordBtn.disabled = true;
-stopRecordBtn.disabled = false;
-};
-
-/* PAUSE */
-
-pauseRecordBtn.onclick=()=>{
-
-if(mediaRecorder && mediaRecorder.state==="recording"){
-
-mediaRecorder.pause();
-
-clearInterval(timerInterval);
-
-recordingIndicator.style.opacity = "0.4"; // dim indicator when paused
-
-}
-
-};
-
-/* RESUME */
-
-resumeRecordBtn.onclick=()=>{
-
-if(mediaRecorder && mediaRecorder.state==="paused"){
-
-mediaRecorder.resume();
-
-timerInterval=setInterval(updateTimer,1000);
-
-recordingIndicator.style.opacity = "1"; // restore indicator
-
-}
-
-};
-
-/* STOP */
-
-stopRecordBtn.onclick=()=>{
-
-if(!mediaRecorder || mediaRecorder.state === "inactive") return;
-
-mediaRecorder.stop();
-audioStream.getTracks().forEach(t=>t.stop());
-
-// Stop pushing frames into stream
-canvasVideoTrack = null;
-
-clearInterval(timerInterval);
-seconds = 0;
-
-// Hide recording indicator & timer
-recordingIndicator.classList.remove("show");
-recordingIndicator.style.display = "none";
-recordingIndicator.style.opacity = "1";
-recordTimer.style.display = "none";
-recordTimer.innerText = "00:00";
-
-// Stop render loop
-isRendering = false;
-
-// Hide camera bubble
-const bubble = document.getElementById("cameraBubble");
-bubble.classList.remove("show");
-document.getElementById("bubbleVideo").srcObject = null;
-
-// Reset button states
-startRecordBtn.disabled = false;
-stopRecordBtn.disabled = true;
-};
+pauseRecordBtn.onclick  = () => liveRecorder?.pause();
+resumeRecordBtn.onclick = () => liveRecorder?.resume();
+stopRecordBtn.onclick   = () => liveRecorder?.stop();
 </script>
 <script>
 
@@ -3107,126 +3258,6 @@ panel.style.display="flex";
     bubble.classList.remove("show");
   });
 })();
-/* =============================================
-   CAMERA BUBBLE ON CANVAS
-   Draws the live camera feed directly onto the
-   whiteboard canvas so it appears in recorded video.
-   Position mirrors the draggable DOM bubble.
-   ============================================= */
-
-// Bubble position & size on canvas (bottom-right by default)
-let camBubble = {
-  size: 160,       // diameter in canvas px
-  padding: 24,     // margin from canvas edge
-  x: null,         // set dynamically on first draw
-  y: null,
-  dragging: false,
-  ox: 0,
-  oy: 0
-};
-
-function getCamBubblePos() {
-  // Default: bottom-right corner of canvas
-  if(camBubble.x === null){
-    camBubble.x = canvas.width  - camBubble.size - camBubble.padding;
-    camBubble.y = canvas.height - camBubble.size - camBubble.padding;
-  }
-  return { x: camBubble.x, y: camBubble.y };
-}
-
-function drawCameraBubbleOnCanvas() {
-  const bubbleVideo = document.getElementById("bubbleVideo");
-  if(!isRendering) return;                            // only draw during recording
-  if(!bubbleVideo || !bubbleVideo.srcObject) return;  // no camera stream
-  if(bubbleVideo.readyState < 2) return;              // video not ready yet
-
-  const { x, y } = getCamBubblePos();
-  const r = camBubble.size / 2;
-  const cx = x + r;
-  const cy = y + r;
-
-  ctx.save();
-
-  // ── Drop shadow ──
-  ctx.shadowColor = "rgba(0,0,0,0.55)";
-  ctx.shadowBlur  = 18;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 4;
-
-  // ── Circular clip ──
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.clip();
-
-  // ── Mirror the video horizontally (matches DOM bubble) ──
-  ctx.translate(cx, cy);
-  ctx.scale(-1, 1);           // flip horizontally
-  ctx.drawImage(bubbleVideo, -r, -r, camBubble.size, camBubble.size);
-  ctx.scale(-1, 1);           // restore
-  ctx.translate(-cx, -cy);
-
-  ctx.restore();
-
-  // ── Glowing red border (pulsing using sin wave) ──
-  const pulse = 0.3 + 0.15 * Math.sin(Date.now() / 300);
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.strokeStyle = "#f87171";
-  ctx.lineWidth = 4;
-  ctx.shadowColor = `rgba(248,113,113,${pulse})`;
-  ctx.shadowBlur = 14;
-  ctx.stroke();
-  ctx.restore();
-
-  // ── REC label inside bubble (top-left) ──
-  ctx.save();
-  ctx.font = "bold 13px 'DM Sans', sans-serif";
-  ctx.fillStyle = "rgba(248,113,113,0.95)";
-  ctx.shadowColor = "rgba(0,0,0,0.6)";
-  ctx.shadowBlur = 4;
-  ctx.fillText("● REC", cx - r + 10, cy - r + 20);
-  ctx.restore();
-}
-
-// ── Allow dragging the camera bubble on the canvas via pointer ──
-(function setupCamBubbleDrag(){
-  canvas.addEventListener("pointerdown", e => {
-    if(!isRendering) return;
-    const p = pos(e);
-    const { x, y } = getCamBubblePos();
-    const r = camBubble.size / 2;
-    const cx = x + r, cy = y + r;
-    const dist = Math.sqrt((p.x - cx)**2 + (p.y - cy)**2);
-    if(dist <= r){
-      camBubble.dragging = true;
-      camBubble.ox = p.x - x;
-      camBubble.oy = p.y - y;
-      e.stopImmediatePropagation(); // don't draw a stroke
-    }
-  }, true);
-
-  canvas.addEventListener("pointermove", e => {
-    if(!camBubble.dragging) return;
-    const p = pos(e);
-    camBubble.x = Math.max(0, Math.min(canvas.width  - camBubble.size, p.x - camBubble.ox));
-    camBubble.y = Math.max(0, Math.min(canvas.height - camBubble.size, p.y - camBubble.oy));
-  }, true);
-
-  canvas.addEventListener("pointerup", () => {
-    camBubble.dragging = false;
-  }, true);
-})();
-
-function renderLoop(){
-  if(!isRendering) return;
-  // Keep calling redraw() every animation frame during recording.
-  // Each redraw() ends with canvasVideoTrack.requestFrame() which
-  // pushes that exact pixel state into the video stream — so every
-  // stroke, erase, shape and camera frame is captured in the video.
-  redraw();
-  requestAnimationFrame(renderLoop);
-}
 </script>
 </body>
 </html>
