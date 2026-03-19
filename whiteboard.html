@@ -1327,9 +1327,6 @@ function redraw(){
 const p = pages[current];
 
 ctx.clearRect(0,0,canvas.width,canvas.height);
-if(selectedStrokes.length){
-  highlightSelectedStrokes();
-}
 /* ===== BACKGROUND ===== */
 ctx.fillStyle = p.bg;
 ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -1590,6 +1587,13 @@ p.strokes.forEach(s=>{
     ctx.globalAlpha = 1; // reset for next element
 });
 
+if(selectedStrokes.length){
+  highlightSelectedStrokes();
+}
+
+/* ===== DRAW CAMERA BUBBLE ONTO CANVAS (for recorded video) ===== */
+drawCameraBubbleOnCanvas();
+
 updateThumbs();
 }
 
@@ -1818,7 +1822,7 @@ redraw();
 }
 };
 
-canvas.onpointerup = () => {
+canvas.onpointerup = (e) => {
 if(scrollMode && isPanning && e.pointerId === panPointerId){
     isPanning = false;
     panPointerId = null;
@@ -2446,9 +2450,7 @@ selectStrokeBtn.onclick = () => {
   tool = "selectStroke";
 };
 
-penBtn.onclick = () => {
-  tool = "pen";
-};
+// penBtn.onclick already assigned above
 function normalizeBox(box){
   return {
     x: Math.min(box.x, box.x + box.w),
@@ -2701,7 +2703,7 @@ function cloudAutoSaveTrigger(){
 <script>
 openRecordingPanel.onclick=()=>{
 recordingPanel.style.transform="translateX(0)";
-loadRecordings();
+loadRecordingHistory();
 };
 
 closeRecordingPanel.onclick=()=>{
@@ -2783,6 +2785,8 @@ recordTimer.innerText=m+":"+s;
 
 startRecordBtn.onclick = async () => {
 
+if(mediaRecorder && mediaRecorder.state !== "inactive") return; // prevent double-start
+
 const canvasStream = canvas.captureStream(30);
 
 // camera
@@ -2790,7 +2794,12 @@ let cameraStream;
 try {
   cameraStream = await navigator.mediaDevices.getUserMedia({audio:true, video:true});
 } catch(e) {
-  cameraStream = await navigator.mediaDevices.getUserMedia({audio:true});
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({audio:true});
+  } catch(err) {
+    alert("Microphone access is required to record.");
+    return;
+  }
 }
 
 audioStream = cameraStream;
@@ -2801,6 +2810,10 @@ const bubbleVideo = document.getElementById("bubbleVideo");
 
 bubbleVideo.srcObject = cameraStream;
 bubble.classList.add("show");
+
+// Reset camera bubble canvas position for fresh recording
+camBubble.x = null;
+camBubble.y = null;
 
 // ✅ START LOOP (IMPORTANT)
 isRendering = true;
@@ -2821,13 +2834,37 @@ mediaRecorder.ondataavailable = e=>{
 };
 
 mediaRecorder.onstop = ()=>{
-  const blob = new Blob(recordedChunks);
+  const blob = new Blob(recordedChunks, { type: "video/webm" });
   const url = URL.createObjectURL(blob);
 
-  console.log("Recording ready:", url);
+  // Auto-download the recording
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "whiteboard_recording_" + new Date().toISOString().slice(0,19).replace(/[:T]/g,"-") + ".webm";
+  a.click();
+
+  // Save to recording history in localStorage
+  let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
+  history.push({ id: Date.now(), date: new Date().toLocaleString(), url: url });
+  localStorage.setItem("recordingHistory", JSON.stringify(history));
+  loadRecordingHistory();
+
+  console.log("Recording saved:", url);
 };
 
 mediaRecorder.start();
+
+// ✅ Show recording indicator & timer
+seconds = 0;
+recordTimer.innerText = "00:00";
+recordingIndicator.classList.add("show");
+recordingIndicator.style.display = "flex";
+recordTimer.style.display = "block";
+timerInterval = setInterval(updateTimer, 1000);
+
+// ✅ Update button states
+startRecordBtn.disabled = true;
+stopRecordBtn.disabled = false;
 };
 
 /* PAUSE */
@@ -2839,6 +2876,8 @@ if(mediaRecorder && mediaRecorder.state==="recording"){
 mediaRecorder.pause();
 
 clearInterval(timerInterval);
+
+recordingIndicator.style.opacity = "0.4"; // dim indicator when paused
 
 }
 
@@ -2854,6 +2893,8 @@ mediaRecorder.resume();
 
 timerInterval=setInterval(updateTimer,1000);
 
+recordingIndicator.style.opacity = "1"; // restore indicator
+
 }
 
 };
@@ -2862,21 +2903,32 @@ timerInterval=setInterval(updateTimer,1000);
 
 stopRecordBtn.onclick=()=>{
 
+if(!mediaRecorder || mediaRecorder.state === "inactive") return;
+
 mediaRecorder.stop();
 audioStream.getTracks().forEach(t=>t.stop());
 
 clearInterval(timerInterval);
+seconds = 0;
 
-recordingIndicator.style.display="none";
-recordTimer.style.display="none";
+// Hide recording indicator & timer
+recordingIndicator.classList.remove("show");
+recordingIndicator.style.display = "none";
+recordingIndicator.style.opacity = "1";
+recordTimer.style.display = "none";
+recordTimer.innerText = "00:00";
+
+// Stop render loop
+isRendering = false;
 
 // Hide camera bubble
 const bubble = document.getElementById("cameraBubble");
 bubble.classList.remove("show");
 document.getElementById("bubbleVideo").srcObject = null;
 
-startRecordBtn.disabled=false;
-stopRecordBtn.disabled=true;
+// Reset button states
+startRecordBtn.disabled = false;
+stopRecordBtn.disabled = true;
 };
 </script>
 <script>
@@ -3042,11 +3094,120 @@ panel.style.display="flex";
     bubble.classList.remove("show");
   });
 })();
+/* =============================================
+   CAMERA BUBBLE ON CANVAS
+   Draws the live camera feed directly onto the
+   whiteboard canvas so it appears in recorded video.
+   Position mirrors the draggable DOM bubble.
+   ============================================= */
+
+// Bubble position & size on canvas (bottom-right by default)
+let camBubble = {
+  size: 160,       // diameter in canvas px
+  padding: 24,     // margin from canvas edge
+  x: null,         // set dynamically on first draw
+  y: null,
+  dragging: false,
+  ox: 0,
+  oy: 0
+};
+
+function getCamBubblePos() {
+  // Default: bottom-right corner of canvas
+  if(camBubble.x === null){
+    camBubble.x = canvas.width  - camBubble.size - camBubble.padding;
+    camBubble.y = canvas.height - camBubble.size - camBubble.padding;
+  }
+  return { x: camBubble.x, y: camBubble.y };
+}
+
+function drawCameraBubbleOnCanvas() {
+  const bubbleVideo = document.getElementById("bubbleVideo");
+  if(!isRendering) return;                            // only draw during recording
+  if(!bubbleVideo || !bubbleVideo.srcObject) return;  // no camera stream
+  if(bubbleVideo.readyState < 2) return;              // video not ready yet
+
+  const { x, y } = getCamBubblePos();
+  const r = camBubble.size / 2;
+  const cx = x + r;
+  const cy = y + r;
+
+  ctx.save();
+
+  // ── Drop shadow ──
+  ctx.shadowColor = "rgba(0,0,0,0.55)";
+  ctx.shadowBlur  = 18;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 4;
+
+  // ── Circular clip ──
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  // ── Mirror the video horizontally (matches DOM bubble) ──
+  ctx.translate(cx, cy);
+  ctx.scale(-1, 1);           // flip horizontally
+  ctx.drawImage(bubbleVideo, -r, -r, camBubble.size, camBubble.size);
+  ctx.scale(-1, 1);           // restore
+  ctx.translate(-cx, -cy);
+
+  ctx.restore();
+
+  // ── Glowing red border (pulsing using sin wave) ──
+  const pulse = 0.3 + 0.15 * Math.sin(Date.now() / 300);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = "#f87171";
+  ctx.lineWidth = 4;
+  ctx.shadowColor = `rgba(248,113,113,${pulse})`;
+  ctx.shadowBlur = 14;
+  ctx.stroke();
+  ctx.restore();
+
+  // ── REC label inside bubble (top-left) ──
+  ctx.save();
+  ctx.font = "bold 13px 'DM Sans', sans-serif";
+  ctx.fillStyle = "rgba(248,113,113,0.95)";
+  ctx.shadowColor = "rgba(0,0,0,0.6)";
+  ctx.shadowBlur = 4;
+  ctx.fillText("● REC", cx - r + 10, cy - r + 20);
+  ctx.restore();
+}
+
+// ── Allow dragging the camera bubble on the canvas via pointer ──
+(function setupCamBubbleDrag(){
+  canvas.addEventListener("pointerdown", e => {
+    if(!isRendering) return;
+    const p = pos(e);
+    const { x, y } = getCamBubblePos();
+    const r = camBubble.size / 2;
+    const cx = x + r, cy = y + r;
+    const dist = Math.sqrt((p.x - cx)**2 + (p.y - cy)**2);
+    if(dist <= r){
+      camBubble.dragging = true;
+      camBubble.ox = p.x - x;
+      camBubble.oy = p.y - y;
+      e.stopImmediatePropagation(); // don't draw a stroke
+    }
+  }, true);
+
+  canvas.addEventListener("pointermove", e => {
+    if(!camBubble.dragging) return;
+    const p = pos(e);
+    camBubble.x = Math.max(0, Math.min(canvas.width  - camBubble.size, p.x - camBubble.ox));
+    camBubble.y = Math.max(0, Math.min(canvas.height - camBubble.size, p.y - camBubble.oy));
+  }, true);
+
+  canvas.addEventListener("pointerup", () => {
+    camBubble.dragging = false;
+  }, true);
+})();
+
 function renderLoop(){
   if(!isRendering) return;
-
-  redraw(); // redraw everything (including camera)
-
+  redraw(); // redraws canvas + camera bubble every frame
   requestAnimationFrame(renderLoop);
 }
 </script>
