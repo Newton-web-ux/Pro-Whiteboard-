@@ -1218,6 +1218,7 @@ let selectedImage=null,dragging=false,resizing=false,offsetX=0,offsetY=0;
 let mediaRecorder;
 let recordedChunks=[];
 let audioStream;
+let canvasVideoTrack = null; // track for on-demand frame push
 
 let seconds=0;
 let timerInterval;
@@ -1593,6 +1594,11 @@ if(selectedStrokes.length){
 
 /* ===== DRAW CAMERA BUBBLE ONTO CANVAS (for recorded video) ===== */
 drawCameraBubbleOnCanvas();
+
+/* ===== PUSH FRAME INTO VIDEO STREAM (on-demand capture) ===== */
+if(canvasVideoTrack && isRendering){
+  try { canvasVideoTrack.requestFrame(); } catch(e){}
+}
 
 updateThumbs();
 }
@@ -2787,7 +2793,11 @@ startRecordBtn.onclick = async () => {
 
 if(mediaRecorder && mediaRecorder.state !== "inactive") return; // prevent double-start
 
-const canvasStream = canvas.captureStream(30);
+// Use captureStream(0) = on-demand mode.
+// Every redraw() calls canvasVideoTrack.requestFrame() to push
+// that exact frame into the stream — nothing is ever missed.
+const canvasStream = canvas.captureStream(0);
+canvasVideoTrack = canvasStream.getVideoTracks()[0];
 
 // camera
 let cameraStream;
@@ -2907,6 +2917,9 @@ if(!mediaRecorder || mediaRecorder.state === "inactive") return;
 
 mediaRecorder.stop();
 audioStream.getTracks().forEach(t=>t.stop());
+
+// Stop pushing frames into stream
+canvasVideoTrack = null;
 
 clearInterval(timerInterval);
 seconds = 0;
@@ -3207,7 +3220,11 @@ function drawCameraBubbleOnCanvas() {
 
 function renderLoop(){
   if(!isRendering) return;
-  redraw(); // redraws canvas + camera bubble every frame
+  // Keep calling redraw() every animation frame during recording.
+  // Each redraw() ends with canvasVideoTrack.requestFrame() which
+  // pushes that exact pixel state into the video stream — so every
+  // stroke, erase, shape and camera frame is captured in the video.
+  redraw();
   requestAnimationFrame(renderLoop);
 }
 </script>
