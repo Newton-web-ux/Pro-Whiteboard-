@@ -2,3147 +2,1611 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>ProBoard — Infinite Canvas</title>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.11.0/dist/pptxgen.bundle.js"></script>
-<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pro Whiteboard – Dashboard</title>
+<meta name="description" content="Pro Whiteboard is a professional online whiteboard for teachers, students, and teams to draw, teach, collaborate, and record lessons.">
+<meta name="theme-color" content="#0f172a">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/patternLock/0.5.0/patternLock.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/patternLock/0.5.0/patternLock.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
 <style>
-/* =============================================
-   DESIGN TOKENS
-   ============================================= */
+/* ============ CSS VARIABLES ============ */
 :root {
-  --bg-app:        #0f1117;
-  --bg-chrome:     #161a23;
-  --bg-panel:      #1c2030;
-  --bg-hover:      #252b3b;
-  --bg-active:     #2e3650;
-  --border:        rgba(255,255,255,0.07);
-  --border-bright: rgba(255,255,255,0.15);
-  --accent:        #4f7dff;
-  --accent-glow:   rgba(79,125,255,0.35);
-  --accent-2:      #a78bfa;
-  --success:       #34d399;
-  --danger:        #f87171;
-  --warn:          #fbbf24;
-  --text-primary:  #e8ecf4;
-  --text-secondary:#8892a8;
-  --text-dim:      #4d5568;
-  --shadow-sm:     0 1px 3px rgba(0,0,0,0.4);
-  --shadow-md:     0 4px 16px rgba(0,0,0,0.5);
-  --shadow-lg:     0 12px 40px rgba(0,0,0,0.6);
-  --radius-sm:     6px;
-  --radius-md:     10px;
-  --radius-lg:     16px;
-  --dur:           0.18s;
-  --ease:          cubic-bezier(.4,0,.2,1);
-  --tab-h:         40px;
-  --ribbon-h:      54px;
-  --total-top:     calc(var(--tab-h) + var(--ribbon-h));
-  --sidebar-w:     130px;
-  --font:          'DM Sans', sans-serif;
-  --mono:          'DM Mono', monospace;
+  --bg: #f8fafc;
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e2e8f0;
+  --surface: #ffffff;
+  --surface-hover: #f1f5f9;
+  --border: #e2e8f0;
+  --border-hover: #94a3b8;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-light: #eff6ff;
+  --accent-border: #bfdbfe;
+  --danger: #ef4444;
+  --success: #10b981;
+  --panel-bg: #ffffff;
+  --panel-border: #e2e8f0;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.06);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --sidebar-w: 264px;
+  --transition: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* =============================================
-   RESET & BASE
-   ============================================= */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body.dark {
+  --bg: #0d1117;
+  --sidebar-bg: #161b22;
+  --sidebar-border: #21262d;
+  --surface: #1c2128;
+  --surface-hover: #22272e;
+  --border: #30363d;
+  --border-hover: #484f58;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --text-subtle: #484f58;
+  --accent: #2f81f7;
+  --accent-hover: #388bfd;
+  --accent-light: #0d2044;
+  --accent-border: #1f4a8a;
+  --danger: #f85149;
+  --success: #3fb950;
+  --panel-bg: #161b22;
+  --panel-border: #21262d;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.5);
+}
+
+/* ============ RESET & BASE ============ */
+*, *::before, *::after { box-sizing: border-box; }
 
 body {
-  font-family: var(--font);
-  font-size: 13px;
-  background: var(--bg-app);
-  color: var(--text-primary);
-  overflow: hidden;
+  margin: 0;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
   height: 100vh;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.5;
+  transition: background var(--transition), color var(--transition);
 }
 
-/* =============================================
-   APP HEADER / WORDMARK
-   ============================================= */
-#appHeader {
+/* ============ SIDEBAR ============ */
+#sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: background var(--transition), border-color var(--transition);
+  position: relative;
+  z-index: 10;
+}
+
+.sidebar-header {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.sidebar-logo {
   display: flex;
   align-items: center;
-  gap: 0;
-  height: var(--tab-h);
-  background: var(--bg-chrome);
-  border-bottom: 1px solid var(--border);
-  position: relative;
-  z-index: 200;
+  gap: 10px;
+  margin-bottom: 14px;
+  text-decoration: none;
 }
 
-#wordmark {
+.sidebar-logo-icon {
+  width: 32px;
+  height: 32px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.35);
+}
+
+.sidebar-logo-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+
+.sidebar-logo-badge {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: auto;
+}
+
+/* Search */
+.search-wrapper {
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-subtle);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+#searchInput {
+  width: 100%;
+  padding: 8px 10px 8px 30px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+#searchInput::placeholder { color: var(--text-subtle); }
+
+#searchInput:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+
+/* Sidebar nav sections */
+.sidebar-nav {
+  padding: 10px 10px 6px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  padding: 0 6px;
+  margin: 8px 0 4px;
+}
+
+/* Buttons */
+.sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  font-family: inherit;
+  font-weight: 450;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  text-align: left;
+  position: relative;
+}
+
+.sidebar-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.sidebar-btn .btn-icon {
+  width: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-subtle);
+  flex-shrink: 0;
+  transition: color var(--transition);
+}
+
+.sidebar-btn:hover .btn-icon { color: var(--accent); }
+
+.sidebar-btn.primary {
+  background: var(--accent);
+  color: white;
+  font-weight: 500;
+}
+
+.sidebar-btn.primary .btn-icon { color: rgba(255,255,255,0.8); }
+.sidebar-btn.primary:hover { background: var(--accent-hover); color: white; }
+.sidebar-btn.primary:hover .btn-icon { color: white; }
+
+.btn-group {
+  display: flex;
+  gap: 4px;
+  padding: 0 10px 6px;
+}
+
+.btn-group .sidebar-btn {
+  flex: 1;
+  justify-content: center;
+  padding: 7px 6px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+}
+
+.btn-group .sidebar-btn:hover { border-color: var(--border-hover); }
+
+/* User info */
+.sidebar-user {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+#userInfo {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+#userInfo img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+
+#userName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#userInfo .sign-out-btn {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--transition), color var(--transition);
+  white-space: nowrap;
+}
+
+#userInfo .sign-out-btn:hover {
+  background: var(--danger);
+  color: white;
+  border-color: var(--danger);
+}
+
+#gSignInDiv {
+  padding: 4px 0;
+}
+
+/* Tree area */
+.sidebar-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.tree-empty {
+  text-align: center;
+  color: var(--text-subtle);
+  font-size: 12px;
+  padding: 24px 12px;
+}
+
+.tree-empty i {
+  display: block;
+  font-size: 28px;
+  margin-bottom: 8px;
+  opacity: 0.4;
+}
+
+/* ============ TREE ITEMS ============ */
+.item {
+  padding: 8px 10px;
+  margin: 2px 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background var(--transition), border-color var(--transition);
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.item:hover {
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+
+.item.active {
+  background: var(--accent-light);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.item .item-icon {
+  margin-right: 7px;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.item.active .item-icon { color: var(--accent); }
+
+.children {
+  margin-left: 18px;
+  border-left: 1px solid var(--border);
+  padding-left: 8px;
+}
+
+/* ============ MAIN AREA ============ */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.main-topbar {
+  height: 52px;
+  background: var(--sidebar-bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.topbar-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.topbar-breadcrumb span:last-child {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.topbar-sep { color: var(--text-subtle); }
+
+.topbar-actions {
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 18px;
-  border-right: 1px solid var(--border);
-  height: 100%;
-  min-width: 130px;
 }
 
-#wordmark .logo-icon {
+.topbar-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  transition: all var(--transition);
+  font-family: inherit;
+}
+
+.topbar-icon-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+  border-color: var(--border-hover);
+}
+
+.main-content {
+  flex: 1;
+  overflow: auto;
+  padding: 32px 40px;
+}
+
+/* Welcome / empty state */
+.welcome-card {
+  max-width: 560px;
+  margin: 40px auto 0;
+  text-align: center;
+}
+
+.welcome-graphic {
+  width: 64px;
+  height: 64px;
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 28px;
+  color: var(--accent);
+}
+
+.welcome-card h1 {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 8px;
+  letter-spacing: -0.4px;
+}
+
+.welcome-card p {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0 0 28px;
+  line-height: 1.6;
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.qa-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 12px;
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: center;
+}
+
+.qa-card:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.qa-card i {
+  font-size: 20px;
+  color: var(--accent);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.qa-card span {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.qa-card:hover span { color: var(--accent); }
+
+/* Stats row */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+}
+
+.stat-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+}
+
+.stat-sub {
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  margin-top: 2px;
+}
+
+/* ============ SLIDE-OUT PANELS ============ */
+.side-panel {
+  position: fixed;
+  right: -420px;
+  top: 0;
+  width: 380px;
+  height: 100%;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--panel-border);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+  transition: right 0.28s cubic-bezier(0.4,0,0.2,1), background var(--transition);
+  z-index: 1000;
+}
+
+.side-panel.show { right: 0; }
+
+.panel-header {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.panel-header-icon {
+  width: 28px;
+  height: 28px;
+  background: var(--accent-light);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  letter-spacing: -0.2px;
+}
+
+.panel-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 16px;
+  transition: all var(--transition);
+  line-height: 1;
+}
+
+.panel-close:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+}
+
+/* Trash items */
+.trash-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  font-size: 13.5px;
+  color: var(--text);
+  transition: border-color var(--transition);
+}
+
+.trash-item:hover { border-color: var(--border-hover); }
+
+.trash-item-name {
+  font-weight: 500;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trash-item-name i { color: var(--text-subtle); font-size: 12px; }
+
+.trash-item-actions { display: flex; gap: 6px; }
+
+.small-btn {
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  font-family: inherit;
+  transition: all var(--transition);
+}
+
+.small-btn:hover { background: var(--accent); border-color: var(--accent); color: white; }
+
+.small-btn.danger:hover { background: var(--danger); border-color: var(--danger); }
+
+/* Form Panel */
+#formPanel .panel-body { padding: 0; }
+
+#formPanel iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+/* Guide styles */
+.guide-section {
+  margin-bottom: 20px;
+}
+
+.guide-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  margin-bottom: 2px;
+  transition: background var(--transition);
+}
+
+.guide-section-header:hover { background: var(--surface-hover); }
+
+.guide-badge {
   width: 22px;
   height: 22px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  background: var(--accent);
+  color: white;
   border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  color: #fff;
-  flex-shrink: 0;
-}
-
-#wordmark span {
-  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--text-primary);
-}
-
-#wordmark small {
-  font-size: 9px;
-  color: var(--accent);
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-top: 1px;
-}
-
-/* =============================================
-   RIBBON TABS
-   ============================================= */
-#ribbonTabs {
-  display: flex;
-  align-items: center;
-  height: 100%;
-  flex: 1;
-}
-
-.tabBtn {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  padding: 0 16px;
-  height: 100%;
-  cursor: pointer;
-  font-size: 12.5px;
-  font-family: var(--font);
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  position: relative;
-  transition: color var(--dur) var(--ease);
-  white-space: nowrap;
-}
-
-.tabBtn::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 16px;
-  right: 16px;
-  height: 2px;
-  background: var(--accent);
-  border-radius: 2px 2px 0 0;
-  transform: scaleX(0);
-  transition: transform var(--dur) var(--ease);
-}
-
-.tabBtn:hover { color: var(--text-primary); }
-.tabBtn.active { color: var(--text-primary); }
-.tabBtn.active::after { transform: scaleX(1); }
-
-/* Storage btn in header */
-#storageTabBtn {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  padding: 0 14px;
-  height: 100%;
-  cursor: pointer;
-  font-size: 12.5px;
-  font-family: var(--font);
-  font-weight: 500;
-  transition: color var(--dur) var(--ease);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-#storageTabBtn:hover { color: var(--text-primary); }
-
-/* =============================================
-   RIBBON PANEL
-   ============================================= */
-#ribbonBar {
-  height: var(--ribbon-h);
-  background: var(--bg-chrome);
-  border-bottom: 1px solid var(--border);
-  position: relative;
-  z-index: 190;
-}
-
-.ribbonPanel {
-  display: none;
-  align-items: center;
-  height: 100%;
-  padding: 0 8px;
-  gap: 2px;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-.ribbonPanel::-webkit-scrollbar { display: none; }
-.ribbonPanel.active { display: flex; }
-
-/* =============================================
-   TOOL GROUPS
-   ============================================= */
-.group {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 0 8px;
-  position: relative;
-}
-
-.group::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 20%;
-  height: 60%;
-  width: 1px;
-  background: var(--border);
-}
-.group:last-child::after { display: none; }
-
-/* ---- Tool Buttons ---- */
-.group button,
-.ribbon-btn {
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text-secondary);
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background var(--dur) var(--ease),
-              color var(--dur) var(--ease),
-              border-color var(--dur) var(--ease);
-  position: relative;
   flex-shrink: 0;
 }
 
-.group button:hover,
-.ribbon-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  border-color: var(--border-bright);
-}
-
-.group button.active,
-.ribbon-btn.active {
-  background: var(--bg-active);
-  color: var(--accent);
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-glow);
-}
-
-/* Wide text buttons */
-.group button.btn-text {
-  width: auto;
-  padding: 0 12px;
-  gap: 6px;
-  font-size: 12px;
-  font-family: var(--font);
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-.group button.btn-text:hover { color: var(--text-primary); }
-
-/* ---- Inputs ---- */
-.group input[type="color"] {
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--border-bright);
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel);
-  cursor: pointer;
-  padding: 3px;
-  flex-shrink: 0;
-}
-.group input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-.group input[type="color"]::-webkit-color-swatch { border: none; border-radius: 3px; }
-
-.group input[type="number"] {
-  width: 54px;
-  height: 34px;
-  border: 1px solid var(--border-bright);
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel);
-  color: var(--text-primary);
-  font-family: var(--mono);
-  font-size: 12px;
-  text-align: center;
-  padding: 0 6px;
-  flex-shrink: 0;
-}
-.group input[type="number"]:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-glow);
-}
-
-/* Label above groups */
-.group-label {
-  position: absolute;
-  bottom: 3px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 9px;
-  color: var(--text-dim);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-/* =============================================
-   SIDEBAR (Page thumbnails)
-   ============================================= */
-#sidebar {
-  position: absolute;
-  left: 0;
-  top: var(--total-top);
-  bottom: 0;
-  width: var(--sidebar-w);
-  background: var(--bg-chrome);
-  border-right: 1px solid var(--border);
-  overflow-y: auto;
-  overflow-x: hidden;
-  transition: transform .3s var(--ease);
-  padding: 10px 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  z-index: 100;
-}
-
-#sidebar::-webkit-scrollbar { width: 4px; }
-#sidebar::-webkit-scrollbar-track { background: transparent; }
-#sidebar::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 4px; }
-
-#sidebar.hidden { transform: translateX(calc(-1 * var(--sidebar-w))); }
-
-.thumb {
-  width: 100%;
-  height: 72px;
-  background: #fff;
-  cursor: pointer;
-  border: 2px solid var(--border);
-  border-radius: var(--radius-sm);
-  transition: border-color var(--dur) var(--ease), transform var(--dur) var(--ease);
-  display: block;
-}
-.thumb:hover { border-color: var(--border-bright); transform: scale(1.02); }
-.thumb.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
-
-/* =============================================
-   CANVAS AREA
-   ============================================= */
-#canvasContainer {
-  position: absolute;
-  left: var(--sidebar-w);
-  top: var(--total-top);
-  right: 0;
-  bottom: 0;
-  background: var(--bg-app);
-  overflow: auto;
-  transition: left .3s var(--ease);
-  background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
-  background-size: 28px 28px;
-}
-
-#canvasContainer.full { left: 0; }
-#canvasContainer.scrollMode { cursor: grab; }
-#canvasContainer.scrollMode:active { cursor: grabbing; }
-
-canvas {
-  display: block;
-  margin: 30px auto;
-  background: #ffffff;
-  touch-action: none;
-  border-radius: var(--radius-md);
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.06), var(--shadow-lg);
-}
-
-/* =============================================
-   SHAPE PANEL (dropdown)
-   ============================================= */
-#shapePanel {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 10px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-bright);
-  position: absolute;
-  top: calc(var(--total-top) + 8px);
-  left: calc(var(--sidebar-w) + 8px);
-  box-shadow: var(--shadow-lg);
-  border-radius: var(--radius-md);
-  z-index: 500;
-  min-width: 210px;
-  animation: dropIn 0.15s var(--ease);
-}
-
-#shapePanel.hidden { display: none; }
-
-@keyframes dropIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-#shapePanel .shape-section-label {
-  width: 100%;
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  padding: 2px 2px 4px;
-}
-
-#shapePanel button {
-  width: 36px;
-  height: 36px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  transition: background var(--dur) var(--ease),
-              color var(--dur) var(--ease),
-              border-color var(--dur) var(--ease),
-              transform var(--dur) var(--ease);
-}
-
-#shapePanel button:hover {
-  background: var(--bg-active);
-  color: var(--accent);
-  border-color: var(--accent);
-  transform: scale(1.1);
-}
-
-/* =============================================
-   GRAPH PANEL
-   ============================================= */
-#graphPanel {
-  position: fixed;
-  top: 80px;
-  right: 40px;
-  width: 660px;
-  height: 520px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-bright);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  display: flex;
-  flex-direction: column;
-  z-index: 5000;
-  overflow: hidden;
-}
-
-#graphPanel.hidden { display: none; }
-
-#graphHeader {
-  background: var(--bg-chrome);
-  color: var(--text-primary);
-  padding: 0 16px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: move;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-#graphHeader span {
-  font-size: 12.5px;
+.guide-section-title {
+  font-size: 13.5px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-#graphHeader span::before {
-  content: '';
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 6px var(--accent);
+  color: var(--text);
 }
 
-#graphHeader button {
-  background: var(--bg-hover);
+.guide-content {
+  background: var(--surface);
   border: 1px solid var(--border);
-  color: var(--text-secondary);
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: 11px;
-  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
-}
-#graphHeader button:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
-
-#graphControls {
-  display: flex;
-  gap: 6px;
-  padding: 10px 12px;
-  background: var(--bg-chrome);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-#graphControls input {
-  flex: 1;
-  padding: 7px 12px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-bright);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-family: var(--mono);
-  font-size: 12px;
-}
-#graphControls input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-glow);
-}
-#graphControls input::placeholder { color: var(--text-dim); }
-
-#graphControls button {
-  padding: 7px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-  font-size: 11.5px;
-  font-family: var(--font);
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all var(--dur) var(--ease);
-}
-#graphControls button:hover { background: var(--bg-active); color: var(--text-primary); border-color: var(--border-bright); }
-
-#plotBtn { background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important; }
-#plotBtn:hover { opacity: 0.9; }
-
-#graphContainer { flex: 1; min-height: 0; }
-
-.graphFloatingBtn {
-  position: fixed;
-  bottom: 28px;
-  right: 28px;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: none;
-  background: var(--accent);
-  color: #fff;
-  font-size: 18px;
-  cursor: pointer;
-  z-index: 5000;
-  box-shadow: 0 4px 20px var(--accent-glow);
-  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.graphFloatingBtn:hover { transform: scale(1.1); box-shadow: 0 6px 28px var(--accent-glow); }
-
-/* =============================================
-   RECORDING PANEL
-   ============================================= */
-#recordingPanel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 300px;
-  height: 100%;
-  background: var(--bg-panel);
-  border-left: 1px solid var(--border-bright);
-  box-shadow: var(--shadow-lg);
-  transform: translateX(100%);
-  transition: transform .3s var(--ease);
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-}
-
-#recordingHeader {
-  padding: 14px 16px;
-  background: var(--bg-chrome);
-  border-bottom: 1px solid var(--border);
-  color: var(--text-primary);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: 600;
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  padding: 12px 14px;
   font-size: 13px;
-  letter-spacing: 0.03em;
-  flex-shrink: 0;
+  color: var(--text-muted);
+  line-height: 1.65;
 }
 
-#recordingHeader button {
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  width: 26px;
-  height: 26px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: 10px;
-  transition: all var(--dur) var(--ease);
+.guide-content ul {
+  margin: 0;
+  padding-left: 18px;
 }
-#recordingHeader button:hover { background: var(--danger); color: #fff; }
 
-#recordingList {
-  padding: 12px;
-  overflow-y: auto;
-  flex: 1;
-}
-#recordingList::-webkit-scrollbar { width: 4px; }
-#recordingList::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 4px; }
+.guide-content li { margin-bottom: 6px; }
 
-.recordItem {
+/* Contact panel */
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 10px 12px;
   margin-bottom: 8px;
-  background: var(--bg-hover);
-  font-size: 12px;
-  color: var(--text-secondary);
+  transition: border-color var(--transition), background var(--transition);
+  text-decoration: none;
+  color: var(--text);
 }
-.recordItem > div { margin-bottom: 8px; color: var(--text-primary); font-weight: 500; }
 
-.recordItem button {
-  margin-right: 6px;
-  padding: 4px 10px;
-  font-size: 11px;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  background: var(--bg-panel);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--dur) var(--ease);
+.contact-item:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-light);
 }
-.recordItem button:hover { background: var(--bg-active); color: var(--text-primary); }
 
-/* =============================================
-   CAMERA BUBBLE
-   ============================================= */
-#cameraBubble {
-  position: fixed;
-  bottom: 40px;
-  right: 24px;
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 3px solid var(--danger);
-  box-shadow: 0 0 0 4px rgba(248,113,113,0.3), var(--shadow-lg);
-  z-index: 9998;
-  display: none;
-  cursor: grab;
-  animation: bubblePulse 1.4s infinite;
-  background: #000;
-  transition: width .2s, height .2s, border-radius .2s;
-}
-#cameraBubble:active { cursor: grabbing; }
-#cameraBubble video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scaleX(-1); /* mirror effect */
-  pointer-events: none;
-}
-#cameraBubble .bubble-close {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.6);
-  border: none;
-  color: #fff;
-  font-size: 10px;
-  cursor: pointer;
+.contact-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
-  opacity: 0;
-  transition: opacity .2s;
-}
-#cameraBubble:hover .bubble-close { opacity: 1; }
-#cameraBubble.show { display: block; }
-
-@keyframes bubblePulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(248,113,113,0.3), var(--shadow-lg); }
-  50%       { box-shadow: 0 0 0 8px rgba(248,113,113,0.15), var(--shadow-lg); }
-}
-/* =============================================
-   STORAGE PANEL
-   ============================================= */
-.panel {
-  position: fixed;
-  right: 0;
-  top: 0;
-  width: 440px;
-  height: 100%;
-  background: var(--bg-panel);
-  border-left: 1px solid var(--border-bright);
-  box-shadow: var(--shadow-lg);
-  padding: 24px;
-  overflow-y: auto;
-  transform: translateX(100%);
-  transition: transform .3s var(--ease);
-  z-index: 9999;
-}
-.panel::-webkit-scrollbar { width: 4px; }
-.panel::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 4px; }
-.panel.open { transform: translateX(0); }
-
-.panel h2 {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.panel h2::before {
-  content: '';
-  display: inline-block;
-  width: 3px;
-  height: 18px;
-  background: var(--accent);
-  border-radius: 3px;
+  font-size: 15px;
+  flex-shrink: 0;
 }
 
-#storageInfo {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 16px;
-  padding: 10px 14px;
-  background: var(--bg-hover);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-}
+.contact-icon.phone { background: #dcfce7; color: #16a34a; }
+.contact-icon.email { background: #dbeafe; color: #2563eb; }
+.contact-icon.instagram { background: #fce7f3; color: #db2777; }
+.contact-icon.youtube { background: #fee2e2; color: #dc2626; }
+.contact-icon.telegram { background: #dbeafe; color: #0284c7; }
 
-#storageTable {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 16px;
-}
-#storageTable th {
-  text-align: left;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--border);
-}
-#storageTable td {
-  padding: 10px 10px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border);
-}
-#storageTable tr:hover td { background: var(--bg-hover); color: var(--text-primary); }
-#storageTable td button {
-  padding: 4px 10px;
-  font-size: 11px;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  background: var(--bg-panel);
-  color: var(--accent);
-  cursor: pointer;
-  transition: all var(--dur) var(--ease);
-}
-#storageTable td button:hover { background: var(--accent); color: #fff; }
+body.dark .contact-icon.phone { background: #052e16; color: #4ade80; }
+body.dark .contact-icon.email { background: #0d2044; color: #60a5fa; }
+body.dark .contact-icon.instagram { background: #4a0020; color: #f472b6; }
+body.dark .contact-icon.youtube { background: #450a0a; color: #fca5a5; }
+body.dark .contact-icon.telegram { background: #082040; color: #38bdf8; }
 
-.panel > button:last-child {
-  margin-top: 8px;
-  width: 100%;
-  padding: 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-hover);
-  color: var(--text-secondary);
-  font-size: 12.5px;
-  font-family: var(--font);
-  cursor: pointer;
-  transition: all var(--dur) var(--ease);
-}
-.panel > button:last-child:hover { background: var(--bg-active); color: var(--text-primary); }
+.contact-info { flex: 1; }
+.contact-info strong { display: block; font-size: 13px; font-weight: 600; color: var(--text); }
+.contact-info span { font-size: 12.5px; color: var(--text-muted); }
 
-/* =============================================
-   SLIDESHOW CONTROLS
-   ============================================= */
-#slideshowControls {
-  display: none;
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--bg-panel);
-  border: 1px solid var(--border-bright);
-  padding: 8px 12px;
-  border-radius: 100px;
-  box-shadow: var(--shadow-lg);
-  gap: 6px;
-  align-items: center;
-  backdrop-filter: blur(12px);
-}
-#slideshowControls.show { display: flex; }
+.contact-arrow { color: var(--text-subtle); font-size: 11px; }
 
-#slideshowControls button {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-  padding: 7px 16px;
-  border-radius: 100px;
-  cursor: pointer;
-  font-size: 12px;
-  font-family: var(--font);
-  font-weight: 500;
-  transition: all var(--dur) var(--ease);
-}
-#slideshowControls button:hover { background: var(--bg-active); border-color: var(--border-bright); }
-
-/* =============================================
-   RECORDING INDICATOR + TIMER
-   ============================================= */
-#recordingIndicator {
-  position: fixed;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--danger);
-  color: white;
-  padding: 5px 14px;
-  border-radius: 100px;
-  font-weight: 600;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  display: none;
-  z-index: 9999;
-  align-items: center;
-  gap: 7px;
-  box-shadow: 0 2px 12px rgba(248,113,113,0.5);
-  animation: pulse 1.4s infinite;
-}
-#recordingIndicator.show { display: flex; }
-
-@keyframes pulse {
-  0%, 100% { box-shadow: 0 2px 12px rgba(248,113,113,0.5); }
-  50% { box-shadow: 0 2px 20px rgba(248,113,113,0.85); }
-}
-
-#recordTimer {
-  position: fixed;
-  top: 52px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.85);
-  color: var(--text-primary);
-  padding: 4px 12px;
-  border-radius: 100px;
-  font-family: var(--mono);
-  font-size: 12px;
-  display: none;
-  z-index: 9999;
-  backdrop-filter: blur(8px);
-}
-
-/* =============================================
-   STATUS BAR (bottom)
-   ============================================= */
-#statusBar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 24px;
-  background: var(--bg-chrome);
-  border-top: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  padding: 0 14px;
-  gap: 16px;
-  z-index: 100;
-  font-size: 11px;
-  color: var(--text-dim);
-  font-family: var(--mono);
-}
-#statusBar span { display: flex; align-items: center; gap: 4px; }
-#statusBar span i { font-size: 9px; }
-
-/* =============================================
-   SECURITY PANEL
-   ============================================= */
+/* Security panel */
 #securityPanel {
   position: fixed;
   top: 0; left: 0;
   width: 100%; height: 100%;
-  background: rgba(0,0,0,0.97);
+  background: #080c12;
   display: none;
   z-index: 999999;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  color: var(--text-primary);
-  gap: 12px;
 }
 
-#securityPanel h2 {
-  font-size: 22px;
+/* Overlay backdrop */
+.panel-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  z-index: 999;
+  backdrop-filter: blur(2px);
+}
+
+.panel-backdrop.show { display: block; }
+
+/* ============ SCROLLBARS ============ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+/* ============ ANIMATIONS ============ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.welcome-card { animation: fadeInUp 0.35s ease; }
+.stats-row { animation: fadeInUp 0.35s 0.1s ease both; }
+
+/* ============ DIVIDER ============ */
+.sidebar-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 10px;
+}
+
+/* ============ TOOLTIP ============ */
+[data-tooltip] { position: relative; }
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: var(--text);
+  color: var(--bg);
+  font-size: 11px;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+[data-tooltip]:hover::after { opacity: 1; }
+
+/* ============ PANEL SECTION LABEL ============ */
+.panel-section-label {
+  font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.07em;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  margin: 16px 0 6px;
 }
 
-#securityPanel p {
-  color: var(--text-secondary);
+.panel-section-label:first-child { margin-top: 0; }
+
+/* ============ EMPTY TRASH STATE ============ */
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-subtle);
+}
+
+.empty-state i {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 10px;
+  opacity: 0.4;
+}
+
+.empty-state p {
   font-size: 13px;
+  margin: 0;
 }
-
-/* =============================================
-   TOOLTIP
-   ============================================= */
-[title] { position: relative; }
-
-/* =============================================
-   SCROLLBARS (canvas area)
-   ============================================= */
-#canvasContainer::-webkit-scrollbar { width: 8px; height: 8px; }
-#canvasContainer::-webkit-scrollbar-track { background: var(--bg-app); }
-#canvasContainer::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 4px; }
-#canvasContainer::-webkit-scrollbar-thumb:hover { background: var(--bg-active); }
 </style>
 </head>
 <body>
 
-<!-- ================= APP HEADER ================= -->
-<div id="appHeader">
-  <div id="wordmark">
-    <div class="logo-icon"><i class="fa fa-pen-nib"></i></div>
-    <div>
-      <span>ProBoard</span><br>
-      <small>Canvas</small>
+<!-- BACKDROP -->
+<div class="panel-backdrop" id="backdrop" onclick="closeAllPanels()"></div>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+
+  <!-- Header: Logo + Search -->
+  <div class="sidebar-header">
+    <a class="sidebar-logo" href="#">
+      <div class="sidebar-logo-icon"><i class="fa fa-pen-nib"></i></div>
+      <span class="sidebar-logo-text">Pro Whiteboard</span>
+      <span class="sidebar-logo-badge">PRO</span>
+    </a>
+    <div class="search-wrapper">
+      <i class="fa fa-search search-icon"></i>
+      <input type="text" id="searchInput" placeholder="Search projects, folders, boards…" onkeyup="searchExplorer()">
     </div>
   </div>
 
-  <div id="ribbonTabs">
-    <button class="tabBtn active" data-tab="drawingTab">Drawing</button>
-    <button class="tabBtn" data-tab="insertTab">Insert</button>
-    <button class="tabBtn" data-tab="slideshowTab">Slideshow</button>
-    <button class="tabBtn" data-tab="videoTab">Video</button>
-    <button class="tabBtn" data-tab="exportTab">Export</button>
-    <button id="storageTabBtn" onclick="openStoragePanel()">
-      <i class="fa fa-cloud"></i> Storage
+  <!-- Primary Actions -->
+  <div class="sidebar-nav">
+    <div class="nav-section-label">Create</div>
+    <button class="sidebar-btn primary" id="newProjectBtn" onclick="createProject()">
+      <span class="btn-icon"><i class="fa fa-briefcase"></i></span> New Project
+    </button>
+    <div class="btn-group">
+      <button class="sidebar-btn" id="newFolderBtn" onclick="createFolder()" data-tooltip="New Folder">
+        <span class="btn-icon"><i class="fa fa-folder-plus"></i></span> Folder
+      </button>
+      <button class="sidebar-btn" id="newBoardBtn" onclick="createBoard()" data-tooltip="New Board">
+        <span class="btn-icon"><i class="fa fa-columns"></i></span> Board
+      </button>
+    </div>
+
+    <div class="nav-section-label" style="margin-top:14px;">Tools</div>
+    <button class="sidebar-btn" onclick="toggleTheme()" id="themeToggle">
+      <span class="btn-icon"><i class="fa fa-moon"></i></span> <span id="themeLabel">Dark Mode</span>
+    </button>
+    <button class="sidebar-btn" onclick="toggleTrash()">
+      <span class="btn-icon"><i class="fa fa-trash-alt"></i></span> Trash
+    </button>
+    <button class="sidebar-btn" onclick="toggleFormPanel()">
+      <span class="btn-icon"><i class="fa fa-comment-alt"></i></span> Feedback
+    </button>
+    <button class="sidebar-btn" onclick="toggleContactPanel()">
+      <span class="btn-icon"><i class="fa fa-address-book"></i></span> Contact
+    </button>
+    <button class="sidebar-btn" onclick="toggleGuidePanel()">
+      <span class="btn-icon"><i class="fa fa-book-open"></i></span> User Guide
     </button>
   </div>
-</div>
 
-<!-- ================= RIBBON BAR ================= -->
-<div id="ribbonBar">
-
-  <!-- DRAWING TAB -->
-  <div id="drawingTab" class="ribbonPanel active">
-
-    <div class="group">
-      <button id="toggleBtn" title="Toggle Sidebar"><i class="fa fa-sidebar"></i></button>
-    </div>
-
-    <div class="group">
-      <button id="penBtn" class="active" title="Pen"><i class="fa fa-pen"></i></button>
-      <button id="eraserBtn" title="Eraser"><i class="fa fa-eraser"></i></button>
-      <button id="highlighterBtn" title="Highlighter"><i class="fas fa-highlighter"></i></button>
-      <input type="color" id="colorPicker" value="#000000" title="Stroke Color">
-      <input type="number" id="sizePicker" value="3" min="1" max="50" title="Brush Size">
-    </div>
-
-    <div class="group">
-      <input type="color" id="bgPicker" value="#ffffff" title="Background Color">
-    </div>
-
-    <div class="group">
-      <button id="undoBtn" title="Undo (Ctrl+Z)"><i class="fa fa-rotate-left"></i></button>
-      <button id="redoBtn" title="Redo (Ctrl+Y)"><i class="fa fa-rotate-right"></i></button>
-    </div>
-
-    <div class="group">
-      <button id="addPageBtn" title="Add Page"><i class="fa fa-file-circle-plus"></i></button>
-      <button id="deletePageBtn" title="Delete Page"><i class="fa fa-trash"></i></button>
-    </div>
-
-    <div class="group">
-      <button id="clearBtn" title="Clear Canvas"><i class="fa fa-trash-can"></i></button>
-      <button id="zoomInBtn" title="Zoom In"><i class="fa fa-magnifying-glass-plus"></i></button>
-      <button id="zoomOutBtn" title="Zoom Out"><i class="fa fa-magnifying-glass-minus"></i></button>
-    </div>
-
-    <div class="group">
-      <button id="selectStrokeBtn" title="Select Strokes"><i class="fa fa-mouse-pointer"></i></button>
-      <button id="cutStrokeBtn" title="Cut Selection"><i class="fa fa-scissors"></i></button>
-      <button id="toggleScrollBtn" class="btn-text" title="Toggle Scroll Mode">
-        <i class="fa fa-hand"></i> Scroll
-      </button>
-    </div>
-
-  </div>
-
-  <!-- INSERT TAB -->
-  <div id="insertTab" class="ribbonPanel">
-    <div class="group">
-      <button id="imageBtn" title="Insert Image"><i class="fa fa-image"></i></button>
-      <input type="file" id="imageInput" hidden accept="image/*">
-      <button id="cutImageBtn" class="btn-text" title="Cut Image">
-        <i class="fas fa-scissors"></i> Cut
-      </button>
-      <button id="shapeToggleBtn" class="btn-text" title="Insert Shape">
-        <i class="fa-regular fa-square"></i> Shapes
-      </button>
-      <button id="deleteShapeBtn" title="Delete Shape"><i class="fa fa-xmark"></i></button>
+  <!-- Google Sign In / User -->
+  <div class="sidebar-user">
+    <div id="gSignInDiv"></div>
+    <div id="userInfo">
+      <img id="userPic" src="" alt="User">
+      <span id="userName"></span>
+      <button class="sign-out-btn" onclick="signOut()">Sign out</button>
     </div>
   </div>
 
-  <!-- SLIDESHOW TAB -->
-  <div id="slideshowTab" class="ribbonPanel">
-    <div class="group">
-      <button id="slideshowBtn" class="btn-text" title="Start Slideshow">
-        <i class="fa fa-play"></i> Present
-      </button>
-    </div>
-  </div>
-
-  <!-- VIDEO TAB -->
-  <div id="videoTab" class="ribbonPanel">
-    <div class="group">
-      <button id="startRecordBtn" title="Start Recording"><i class="fa fa-circle" style="color:var(--danger)"></i></button>
-      <button id="pauseRecordBtn" title="Pause"><i class="fa fa-pause"></i></button>
-      <button id="resumeRecordBtn" title="Resume"><i class="fa fa-play"></i></button>
-      <button id="stopRecordBtn" disabled title="Stop Recording"><i class="fa fa-stop"></i></button>
-      <button id="openRecordingPanel" class="btn-text" title="Recording History">
-        <i class="fa fa-video"></i> History
-      </button>
-    </div>
-  </div>
-
-  <!-- EXPORT TAB -->
-  <div id="exportTab" class="ribbonPanel">
-    <div class="group">
-      <button id="pngBtn" class="btn-text" title="Export PNG"><i class="fa fa-file-image"></i> PNG</button>
-      <button id="pdfBtn" class="btn-text" title="Export PDF"><i class="fa fa-file-pdf"></i> PDF</button>
-      <button id="pptBtn" class="btn-text" title="Export PPTX"><i class="fa fa-file-powerpoint"></i> PPTX</button>
-    </div>
-    <div class="group">
-      <button class="btn-text" onclick="saveBoardToCloud()"><i class="fa fa-cloud-arrow-up"></i> Save</button>
-      <button class="btn-text" onclick="loadBoardFromCloud()"><i class="fa fa-cloud-arrow-down"></i> Load</button>
+  <!-- File Tree -->
+  <div class="sidebar-tree" id="tree">
+    <div class="tree-empty">
+      <i class="fa fa-layer-group"></i>
+      No items yet.<br>Create a project to get started.
     </div>
   </div>
 
 </div>
 
-<!-- ================= SHAPE PANEL ================= -->
-<div id="shapePanel" class="hidden">
-  <div class="shape-section-label">2D Shapes</div>
-  <button id="rectBtn" title="Rectangle"><i class="fa-regular fa-square"></i></button>
-  <button id="circleBtn" title="Circle"><i class="fa-regular fa-circle"></i></button>
-  <button id="lineBtn" title="Line"><i class="fa-solid fa-slash"></i></button>
-  <button id="arrowBtn" title="Arrow"><i class="fa-solid fa-arrow-right"></i></button>
-  <button id="paraBtn" title="Parallelogram"><i class="fa-solid fa-diamond"></i></button>
-  <button id="rhombusBtn" title="Rhombus"><i class="fa-regular fa-gem"></i></button>
-  <button id="trapBtn" title="Trapezoid"><i class="fa-solid fa-up-down"></i></button>
-  <div class="shape-section-label">3D Shapes</div>
-  <button id="cubeBtn" title="Cube"><i class="fa-solid fa-cube"></i></button>
-  <button id="cylinderBtn" title="Cylinder"><i class="fa-solid fa-database"></i></button>
-  <button id="sphereBtn" title="Sphere"><i class="fa-solid fa-circle-dot"></i></button>
-  <button id="coneBtn" title="Cone"><i class="fa-solid fa-ice-cream"></i></button>
-  <button id="pyramidBtn" title="Pyramid"><i class="fa-solid fa-mountain"></i></button>
-</div>
-
-<!-- ================= GRAPH PANEL ================= -->
-<div id="graphPanel" class="hidden">
-  <div id="graphHeader">
-    <span>Graph Plotter</span>
-    <button id="closeGraphBtn">✕</button>
+<!-- MAIN AREA -->
+<div id="main">
+  <!-- Topbar -->
+  <div class="main-topbar">
+    <div class="topbar-breadcrumb">
+      <i class="fa fa-home" style="font-size:12px;"></i>
+      <span class="topbar-sep"><i class="fa fa-chevron-right" style="font-size:10px;"></i></span>
+      <span>Dashboard</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="topbar-icon-btn" onclick="toggleTheme()" data-tooltip="Toggle Theme"><i class="fa fa-adjust"></i></button>
+      <button class="topbar-icon-btn" onclick="toggleGuidePanel()" data-tooltip="User Guide"><i class="fa fa-question-circle"></i></button>
+    </div>
   </div>
-  <div id="graphControls">
-    <input id="functionInput" placeholder="f(x) = x^2, sin(x), x^3-2*x …">
-    <button id="plotBtn">Plot</button>
-    <button id="clearGraphBtn">Clear</button>
-    <button id="themeBtn">Dark</button>
-    <button id="exportGraphBtn">Export</button>
-    <button id="insertGraphBtn">To Canvas</button>
+
+  <!-- Content -->
+  <div class="main-content">
+    <!-- Stats -->
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card">
+        <div class="stat-label">Projects</div>
+        <div class="stat-value" id="statProjects">0</div>
+        <div class="stat-sub">Active workspaces</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Boards</div>
+        <div class="stat-value" id="statBoards">0</div>
+        <div class="stat-sub">Total whiteboards</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Trash</div>
+        <div class="stat-value" id="statTrash">0</div>
+        <div class="stat-sub">Items in bin</div>
+      </div>
+      <div class="stat-card">
+      <div class="stat-label">Folders</div>
+      <div class="stat-value" id="statFolders">0</div>
+      <div class="stat-sub">Total folders</div>
+   </div>
+    </div>
+
+    <!-- Welcome -->
+    <div class="welcome-card">
+      <div class="welcome-graphic"><i class="fa fa-pen-fancy"></i></div>
+      <h1>Welcome to Pro Whiteboard</h1>
+      <p>Your professional workspace for teaching, collaborating, and creating.<br>Start by creating a project or opening a board from the sidebar.</p>
+      <div class="quick-actions">
+        <div class="qa-card" onclick="createProject()">
+          <i class="fa fa-briefcase"></i>
+          <span>New Project</span>
+        </div>
+        <div class="qa-card" onclick="createFolder()">
+          <i class="fa fa-folder-plus"></i>
+          <span>New Folder</span>
+        </div>
+        <div class="qa-card" onclick="createBoard()">
+          <i class="fa fa-chalkboard"></i>
+          <span>New Board</span>
+        </div>
+      </div>
+    </div>
   </div>
-  <div id="graphContainer"></div>
 </div>
 
-<button id="openGraphBtn" class="graphFloatingBtn" title="Open Graph Plotter">
-  <i class="fa fa-chart-line"></i>
-</button>
-
-<!-- ================= SIDEBAR ================= -->
-<div id="sidebar"></div>
-
-<!-- ================= CANVAS ================= -->
-<div id="canvasContainer">
-  <canvas id="board" width="1600" height="2000"></canvas>
-</div>
-
-<!-- ================= RECORDING PANEL ================= -->
-<div id="recordingPanel">
-  <div id="recordingHeader">
-    <span><i class="fa fa-video" style="color:var(--accent);margin-right:6px"></i>Recording History</span>
-    <button id="closeRecordingPanel">✕</button>
+<!-- TRASH PANEL -->
+<div id="trashPanel" class="side-panel">
+  <div class="panel-header">
+    <div class="panel-header-icon"><i class="fa fa-trash-alt"></i></div>
+    <h2>Trash</h2>
+    <button class="panel-close" onclick="toggleTrash()">×</button>
   </div>
-  <div id="recordingList"></div>
+  <div class="panel-body">
+    <div id="trashList">
+      <div class="empty-state">
+        <i class="fa fa-check-circle"></i>
+        <p>Trash is empty</p>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- ================= STORAGE PANEL ================= -->
-<div id="storagePanel" class="panel">
-  <h2>Cloud Storage</h2>
-  <div id="storageInfo"></div>
-  <table id="storageTable">
-    <thead>
-      <tr>
-        <th>File</th>
-        <th>Size</th>
-        <th>Updated</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  <button onclick="closeStoragePanel()">Close Panel</button>
+<!-- FORM PANEL -->
+<div id="formPanel" class="side-panel">
+  <div class="panel-header">
+    <div class="panel-header-icon"><i class="fa fa-comment-alt"></i></div>
+    <h2>Feedback &amp; Registration</h2>
+    <button class="panel-close" onclick="toggleFormPanel()">×</button>
+  </div>
+  <div class="panel-body">
+    <iframe
+      src="https://docs.google.com/forms/d/e/1FAIpQLSea6fWKaZFJ1p46Nn2DBJFlVCqpFp6vtpAVTVC-Sbf0gnR7gQ/viewform?embedded=true"
+      marginheight="0" marginwidth="0">Loading…</iframe>
+  </div>
 </div>
 
-<!-- ================= SLIDESHOW CONTROLS ================= -->
-<div id="slideshowControls">
-  <button id="prevSlide"><i class="fa fa-arrow-left"></i> Prev</button>
-  <button id="nextSlide">Next <i class="fa fa-arrow-right"></i></button>
-  <button id="exitSlide"><i class="fa fa-xmark"></i> Exit</button>
+<!-- USER GUIDE PANEL -->
+<div id="userGuidePanel" class="side-panel">
+  <div class="panel-header">
+    <div class="panel-header-icon"><i class="fa fa-book-open"></i></div>
+    <h2>User Guide</h2>
+    <button class="panel-close" onclick="toggleGuidePanel()">×</button>
+  </div>
+  <div class="panel-body">
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">1</div>
+        <span class="guide-section-title">Drawing Tab</span>
+        <i class="fa fa-chevron-down" style="margin-left:auto; font-size:11px; color:var(--text-subtle);"></i>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li>Click <strong>Pen</strong> and select your appropriate thickness and colour.</li>
+          <li>Draw on the canvas with your finger or stylus pen.</li>
+          <li>To erase, click the <strong>eraser icon</strong> and drag over the portion you want to erase. Control thickness with the same size box.</li>
+          <li>Use <strong>Undo / Redo</strong> by clicking once.</li>
+          <li>To add a page, click the <strong>Add Page</strong> icon after the redo button.</li>
+          <li>To delete a page, select it and click the <strong>Delete Page</strong> icon.</li>
+          <li>To move/cut strokes, use the <strong>Select</strong> icon, draw a rectangular selection, then drag or cut.</li>
+          <li>To hide the sidebar, click the first button in Drawing Tab.</li>
+          <li>To scroll the canvas, click <strong>Scroll Mode</strong> and scroll up/down/left/right.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">2</div>
+        <span class="guide-section-title">Insert Tab</span>
+        <i class="fa fa-chevron-down" style="margin-left:auto; font-size:11px; color:var(--text-subtle);"></i>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li>To add an image/file, click the <strong>Image icon</strong> in Insert tab, browse to your file, and click Select. Drag corner handles to resize.</li>
+          <li>To add shapes, click the <strong>Shape icon</strong> to open the shape panel, select a shape, then drag on the canvas.</li>
+          <li>To delete a shape, select it first then click the <strong>Delete</strong> button.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">3</div>
+        <span class="guide-section-title">Slideshow Tab</span>
+        <i class="fa fa-chevron-down" style="margin-left:auto; font-size:11px; color:var(--text-subtle);"></i>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li>Go to <strong>Slideshow Tab</strong> and click the start icon. Press Back on your device to reveal Prev / Next / Exit buttons.</li>
+          <li>Click <strong>Exit</strong> to leave slideshow mode.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">4</div>
+        <span class="guide-section-title">Video Tab</span>
+        <i class="fa fa-chevron-down" style="margin-left:auto; font-size:11px; color:var(--text-subtle);"></i>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li>Go to <strong>Video Tab</strong> and click the first button, then the next button. The first recording is a trial — delete it and repeat for a proper recording with audio.</li>
+          <li>Use <strong>Pause / Resume</strong> buttons to control recording. Click the last button to open the Recordings panel and download via <em>Restore</em>.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">5</div>
+        <span class="guide-section-title">Export Tab</span>
+        <i class="fa fa-chevron-down" style="margin-left:auto; font-size:11px; color:var(--text-subtle);"></i>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li>Export your work as <strong>PNG, PDF, or PPT</strong> from the Export Tab. Files are saved to your browser downloads.</li>
+          <li><strong>To retrieve exports:</strong> Click the three-dot menu in your browser → Downloads.</li>
+          <li>Click <strong>Save Cloud</strong> to sync to cloud storage — auto-loaded on next open.</li>
+          <li>Click <strong>Storage</strong> to view the board JSON and storage usage.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
 </div>
 
-<!-- ================= RECORDING INDICATOR ================= -->
-<div id="recordingIndicator">
-  <i class="fa fa-circle"></i> REC
-</div>
-<div id="recordTimer">00:00</div>
+<!-- CONTACT PANEL -->
+<div id="contactPanel" class="side-panel">
+  <div class="panel-header">
+    <div class="panel-header-icon"><i class="fa fa-address-book"></i></div>
+    <h2>Contact &amp; Social</h2>
+    <button class="panel-close" onclick="toggleContactPanel()">×</button>
+  </div>
+  <div class="panel-body">
 
-<!-- ================= CAMERA BUBBLE ================= -->
-<div id="cameraBubble">
-  <video id="bubbleVideo" autoplay muted playsinline></video>
-  <button class="bubble-close" id="closeBubble" title="Hide camera">✕</button>
-</div>
-<!-- ================= STATUS BAR ================= -->
-<div id="statusBar">
-  <span><i class="fa fa-pen"></i> <span id="statusTool">pen</span></span>
-  <span><i class="fa fa-file"></i> Page <span id="statusPage">1</span></span>
-  <span style="margin-left:auto;"><i class="fa fa-circle" style="color:var(--success)"></i> Ready</span>
+    <div class="panel-section-label">Get in Touch</div>
+    <a href="tel:8167738344" class="contact-item">
+      <div class="contact-icon phone"><i class="fa fa-phone"></i></div>
+      <div class="contact-info">
+        <strong>Phone</strong>
+        <span>8167738344</span>
+      </div>
+      <i class="fa fa-chevron-right contact-arrow"></i>
+    </a>
+
+    <a href="mailto:prowhiteboard@email.com" class="contact-item">
+      <div class="contact-icon email"><i class="fa fa-envelope"></i></div>
+      <div class="contact-info">
+        <strong>Email</strong>
+        <span>prowhiteboard@email.com</span>
+      </div>
+      <i class="fa fa-chevron-right contact-arrow"></i>
+    </a>
+
+    <div class="panel-section-label">Follow Us</div>
+    <a href="https://instagram.com/prowhiteboard2026" target="_blank" class="contact-item">
+      <div class="contact-icon instagram"><i class="fab fa-instagram"></i></div>
+      <div class="contact-info">
+        <strong>Instagram</strong>
+        <span>@prowhiteboard1</span>
+      </div>
+      <i class="fa fa-chevron-right contact-arrow"></i>
+    </a>
+
+    <a href="https://youtube.com/@ProWhiteboard" target="_blank" class="contact-item">
+      <div class="contact-icon youtube"><i class="fab fa-youtube"></i></div>
+      <div class="contact-info">
+        <strong>YouTube</strong>
+        <span>@ProWhiteboard</span>
+      </div>
+      <i class="fa fa-chevron-right contact-arrow"></i>
+    </a>
+
+    <a href="https://t.me/ProWhiteboard" target="_blank" class="contact-item">
+      <div class="contact-icon telegram"><i class="fab fa-telegram"></i></div>
+      <div class="contact-info">
+        <strong>Telegram</strong>
+        <span>Pro Whiteboard</span>
+      </div>
+      <i class="fa fa-chevron-right contact-arrow"></i>
+    </a>
+
+  </div>
 </div>
 
-<!-- ================= SECURITY PANEL ================= -->
-<div id="securityPanel">
-  <h2><i class="fa fa-lock" style="color:var(--accent)"></i> &nbsp;Security Lock</h2>
-  <p>Draw your unlock pattern to continue</p>
-  <div id="patternLock"></div>
+<!-- SECURITY PANEL (original structure preserved) -->
+<div id="securityPanel" style="
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background:#080c12;
+  display:none;
+  z-index:999999;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+">
 </div>
-
-<!-- Google Sign-In -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<div id="g_id_onload"
-     data-client_id="104112968849-oehrp6bnkkqvei19vu2v2krbjbscf84p.apps.googleusercontent.com"
-     data-callback="handleCredentialResponse">
-</div>
-<div class="g_id_signin" data-type="standard" style="display:none"></div>
-
 <script>
-/* BOARD ID SYSTEM */
-const params = new URLSearchParams(window.location.search);
-const boardID = params.get("board") || "default";
-const storageKey = "whiteboardData_" + boardID;
-/* TAB SWITCHING */
-document.querySelectorAll(".tabBtn").forEach(btn=>{
-btn.onclick=()=>{
-document.querySelectorAll(".tabBtn").forEach(b=>b.classList.remove("active"));
-document.querySelectorAll(".ribbonPanel").forEach(p=>p.classList.remove("active"));
-btn.classList.add("active");
-document.getElementById(btn.dataset.tab).classList.add("active");
-};
-});
-
-const canvas=document.getElementById("board");
-const ctx=canvas.getContext("2d");
-let tool="pen";
-let pages=[];
-let current=0;
-let drawing=false,currentStroke=null;
-let selectedImage=null,dragging=false,resizing=false,offsetX=0,offsetY=0;
-let mediaRecorder;
-let recordedChunks=[];
-let audioStream;
-let liveRecorder = null; // LiveRecorder instance
-
-let seconds=0;
-let timerInterval;
-
-let selectedShape=null;
-let shapeDragging=false;
-let shapeResizing=false;
-let shapeOffsetX=0,shapeOffsetY=0;
-let shapeTool=null;
-// ===== STROKE SELECTION SYSTEM =====
-let selectedStrokes = [];
-let selectingStroke = false;
-let selectionBox = null;
-
-let movingStrokes = false;
-let moveStartX = 0;
-let moveStartY = 0;
-let scrollMode = false;
-let isPanning = false;
-let panPointerId = null;
-let panStartX = 0, panStartY = 0;
-let scrollStartX = 0, scrollStartY = 0;
-let toolBeforeScroll = "pen";
-/* LOCAL STORAGE – PER BOARD */
-
-function saveToLocalStorage(){
-let data = pages.map(p => ({
-bg: p.bg,
-strokes: p.strokes,
-images: p.images.map(img => ({
-src: img.img.src,
-x: img.x,
-y: img.y,
-w: img.w,
-h: img.h
-})),
-shapes: p.shapes || []   // ✅ ADD THIS
-}));
-
-localStorage.setItem(storageKey, JSON.stringify({
-pages: data,
-current: current
-}));
-}
-
-function loadFromLocalStorage(){
-let saved = localStorage.getItem(storageKey);
-
-if(!saved){
-pages = [{bg:"#ffffff",strokes:[],images:[],shapes:[],undo:[],redo:[]}];
-return;
-}
-
-let parsed = JSON.parse(saved);
-
-pages = parsed.pages.map(p => {
-let images = [];
-
-p.images.forEach(imgData => {
-let img = new Image();
-img.src = imgData.src;
-
-images.push({
-img: img,
-x: imgData.x,
-y: imgData.y,
-w: imgData.w,
-h: imgData.h
-});
-});
-
-return {
-bg: p.bg,
-strokes: p.strokes || [],
-images: images,
-shapes: p.shapes || [],   // ✅ ADD THIS
-undo: [],
-redo: []
-};
-});
-
-current = parsed.current || 0;
-}
-/* SAVE STATE FOR UNDO */
-function saveState(){
-let p = pages[current];
-
-p.undo.push(JSON.stringify({
-strokes: p.strokes,
-images: p.images.map(img => ({
-src: img.img.src,
-x: img.x,
-y: img.y,
-w: img.w,
-h: img.h
-})),
-shapes: p.shapes
-}));
-
-p.redo = [];
-}
-
-/* REDRAW */
-function redraw(){
-
-const p = pages[current];
-
-ctx.clearRect(0,0,canvas.width,canvas.height);
-/* ===== BACKGROUND ===== */
-ctx.fillStyle = p.bg;
-ctx.fillRect(0,0,canvas.width,canvas.height);
-
-
-/* =====================================================
-   =============== DRAW SHAPES FIRST ===================
-   ===================================================== */
-
-(p.shapes || []).forEach(s=>{
-ctx.strokeStyle = s.color || "#000";
-ctx.fillStyle   = s.color || "#000";
-ctx.lineWidth   = 2;
-
-
-/* ---------- RECTANGLE ---------- */
-if(s.type==="rect"){
-ctx.strokeRect(s.x,s.y,s.w,s.h);
-}
-
-
-/* ---------- CIRCLE ---------- */
-if(s.type==="circle"){
-ctx.beginPath();
-ctx.ellipse(
-s.x + s.w/2,
-s.y + s.h/2,
-Math.abs(s.w/2),
-Math.abs(s.h/2),
-0,0,Math.PI*2
-);
-ctx.stroke();
-}
-
-
-/* ---------- LINE ---------- */
-if(s.type==="line"){
-ctx.beginPath();
-ctx.moveTo(s.x,s.y);
-ctx.lineTo(s.x+s.w,s.y+s.h);
-ctx.stroke();
-}
-
-
-/* ---------- ARROW ---------- */
-if(s.type==="arrow"){
-
-let x1=s.x, y1=s.y;
-let x2=s.x+s.w, y2=s.y+s.h;
-
-ctx.beginPath();
-ctx.moveTo(x1,y1);
-ctx.lineTo(x2,y2);
-ctx.stroke();
-
-/* arrow head */
-let angle=Math.atan2(y2-y1,x2-x1);
-let head=15;
-
-ctx.beginPath();
-ctx.moveTo(x2,y2);
-ctx.lineTo(
-x2-head*Math.cos(angle-Math.PI/6),
-y2-head*Math.sin(angle-Math.PI/6)
-);
-ctx.lineTo(
-x2-head*Math.cos(angle+Math.PI/6),
-y2-head*Math.sin(angle+Math.PI/6)
-);
-ctx.closePath();
-ctx.fill();
-}
-
-
-/* ---------- PARALLELOGRAM ---------- */
-if(s.type==="para"){
-ctx.beginPath();
-ctx.moveTo(s.x+30,s.y);
-ctx.lineTo(s.x+s.w,s.y);
-ctx.lineTo(s.x+s.w-30,s.y+s.h);
-ctx.lineTo(s.x,s.y+s.h);
-ctx.closePath();
-ctx.stroke();
-}
-
-
-/* ---------- RHOMBUS ---------- */
-if(s.type==="rhombus"){
-ctx.beginPath();
-ctx.moveTo(s.x+s.w/2,s.y);
-ctx.lineTo(s.x+s.w,s.y+s.h/2);
-ctx.lineTo(s.x+s.w/2,s.y+s.h);
-ctx.lineTo(s.x,s.y+s.h/2);
-ctx.closePath();
-ctx.stroke();
-}
-
-
-/* ---------- TRAPEZIUM ---------- */
-if(s.type==="trapezium"){
-ctx.beginPath();
-ctx.moveTo(s.x+30,s.y);
-ctx.lineTo(s.x+s.w-30,s.y);
-ctx.lineTo(s.x+s.w,s.y+s.h);
-ctx.lineTo(s.x,s.y+s.h);
-ctx.closePath();
-ctx.stroke();
-}
-
-
-/* ---------- CUBE ---------- */
-if(s.type==="cube"){
-let offset=20;
-
-ctx.strokeRect(s.x,s.y,s.w,s.h);
-ctx.strokeRect(s.x+offset,s.y-offset,s.w,s.h);
-
-ctx.beginPath();
-ctx.moveTo(s.x,s.y);
-ctx.lineTo(s.x+offset,s.y-offset);
-
-ctx.moveTo(s.x+s.w,s.y);
-ctx.lineTo(s.x+s.w+offset,s.y-offset);
-
-ctx.moveTo(s.x,s.y+s.h);
-ctx.lineTo(s.x+offset,s.y+s.h-offset);
-
-ctx.moveTo(s.x+s.w,s.y+s.h);
-ctx.lineTo(s.x+s.w+offset,s.y+s.h-offset);
-ctx.stroke();
-}
-
-
-/* ---------- CYLINDER ---------- */
-if(s.type==="cylinder"){
-
-ctx.beginPath();
-ctx.ellipse(s.x+s.w/2,s.y,s.w/2,20,0,0,Math.PI*2);
-ctx.stroke();
-
-ctx.strokeRect(s.x,s.y,s.w,s.h);
-
-ctx.beginPath();
-ctx.ellipse(s.x+s.w/2,s.y+s.h,s.w/2,20,0,0,Math.PI);
-ctx.stroke();
-}
-
-
-/* ---------- SPHERE ---------- */
-if(s.type==="sphere"){
-
-ctx.beginPath();
-ctx.arc(
-s.x+s.w/2,
-s.y+s.h/2,
-Math.abs(s.w/2),
-0,Math.PI*2
-);
-ctx.stroke();
-
-/* horizontal curve */
-ctx.beginPath();
-ctx.ellipse(
-s.x+s.w/2,
-s.y+s.h/2,
-s.w/2,
-15,
-0,0,Math.PI*2
-);
-ctx.stroke();
-}
-
-
-/* ---------- CONE ---------- */
-if(s.type==="cone"){
-
-ctx.beginPath();
-ctx.moveTo(s.x+s.w/2,s.y);
-ctx.lineTo(s.x,s.y+s.h);
-ctx.lineTo(s.x+s.w,s.y+s.h);
-ctx.closePath();
-ctx.stroke();
-
-ctx.beginPath();
-ctx.ellipse(
-s.x+s.w/2,
-s.y+s.h,
-s.w/2,
-15,
-0,0,Math.PI
-);
-ctx.stroke();
-}
-
-
-/* ---------- PYRAMID ---------- */
-if(s.type==="pyramid"){
-
-ctx.beginPath();
-ctx.moveTo(s.x+s.w/2,s.y);
-ctx.lineTo(s.x,s.y+s.h);
-ctx.lineTo(s.x+s.w,s.y+s.h);
-ctx.closePath();
-ctx.stroke();
-
-ctx.beginPath();
-ctx.moveTo(s.x+s.w/2,s.y);
-ctx.lineTo(s.x+s.w/2,s.y+s.h);
-ctx.stroke();
-}
-
-
-/* ---------- SELECTION OUTLINE ---------- */
-if(s===selectedShape){
-
-ctx.strokeStyle="blue";
-ctx.lineWidth=2;
-
-ctx.strokeRect(s.x,s.y,s.w,s.h);
-
-/* resize handle */
-ctx.fillStyle="blue";
-ctx.fillRect(s.x+s.w-10,s.y+s.h-10,10,10);
-}
-
-});
-
-/* ===== DRAW IMAGES ===== */
-p.images.forEach(img=>{
-ctx.drawImage(img.img,img.x,img.y,img.w,img.h);
-
-if(img===selectedImage){
-ctx.strokeStyle="blue";
-ctx.strokeRect(img.x,img.y,img.w,img.h);
-ctx.fillRect(img.x+img.w-10,img.y+img.h-10,10,10);
-}
-});
-
-/* ===== DRAW STROKES ===== */
-p.strokes.forEach(s=>{
-    ctx.strokeStyle = s.color;
-    ctx.lineWidth = s.size;
-    ctx.lineCap = "round";
-
-    // highlighter alpha
-    if(s.type === "highlighter"){
-        ctx.globalAlpha = s.alpha || 0.3;
-    } else {
-        ctx.globalAlpha = 1;
-    }
-
-    ctx.beginPath();
-    ctx.moveTo(s.points[0].x, s.points[0].y);
-    for(let i=1;i<s.points.length;i++)
-        ctx.lineTo(s.points[i].x,s.points[i].y);
-    ctx.stroke();
-
-    ctx.globalAlpha = 1; // reset for next element
-});
-
-/* ===== STROKE SELECTION HIGHLIGHT ===== */
-if(selectedStrokes.length){
-  highlightSelectedStrokes();
-}
-
-/* ===== DRAW LIVE CAMERA BUBBLE ONTO CANVAS ===== */
-if(liveRecorder) liveRecorder.drawBubble(ctx, canvas);
-
-/* ===== PUSH FRAME INTO VIDEO STREAM ===== */
-if(liveRecorder) liveRecorder.pushFrame();
-
-updateThumbs();
-}
-
-/* POINTER EVENTS */
-function pos(e){
-  const r = canvas.getBoundingClientRect();
-
-  return {
-    x: (e.clientX - r.left) / scale,
-    y: (e.clientY - r.top) / scale
-  };
-}
-canvas.onpointerdown=e=>{
-if(scrollMode){
-    isPanning = true;
-    panPointerId = e.pointerId;
-    panStartX = e.clientX;
-    panStartY = e.clientY;
-    scrollStartX = canvas.parentElement.scrollLeft;
-    scrollStartY = canvas.parentElement.scrollTop;
-    e.preventDefault(); // stop accidental drawing
-    return; // skip all other drawing logic
-}
-const p=pos(e);
-
-selectedImage=null;
-selectedShape=null;
-
-/* ===== SHAPE SELECTION FIRST ===== */
-for(let i=pages[current].shapes.length-1;i>=0;i--){
-let s=pages[current].shapes[i];
-
-if(p.x>s.x && p.x<s.x+s.w &&
-   p.y>s.y && p.y<s.y+s.h){
-
-selectedShape=s;
-
-if(p.x>s.x+s.w-10 && p.y>s.y+s.h-10){
-shapeResizing=true;
-}else{
-shapeDragging=true;
-shapeOffsetX=p.x-s.x;
-shapeOffsetY=p.y-s.y;
-}
-
-redraw();
-return;
-}
-}
-
-/* ===== IMAGE SELECTION ===== */
-for(let i=pages[current].images.length-1;i>=0;i--){
-let img=pages[current].images[i];
-
-if(p.x>img.x&&p.x<img.x+img.w&&p.y>img.y&&p.y<img.y+img.h){
-
-selectedImage=img;
-
-if(p.x>img.x+img.w-10&&p.y>img.y+img.h-10){
-resizing=true;
-}else{
-dragging=true;
-offsetX=p.x-img.x;
-offsetY=p.y-img.y;
-}
-
-redraw();
-return;
-}
-}
-
-/* ===== STROKE SELECTION MODE ===== */
-if(tool === "selectStroke"){
-
-  // check if clicking on already selected stroke (for move)
-  const hit = selectedStrokes.some(stroke =>
-    stroke.points.some(pt =>
-      Math.abs(pt.x - p.x) < 8 &&
-      Math.abs(pt.y - p.y) < 8
-    )
-  );
-
-  if(hit){
-    movingStrokes = true;
-    moveStartX = p.x;
-    moveStartY = p.y;
-    return;
-  }
-
-  // otherwise start selection box
-  selectedStrokes = [];
-  selectingStroke = true;
-  selectionBox = {
-    x: p.x,
-    y: p.y,
-    w: 0,
-    h: 0
-  };
-
-  return;
-}
-/* ===== CREATE NEW SHAPE ===== */
-if(tool==="shape" && shapeTool){
-saveState();
-
-let newShape={
-type:shapeTool,
-x:p.x,
-y:p.y,
-w:0,
-h:0,
-color:colorPicker.value
-};
-
-pages[current].shapes.push(newShape);
-selectedShape=newShape;
-shapeResizing=true;
-return;
-}
-
-/* ===== ERASER ===== */
-if(tool==="eraser"){
-eraseAt(p);
-return;
-}
-
-/* ===== DRAW STROKE ===== */
-drawing = true;
-saveState();
-
-currentStroke = {
-    color: colorPicker.value,
-    size: +sizePicker.value,
-    points: [],
-    type: tool // add type property
-};
-
-// If highlighter, override color & alpha
-if(tool === "highlighter"){
-    currentStroke.color = colorPicker.value || "#ffff00"; // default yellow
-    currentStroke.alpha = 0.3; // semi-transparent
-}
-
-currentStroke.points.push(p);
-pages[current].strokes.push(currentStroke);
-};
-
-canvas.onpointermove=e=>{
-if(scrollMode && isPanning && e.pointerId === panPointerId){
-    const dx = e.clientX - panStartX;
-    const dy = e.clientY - panStartY;
-    canvas.parentElement.scrollLeft = scrollStartX - dx;
-    canvas.parentElement.scrollTop = scrollStartY - dy;
-    e.preventDefault();
-    return; // skip drawing logic
-}
-const p=pos(e);
-/* ===== DRAW SELECTION BOX ===== */
-if(selectingStroke && selectionBox){
-  selectionBox.w = p.x - selectionBox.x;
-  selectionBox.h = p.y - selectionBox.y;
-  redraw();
-  drawSelectionBox();
-  return;
-}
-
-/* ===== MOVE SELECTED STROKES ===== */
-if(movingStrokes){
-  const dx = p.x - moveStartX;
-  const dy = p.y - moveStartY;
-
-  selectedStrokes.forEach(stroke=>{
-    stroke.points.forEach(pt=>{
-      pt.x += dx;
-      pt.y += dy;
-    });
+// ========== GOOGLE LOGIN ==========
+let currentUser = null;
+
+// ── Apps Script Web App URL ──────────────────────────────────
+// IMPORTANT: Replace with your own deployed /exec URL every time
+// you re-deploy (Deployments → Manage → copy Web App URL).
+// Deploy settings must be:
+//   Execute as  → Me
+//   Who has access → Anyone
+const APPS_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycby2VmPzSzv_KBfhZK9XN2nTE9Oa_MPIpY3iaVsR0l0OJyH5CP_zI25xLkkZr_Tuf3T8/exec";
+
+// FIX (CORS): Apps Script does NOT support custom CORS headers,
+// so we MUST use mode:"no-cors".  The trade-off is that the
+// response is opaque (we can't read it), but the POST still
+// reaches the server and writes to the Sheet correctly.
+// Do NOT add "Content-Type":"application/json" — that triggers
+// a pre-flight OPTIONS request which Apps Script rejects.
+function logUserToSheet(user) {
+  // Build a URL-encoded body (no pre-flight, works with no-cors)
+  const payload = new URLSearchParams({
+    sub:     user.sub     || "",
+    name:    user.name    || "",
+    email:   user.email   || "",
+    picture: user.picture || ""
   });
 
-  moveStartX = p.x;
-  moveStartY = p.y;
-
-  redraw();
-  return;
-}
-
-/* ===== SHAPE RESIZE ===== */
-if(shapeResizing && selectedShape){
-selectedShape.w=p.x-selectedShape.x;
-selectedShape.h=p.y-selectedShape.y;
-redraw();
-return;
-}
-
-/* ===== SHAPE DRAG ===== */
-if(shapeDragging && selectedShape){
-selectedShape.x=p.x-shapeOffsetX;
-selectedShape.y=p.y-shapeOffsetY;
-redraw();
-return;
-}
-
-/* ===== IMAGE RESIZE ===== */
-if(resizing && selectedImage){
-selectedImage.w=p.x-selectedImage.x;
-selectedImage.h=p.y-selectedImage.y;
-redraw();
-return;
-}
-
-/* ===== IMAGE DRAG ===== */
-if(dragging && selectedImage){
-selectedImage.x=p.x-offsetX;
-selectedImage.y=p.y-offsetY;
-redraw();
-return;
-}
-
-/* ===== DRAWING ===== */
-if(drawing){
-if(tool==="eraser"){
-eraseAt(p);
-return;
-}
-currentStroke.points.push(p);
-redraw();
-}
-};
-
-canvas.onpointerup = (e) => {
-if(scrollMode && isPanning && e.pointerId === panPointerId){
-    isPanning = false;
-    panPointerId = null;
-    return; // skip rest of pointerup logic
-}
-
-  /* ===== FINISH STROKE SELECTION ===== */
-  if(selectingStroke && selectionBox){
-
-    selectingStroke = false;
-
-    const box = normalizeBox(selectionBox);
-
-    selectedStrokes = pages[current].strokes.filter(stroke =>
-      stroke.points.some(pt =>
-        pt.x >= box.x &&
-        pt.x <= box.x + box.w &&
-        pt.y >= box.y &&
-        pt.y <= box.y + box.h
-      )
-    );
-
-    selectionBox = null;
-
-    redraw();
-    highlightSelectedStrokes();
-    return;
-  }
-
-  /* ===== STOP MOVING STROKES ===== */
-  if(movingStrokes){
-    movingStrokes = false;
-    saveToLocalStorage();
-    return;
-  }
-
-  /* ===== STOP DRAWING ===== */
-  drawing = false;
-
-  /* ===== STOP IMAGE DRAG / RESIZE ===== */
-  dragging = false;
-  resizing = false;
-
-  /* ===== STOP SHAPE DRAG / RESIZE ===== */
-  shapeDragging = false;
-  shapeResizing = false;
-
-  /* ===== SAVE AFTER NORMAL ACTION ===== */
- saveToLocalStorage();
-cloudAutoSaveTrigger();
-};
-/* ERASER */
-function eraseAt(p){
-saveState();
-pages[current].strokes=pages[current].strokes.filter(st=>{
-return !st.points.some(pt=>{
-let dx=pt.x-p.x,dy=pt.y-p.y;
-return dx*dx+dy*dy<(st.size+5)**2;
-});
-});
-redraw();
-saveToLocalStorage();
-}
-
-/* BUTTONS */
-penBtn.onclick=()=>tool="pen";
-eraserBtn.onclick=()=>tool="eraser";
-const highlighterBtn = document.getElementById("highlighterBtn");
-
-highlighterBtn.onclick = () => {
-    tool = "highlighter";
-};
-
-bgPicker.oninput=e=>{
-pages[current].bg=e.target.value;
-redraw();saveToLocalStorage();
-};
-
-undoBtn.onclick = ()=>{
-let p = pages[current];
-
-if(p.undo.length){
-
-p.redo.push(JSON.stringify({
-strokes:p.strokes,
-images:p.images.map(img => ({
-src: img.img.src,
-x: img.x,
-y: img.y,
-w: img.w,
-h: img.h
-})),
-shapes:p.shapes
-}));
-
-let state = JSON.parse(p.undo.pop());
-
-p.strokes = state.strokes;
-p.shapes  = state.shapes || [];
-
-/* Rebuild images properly */
-p.images = state.images.map(imgData=>{
-let img = new Image();
-img.src = imgData.src;
-
-return {
-img: img,
-x: imgData.x,
-y: imgData.y,
-w: imgData.w,
-h: imgData.h
-};
-});
-
-redraw();
-saveToLocalStorage();
-}
-};
-
-redoBtn.onclick = ()=>{
-let p = pages[current];
-
-if(p.redo.length){
-
-p.undo.push(JSON.stringify({
-strokes:p.strokes,
-images:p.images.map(img => ({
-src: img.img.src,
-x: img.x,
-y: img.y,
-w: img.w,
-h: img.h
-})),
-shapes:p.shapes
-}));
-
-let state = JSON.parse(p.redo.pop());
-
-p.strokes = state.strokes;
-p.shapes  = state.shapes || [];
-
-p.images = state.images.map(imgData=>{
-let img = new Image();
-img.src = imgData.src;
-
-return {
-img: img,
-x: imgData.x,
-y: imgData.y,
-w: imgData.w,
-h: imgData.h
-};
-});
-
-redraw();
-saveToLocalStorage();
-}
-};
-addPageBtn.onclick = () => {
-
-pages.push({
-    bg: "#ffffff",
-    strokes: [],
-    images: [],
-    shapes: [],   // ✅ ADD THIS
-    undo: [],
-    redo: []
-});
-
-current = pages.length - 1;
-
-redraw();
-saveToLocalStorage();
-};
-
-deletePageBtn.onclick=()=>{
-if(pages.length>1){
-pages.splice(current,1);
-current=Math.max(0,current-1);
-redraw();saveToLocalStorage();
-}
-};
-
-/* IMAGE */
-imageBtn.onclick=()=>imageInput.click();
-imageInput.onchange=e=>{
-const file=e.target.files[0];
-const reader=new FileReader();
-reader.onload=()=>{
-const img=new Image();
-img.onload=()=>{
-saveState();
-pages[current].images.push({img:img,x:200,y:200,w:img.width/2,h:img.height/2});
-redraw();saveToLocalStorage();
-};
-img.src=reader.result;
-};
-reader.readAsDataURL(file);
-};
-
-/* SLIDESHOW */
-slideshowBtn.onclick=()=>{
-document.getElementById("slideshowControls").style.display="block";
-sidebar.style.display="none";
-canvas.requestFullscreen();
-};
-exitSlide.onclick=()=>{
-document.getElementById("slideshowControls").style.display="none";
-sidebar.style.display="block";
-document.exitFullscreen();
-};
-nextSlide.onclick=()=>{if(current<pages.length-1){current++;redraw();}};
-prevSlide.onclick=()=>{if(current>0){current--;redraw();}};
-
-/* EXPORT */
-pngBtn.onclick=()=>{let a=document.createElement("a");a.href=canvas.toDataURL();a.download="page.png";a.click();};
-
-pdfBtn.onclick=()=>{
-const {jsPDF}=window.jspdf;
-const pdf=new jsPDF("portrait","px",[canvas.width,canvas.height]);
-pages.forEach((p,i)=>{
-current=i;redraw();
-if(i>0)pdf.addPage();
-pdf.addImage(canvas.toDataURL(),"PNG",0,0,canvas.width,canvas.height);
-});
-pdf.save("whiteboard.pdf");
-};
-
-pptBtn.onclick=()=>{
-const ppt=new PptxGenJS();
-pages.forEach((p,i)=>{
-current=i;redraw();
-const slide=ppt.addSlide();
-slide.addImage({data:canvas.toDataURL(),x:0,y:0,w:ppt.width,h:ppt.height});
-});
-ppt.writeFile("whiteboard.pptx");
-};
-
-/* THUMBNAILS */
-function updateThumbs(){
-sidebar.innerHTML="";
-
-pages.forEach((p,i)=>{
-
-const t=document.createElement("canvas");
-t.width=100;
-t.height=70;
-
-const tc=t.getContext("2d");
-
-/* Background */
-tc.fillStyle=p.bg;
-tc.fillRect(0,0,100,70);
-
-/* Scale */
-tc.save();
-tc.scale(100/canvas.width,70/canvas.height);
-
-/* ===== DRAW SHAPES FIRST ===== */
-p.shapes?.forEach(s=>{
-tc.strokeStyle=s.color || "#000";
-tc.lineWidth=2;
-
-if(s.type==="rect"){
-tc.strokeRect(s.x,s.y,s.w,s.h);
-}
-
-if(s.type==="circle"){
-tc.beginPath();
-tc.ellipse(
-s.x+s.w/2,
-s.y+s.h/2,
-Math.abs(s.w/2),
-Math.abs(s.h/2),
-0,0,Math.PI*2
-);
-tc.stroke();
-}
-});
-
-/* ===== DRAW IMAGES ===== */
-p.images.forEach(img=>{
-tc.drawImage(img.img,img.x,img.y,img.w,img.h);
-});
-
-/* ===== DRAW STROKES ===== */
-p.strokes.forEach(s=>{
-tc.strokeStyle=s.color;
-tc.lineWidth=s.size;
-tc.beginPath();
-tc.moveTo(s.points[0].x,s.points[0].y);
-for(let j=1;j<s.points.length;j++){
-tc.lineTo(s.points[j].x,s.points[j].y);
-}
-tc.stroke();
-});
-
-tc.restore();
-
-/* UI */
-t.className="thumb"+(i===current?" active":"");
-t.onclick=()=>{current=i;redraw();};
-sidebar.appendChild(t);
-
-});
-}
-
-/* INIT */
-loadFromLocalStorage();
-redraw();
-rectBtn.onclick=()=>{shapeTool="rect";tool="shape";}
-circleBtn.onclick=()=>{shapeTool="circle";tool="shape";}
-lineBtn.onclick=()=>{shapeTool="line";tool="shape";}
-arrowBtn.onclick=()=>{shapeTool="arrow";tool="shape";}
-paraBtn.onclick=()=>{shapeTool="para";tool="shape";}
-rhombusBtn.onclick=()=>{shapeTool="rhombus";tool="shape";}
-trapBtn.onclick=()=>{shapeTool="trapezium";tool="shape";}
-cubeBtn.onclick=()=>{shapeTool="cube";tool="shape";}
-cylinderBtn.onclick=()=>{shapeTool="cylinder";tool="shape";}
-sphereBtn.onclick=()=>{shapeTool="sphere";tool="shape";}
-coneBtn.onclick=()=>{shapeTool="cone";tool="shape";}
-pyramidBtn.onclick=()=>{shapeTool="pyramid";tool="shape";}
-deleteShapeBtn.onclick=()=>{
-if(selectedShape){
-pages[current].shapes=
-pages[current].shapes.filter(s=>s!==selectedShape);
-selectedShape=null;
-redraw();
-saveToLocalStorage();
-}
-};
-// Toggle Shape Panel
-window.addEventListener("DOMContentLoaded", () => {
-  const toggleBtn = document.getElementById("shapeToggleBtn");
-  const shapePanel = document.getElementById("shapePanel");
-
-  if (toggleBtn && shapePanel) {
-    toggleBtn.addEventListener("click", () => {
-      shapePanel.classList.toggle("hidden");
-    });
-  }
-});
-/* ================= ADVANCED GRAPH PANEL ================= */
-
-const graphPanel = document.getElementById("graphPanel");
-const openGraphBtn = document.getElementById("openGraphBtn");
-const closeGraphBtn = document.getElementById("closeGraphBtn");
-const plotBtn = document.getElementById("plotBtn");
-const clearGraphBtn = document.getElementById("clearGraphBtn");
-const themeBtn = document.getElementById("themeBtn");
-const exportGraphBtn = document.getElementById("exportGraphBtn");
-const functionInput = document.getElementById("functionInput");
-
-let darkMode = false;
-let graphInitialized = false;
-
-/* OPEN */
-openGraphBtn.onclick = () => {
-  graphPanel.classList.remove("hidden");
-
-  if(!graphInitialized){
-    initGraph();
-    graphInitialized = true;
-  }
-};
-
-/* CLOSE */
-closeGraphBtn.onclick = () => {
-  graphPanel.classList.add("hidden");
-};
-
-function createLayout(){
-return {
-margin:{t:20},
-xaxis:{
-title:"X",
-zeroline:true,
-gridcolor: darkMode ? "#444" : "#ddd",
-color: darkMode ? "#fff" : "#000"
-},
-yaxis:{
-title:"Y",
-zeroline:true,
-gridcolor: darkMode ? "#444" : "#ddd",
-color: darkMode ? "#fff" : "#000"
-},
-paper_bgcolor: darkMode ? "#111827" : "#ffffff",
-plot_bgcolor: darkMode ? "#111827" : "#ffffff",
-showlegend:true
-};
-}
-
-function initGraph(){
-Plotly.newPlot("graphContainer", [], createLayout(), {responsive:true});
-}
-
-/* PLOT FUNCTION */
-plotBtn.onclick = () => {
-
-let expr = functionInput.value.trim();
-if(!expr) return;
-
-try{
-
-let compiled = math.compile(expr);
-
-let xValues = [];
-let yValues = [];
-
-for(let x=-20; x<=20; x+=0.05){
-let y = compiled.evaluate({x:x});
-if(typeof y === "number" && isFinite(y)){
-xValues.push(x);
-yValues.push(y);
-}
-}
-
-Plotly.addTraces("graphContainer", {
-x:xValues,
-y:yValues,
-mode:"lines",
-name:expr
-});
-
-}catch(err){
-alert("Invalid function.");
-}
-};
-
-/* CLEAR */
-clearGraphBtn.onclick = () => {
-Plotly.react("graphContainer", [], createLayout());
-};
-
-/* DARK MODE */
-themeBtn.onclick = () => {
-darkMode = !darkMode;
-Plotly.react(
-"graphContainer",
-document.getElementById("graphContainer").data || [],
-createLayout()
-);
-};
-
-/* EXPORT */
-exportGraphBtn.onclick = () => {
-Plotly.downloadImage("graphContainer",{
-format:'png',
-filename:'graph',
-width:1000,
-height:700
-});
-};
-const insertGraphBtn = document.getElementById("insertGraphBtn");
-
-insertGraphBtn.onclick = async () => {
-
-try{
-
-// Convert Plotly graph to image
-const dataUrl = await Plotly.toImage("graphContainer", {
-format: "png",
-width: 1000,
-height: 700
-});
-
-// Create image object
-const img = new Image();
-
-img.onload = () => {
-
-saveState(); // for undo
-
-// Add into existing image system
-pages[current].images.push({
-img: img,
-x: 150,
-y: 150,
-w: 500,
-h: 350
-});
-
-redraw();
-saveToLocalStorage();
-};
-
-img.src = dataUrl;
-
-}catch(err){
-alert("No graph to insert.");
-}
-
-};
-</script>
-<script>
-// ====== CONFIG ======
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxctA7ymLqqIPST3dcBeAL3Knu7iav09YxE0kjkwB63H5bvxhU1JINcBzfJOpC22DM-Gw/exec";
-
-let userEmail = "";
-let userName = "";
-let enterTime = null;
-let lastHeartbeat = null;
-
-function getBoardIdFromURL() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("board") || "DefaultBoard";
-}
-
-const boardId = getBoardIdFromURL();
-
-function handleCredentialResponse(response) {
-  const data = parseJwt(response.credential);
-  userEmail = data.email;
-  userName = data.name;
-
-  enterTime = new Date();
-  lastHeartbeat = new Date();
-
-  logBoard("enter");
-  startHeartbeat();
-  setupExitLog();
-}
-
-function parseJwt(token) {
-  const base64Url = token.split('.')[1];
-  const base64 = base64Url.replace(/-/g,'+').replace(/_/g,'/');
-  const jsonPayload = decodeURIComponent(atob(base64).split('').map(c =>
-    '%' + ('00'+c.charCodeAt(0).toString(16)).slice(-2)
-  ).join(''));
-  return JSON.parse(jsonPayload);
-}
-
-function logBoard(action, duration = "") {
-  if(!userEmail || !userName) return;
-
-  fetch(GAS_URL, {
+  fetch(APPS_SCRIPT_URL, {
     method: "POST",
-    body: JSON.stringify({
-      email: userEmail,
-      name: userName,
-      boardId: boardId,
-      action: action,
-      duration: duration
-    }),
-    headers: {"Content-Type":"application/json"}
-  });
-}
-
-let heartbeatInterval;
-function startHeartbeat(){
-  heartbeatInterval = setInterval(()=>{
-    lastHeartbeat = new Date();
-    logBoard("heartbeat");
-  },30000);
-}
-
-function setupExitLog(){
-  window.addEventListener("beforeunload", ()=>{
-    if(userEmail && userName && enterTime){
-
-      const exitTime = new Date();
-
-      const durationMinutes = Math.max(
-        (exitTime.getTime() - enterTime.getTime()) / 60000,
-        0.01
-      ).toFixed(2);
-
-      navigator.sendBeacon(GAS_URL, JSON.stringify({
-        email: userEmail,
-        name: userName,
-        boardId: boardId,
-        action: "exit",
-        duration: durationMinutes
-      }));
-
-      clearInterval(heartbeatInterval);
-    }
-  });
-}
-</script>
-<script>
-let scale = 1;
-const scaleFactor = 1.2;
-
-// ===== CLEAR ALL =====
-document.getElementById('clearBtn').addEventListener('click', () => {
-    const p = pages[current];
-
-    // Clear everything on current page
-    p.strokes = [];
-    p.shapes  = [];
-    p.images  = [];
-    p.undo   = [];
-    p.redo   = [];
-
-    // Reset zoom
-    scale = 1;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-    // Update localStorage and redraw
-    saveToLocalStorage();
-    redraw();
-});
-
-// ===== ZOOM IN =====
-document.getElementById('zoomInBtn').addEventListener('click', () => {
-    scale *= scaleFactor;
-    applyZoom();
-});
-
-// ===== ZOOM OUT =====
-document.getElementById('zoomOutBtn').addEventListener('click', () => {
-    scale /= scaleFactor;
-    applyZoom();
-});
-
-// ===== APPLY ZOOM =====
-function applyZoom() {
-    ctx.setTransform(scale, 0, 0, scale, 0, 0);
-    redraw(); // redraw all strokes, shapes, and images with the new scale
-}
-</script>
-<script>
-selectStrokeBtn.onclick = () => {
-  tool = "selectStroke";
-};
-
-penBtn.onclick = () => {
-  tool = "pen";
-};
-function normalizeBox(box){
-  return {
-    x: Math.min(box.x, box.x + box.w),
-    y: Math.min(box.y, box.y + box.h),
-    w: Math.abs(box.w),
-    h: Math.abs(box.h)
-  };
-}
-
-function drawSelectionBox(){
-  if(!selectionBox) return;
-
-  ctx.save();
-  ctx.strokeStyle = "blue";
-  ctx.setLineDash([6]);
-  ctx.strokeRect(
-    selectionBox.x,
-    selectionBox.y,
-    selectionBox.w,
-    selectionBox.h
-  );
-  ctx.restore();
-}
-
-function highlightSelectedStrokes(){
-
-  selectedStrokes.forEach(stroke=>{
-    ctx.save();
-    ctx.strokeStyle = "blue";
-    ctx.lineWidth = stroke.size + 2;
-    ctx.setLineDash([4]);
-
-    ctx.beginPath();
-    ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-
-    for(let i=1;i<stroke.points.length;i++){
-      ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-    }
-
-    ctx.stroke();
-    ctx.restore();
-  });
-}
-cutStrokeBtn.onclick = ()=>{
-
-  if(!selectedStrokes.length) return;
-
-  saveState();
-
-  pages[current].strokes =
-    pages[current].strokes.filter(st =>
-      !selectedStrokes.includes(st)
-    );
-
-  selectedStrokes = [];
-
-  redraw();
-  saveToLocalStorage();
-};
-</script>
-<script>
-function downloadBoardData() {
-    const data = localStorage.getItem(storageKey);
-
-    const blob = new Blob([data], { type: "application/json" });
-    const link = document.createElement("a");
-
-    link.href = URL.createObjectURL(blob);
-    link.download = "whiteboard_backup_" + boardID + ".json";
-    link.click();
-}
-</script>
-<script>
-const sidebarToggleBtn = document.getElementById("toggleBtn");
-const sidebar = document.getElementById("sidebar");
-const canvasContainer = document.getElementById("canvasContainer");
-
-sidebarToggleBtn.addEventListener("click", () => {
-  sidebar.classList.toggle("hidden");
-  canvasContainer.classList.toggle("full");
-});
-</script>
-<script>
-const cutImageBtn = document.getElementById("cutImageBtn");
-
-cutImageBtn.onclick = () => {
-
-  if(!selectedImage) return;
-
-  saveState(); // for undo support
-
-  // Remove selected image from page
-  pages[current].images =
-    pages[current].images.filter(img => img !== selectedImage);
-
-  selectedImage = null;
-
-  redraw();
-  saveToLocalStorage();
-};
-</script>
-<script>
-
-function toggleScrollMode() {
-    scrollMode = !scrollMode;
-    const container = document.getElementById("canvasContainer");
-    if(scrollMode){
-        container.classList.add("scrollMode");
-        toolBeforeScroll = tool;  // save drawing tool
-        tool = "none";            // disable drawing
-    } else {
-        container.classList.remove("scrollMode");
-        tool = toolBeforeScroll;  // restore drawing tool
-    }
-}
-document.getElementById("toggleScrollBtn")?.addEventListener("click", toggleScrollMode);
-</script>
-<script>
-const CLOUD_URL="https://script.google.com/macros/s/AKfycby-EK5rJGH1B5-n05tAdMmz0VY8NcbtBN0uCVq2uarVKFzTZ2Ju942VxCSTuMh4Cm0/exec";
-
-/* USER ID */
-
-function getUserId(){
- let id=localStorage.getItem("whiteboardUserId");
- if(!id){
-  id="user_"+Math.random().toString(36).substr(2,9);
-  localStorage.setItem("whiteboardUserId",id);
- }
- return id;
-}
-
-const USER_ID=getUserId();
-
-/* SERIALIZE BOARD */
-
-function serializeBoard(){
-
- return JSON.stringify({
-  pages: pages.map(p=>({
-   bg:p.bg,
-   strokes:p.strokes,
-   shapes:p.shapes||[],
-   images:p.images.map(img=>({
-    src:img.img.src,
-    x:img.x,
-    y:img.y,
-    w:img.w,
-    h:img.h
-   }))
-  })),
-  current: current
- });
-
-}
-
-/* SAVE BOARD */
-
-let saveTimer=null;
-
-function saveBoardCloud(){
-
- clearTimeout(saveTimer);
-
- saveTimer=setTimeout(()=>{
-
-  fetch(CLOUD_URL,{
-   method:"POST",
-   body:JSON.stringify({
-    action:"saveBoard",
-    userId:USER_ID,
-    board:serializeBoard()
-   })
-  });
-
- },700);
-
-}
-
-/* LOAD BOARD */
-
-async function loadBoardCloud(){
-
- let res=await fetch(CLOUD_URL,{
-  method:"POST",
-  body:JSON.stringify({
-   action:"loadBoard",
-   userId:USER_ID
+    mode:   "no-cors",   // ← key fix; avoids CORS pre-flight block
+    body:   payload
   })
- });
+  .then(() => console.log("✅ User logged to Sheet (opaque response — this is expected with no-cors)"))
+  .catch(err => console.error("❌ logUserToSheet error:", err));
+}
+function handleCredentialResponse(response){
+  const jwt=response.credential;
+  const base64Url=jwt.split('.')[1];
+  const base64=base64Url.replace(/-/g,'+').replace(/_/g,'/');
+  const user=JSON.parse(decodeURIComponent(atob(base64).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+  currentUser=user;
+  localStorage.setItem("currentUser",JSON.stringify(user));
+  document.getElementById("gSignInDiv").style.display="none";
+  document.getElementById("userInfo").style.display="flex";
+  document.getElementById("userPic").src=user.picture;
+  document.getElementById("userName").textContent=user.name;
+  logUserToSheet(user);
+  loadUserData();
+  loadCloud();
+}
 
- let data=await res.json();
+window.onload=function(){
+  google.accounts.id.initialize({
+    client_id:"104112968849-oehrp6bnkkqvei19vu2v2krbjbscf84p.apps.googleusercontent.com",
+    callback:handleCredentialResponse
+  });
+  google.accounts.id.renderButton(
+    document.getElementById("gSignInDiv"),
+    {theme:"outline",size:"large",width:"240"}
+  );
 
- if(!data.pages) return;
+  const savedUser=localStorage.getItem("currentUser");
+  if(savedUser){
+    currentUser=JSON.parse(savedUser);
+    document.getElementById("gSignInDiv").style.display="none";
+    document.getElementById("userInfo").style.display="flex";
+    document.getElementById("userPic").src=currentUser.picture;
+    document.getElementById("userName").textContent=currentUser.name;
+    loadUserData();
+  }else{
+    disableButtons(true);
+  }
+};
 
- pages=data.pages.map(p=>{
+function signOut(){
+  localStorage.removeItem("currentUser");
+  currentUser=null;
+  location.reload();
+}
 
-  let images=[];
+function disableButtons(state){
+  document.getElementById("newFolderBtn").disabled=state;
+  document.getElementById("newBoardBtn").disabled=state;
+  document.getElementById("newProjectBtn").disabled=state; // FIX: was missing
+}
 
-  (p.images||[]).forEach(imgData=>{
+// ========== USER STORAGE ==========
+let data = { folders: [], boards: [], projects: [], trash: []
+};
+function getKey(){
+  return "whiteboardDashboardData_"+currentUser.sub;
+}
 
-   let img=new Image();
-   img.src=imgData.src;
+function loadUserData() {
+  const stored = localStorage.getItem(getKey());
+  data = stored ? JSON.parse(stored) : { folders: [], boards: [], projects: [], trash: [] };
+  save();
+  disableButtons(false);
+  render();
+}
 
-   images.push({
-    img:img,
-    x:imgData.x,
-    y:imgData.y,
-    w:imgData.w,
-    h:imgData.h
-   });
+function save(){
 
+if(!currentUser) return;
+
+localStorage.setItem(getKey(),JSON.stringify(data));
+
+saveCloud();
+
+}
+
+// ========== CORE FEATURES ==========
+function generateID(){return "id_"+Date.now()+"_"+Math.floor(Math.random()*1000);}
+
+function createFolder(parentID=null){
+  if(!currentUser){alert("Login required"); return;}
+
+  let parentName = "";
+  if(parentID){
+    const project = data.projects.find(p => p.id===parentID);
+    const folder = data.folders.find(f => f.id===parentID);
+    parentName = project ? project.name : folder ? folder.name : "";
+  }
+
+  let name = prompt(parentName ? `Folder name inside "${parentName}":` : "Folder name:");
+  if(!name) return;
+
+  data.folders.push({id:generateID(), name, parent:parentID});
+  save(); render();
+}
+
+function createBoard(parentID=null){
+  if(!currentUser){alert("Login required"); return;}
+
+  let parentName = "";
+  if(parentID){
+    const project = data.projects.find(p => p.id===parentID);
+    const folder = data.folders.find(f => f.id===parentID);
+    parentName = project ? project.name : folder ? folder.name : "";
+  }
+
+  let name = prompt(parentName ? `Board name inside "${parentName}":` : "Board name:", "Untitled Board") || "Untitled Board";
+
+  const id = generateID();
+  data.boards.push({id, name, parent:parentID});
+  save(); render();
+
+  window.location.href = "whiteboard.html?board=" + id;
+}
+function openBoard(id){window.location.href="whiteboard.html?board="+id;}
+function renameBoard(id){
+  let board=data.boards.find(b=>b.id===id);
+  if(!board) return;
+  let newName=prompt("Rename board:", board.name);
+  if(!newName) return;
+  board.name=newName;
+  save();
+  render();
+}
+function renameFolder(id){
+  let folder=data.folders.find(f=>f.id===id);
+  if(!folder) return;
+  let newName=prompt("Rename folder:", folder.name);
+  if(!newName) return;
+  folder.name=newName;
+  save();
+  render();
+}
+
+function moveToTrash(item,type){
+
+data.trash.push({...item,type});
+
+if(type==="project"){
+data.projects=data.projects.filter(p=>p.id!==item.id);
+moveChildrenToTrash(item.id);
+}
+
+if(type==="folder"){
+data.folders=data.folders.filter(f=>f.id!==item.id);
+moveChildrenToTrash(item.id);
+}
+
+if(type==="board"){
+data.boards=data.boards.filter(b=>b.id!==item.id);
+}
+
+save();
+render();
+renderTrash();
+}
+
+function moveChildrenToTrash(parentID){
+
+// child folders
+const childFolders=data.folders.filter(f=>f.parent===parentID);
+
+childFolders.forEach(folder=>{
+moveToTrash(folder,"folder");
+});
+
+// child boards
+const childBoards=data.boards.filter(b=>b.parent===parentID);
+
+childBoards.forEach(board=>{
+moveToTrash(board,"board");
+});
+
+}
+function restoreItem(item){
+
+if(item.type==="project"){
+data.projects.push(item);
+restoreChildren(item.id);
+}
+
+if(item.type==="folder"){
+data.folders.push(item);
+restoreChildren(item.id);
+}
+
+if(item.type==="board"){
+data.boards.push(item);
+}
+
+data.trash=data.trash.filter(t=>t.id!==item.id);
+
+save();
+render();
+renderTrash();
+
+}
+function restoreChildren(parentID){
+
+data.trash
+.filter(t=>t.parent===parentID)
+.forEach(child=>{
+
+restoreItem(child);
+
+});
+
+}
+
+function deleteForever(item){
+
+data.trash=data.trash.filter(t=>t.id!==item.id);
+
+if(item.type==="project" || item.type==="folder"){
+deleteChildren(item.id);
+}
+
+localStorage.removeItem("whiteboardData_"+item.id);
+
+save();
+renderTrash();
+
+}
+
+function deleteChildren(parentID){
+
+data.folders
+.filter(f=>f.parent===parentID)
+.forEach(f=>{
+deleteChildren(f.id);
+data.folders=data.folders.filter(fd=>fd.id!==f.id);
+});
+
+data.boards=data.boards.filter(b=>b.parent!==parentID);
+
+}
+// ========== RENDER FUNCTIONS ==========
+
+function render() {
+  const tree = document.getElementById("tree");
+  tree.innerHTML = "";
+
+  renderLevel(null, tree);
+
+  updateStats(); // ← important
+}
+
+function renderLevel(parentID, container) {
+  // 1️⃣ Render Projects
+  data.projects.filter(p => p.parent === parentID).forEach(project => {
+    let div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <span onclick="openProject('${project.id}')">
+        <i class="fa fa-briefcase"></i> ${project.name}
+      </span>
+      <span>
+        <i class="fa fa-pen" title="Rename Project" onclick="renameProject('${project.id}')"></i>
+        <i class="fa fa-plus" title="Add Folder" onclick="createFolder('${project.id}')"></i>
+        <i class="fa fa-plus-square" title="Add Board" onclick="createBoard('${project.id}')"></i>
+        <i class="fa fa-trash" title="Move Project to Trash" onclick='moveToTrash(${JSON.stringify(project)},"project")'></i>
+      </span>`;
+    container.appendChild(div);
+
+    // Create container for children and render recursively
+    let children = document.createElement("div");
+    children.className = "children";
+    container.appendChild(children);
+    renderLevel(project.id, children);
   });
 
-  return{
-   bg:p.bg||"#fff",
-   strokes:p.strokes||[],
-   shapes:p.shapes||[],
-   images:images,
-   undo:[],
-   redo:[]
-  };
+  // 2️⃣ Render Folders
+  data.folders.filter(f => f.parent === parentID).forEach(folder => {
+    let div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <span><i class="fa fa-folder"></i> ${folder.name}</span>
+      <span>
+        <i class="fa fa-pen" title="Rename Folder" onclick="renameFolder('${folder.id}')"></i>
+        <i class="fa fa-plus" title="Add Board" onclick="createBoard('${folder.id}')"></i>
+        <i class="fa fa-trash" title="Move Folder to Trash" onclick='moveToTrash(${JSON.stringify(folder)},"folder")'></i>
+      </span>`;
+    container.appendChild(div);
 
- });
+    // Container for nested children
+    let children = document.createElement("div");
+    children.className = "children";
+    container.appendChild(children);
+    renderLevel(folder.id, children);
+  });
 
- current=data.current||0;
-
- redraw();
-
+  // 3️⃣ Render Boards
+  data.boards.filter(b => b.parent === parentID).forEach(board => {
+    let div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <span onclick="openBoard('${board.id}')">
+        <i class="fa fa-file"></i> ${board.name}
+      </span>
+      <span>
+        <i class="fa fa-folder-open" title="Open Board" onclick="openBoard('${board.id}')"></i>
+        <i class="fa fa-pen" title="Rename Board" onclick="renameBoard('${board.id}')"></i>
+        <i class="fa fa-trash" title="Move Board to Trash" onclick='moveToTrash(${JSON.stringify(board)},"board")'></i>
+      </span>`;
+    container.appendChild(div);
+  });
 }
 
-/* BUTTONS */
+// ========== TRASH RENDER ==========
+function toggleTrash() {
 
-function saveBoardToCloud(){
- saveBoardCloud();
- alert("Saved to cloud");
+  let panel = document.getElementById("trashPanel");
+
+  panel.classList.toggle("show");
+
+  renderTrash();   // important
 }
 
-async function loadBoardFromCloud(){
- await loadBoardCloud();
- saveToLocalStorage();
- alert("Loaded from cloud");
+function renderTrash() {
+  let list = document.getElementById("trashList");
+  list.innerHTML = "";
+  data.trash.forEach(item => {
+    let div = document.createElement("div");
+    div.className = "trash-item";
+    div.innerHTML = `
+      <b>${item.name}</b><br>
+      <button class="small-btn" onclick='restoreItem(${JSON.stringify(item)})'>Restore</button>
+      <button class="small-btn" onclick='deleteForever(${JSON.stringify(item)})'>Delete Permanently</button>`;
+    list.appendChild(div);
+  });
 }
 
-/* AUTO SAVE TRIGGER */
-
-function cloudAutoSaveTrigger(){
- saveBoardCloud();
+function toggleFormPanel(){
+  document.getElementById("formPanel").classList.toggle("show");
 }
-</script>
-<script>
-openRecordingPanel.onclick=()=>{
-recordingPanel.style.transform="translateX(0)";
-loadRecordings();
-};
-
-closeRecordingPanel.onclick=()=>{
-recordingPanel.style.transform="translateX(100%)";
-};
-function loadRecordingHistory(){
-
-let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
-
-recordingList.innerHTML="";
-
-history.reverse().forEach(r=>{
-
-let div=document.createElement("div");
-
-div.className="recordItem";
-
-div.innerHTML=`
-<div>${r.date}</div>
-
-<button onclick="restoreRecording('${r.url}')">Restore</button>
-<button onclick="deleteRecording(${r.id})">Delete</button>
-`;
-
-recordingList.appendChild(div);
-
-});
-
+function toggleGuidePanel(){
+  document.getElementById("userGuidePanel").classList.toggle("show");
 }
-function restoreRecording(url){
-
-const a=document.createElement("a");
-
-a.href=url;
-
-a.download="whiteboard_recording.webm";
-
-a.click();
-
+function toggleContactPanel(){
+  document.getElementById("contactPanel").classList.toggle("show");
 }
-function shareRecording(url){
-
-navigator.clipboard.writeText(url);
-
-alert("Recording link copied!");
-
-}
-function deleteRecording(id){
-
-let history=JSON.parse(localStorage.getItem("recordingHistory")||"[]");
-
-history=history.filter(r=>r.id!==id);
-
-localStorage.setItem("recordingHistory",JSON.stringify(history));
-
-loadRecordingHistory();
-
-}
-window.addEventListener("DOMContentLoaded",()=>{
-
-loadRecordingHistory();
-
-});
-</script>
-<script>
-/* =============================================================
-   LiveRecorder — encapsulates all recording logic cleanly
-   
-   HOW IT WORKS:
-   • canvas.captureStream(0)  → on-demand mode (no auto-ticking)
-   • Every redraw() calls liveRecorder.pushFrame() which calls
-     videoTrack.requestFrame() — so EVERY pixel change (stroke,
-     erase, shape, image) is explicitly pushed into the stream.
-   • The RAF renderLoop() runs at 60fps during recording, which
-     continuously calls redraw() → pushFrame(), keeping the
-     camera bubble animation smooth and live in the video.
-   • Camera video is drawn directly onto the canvas via
-     drawBubble(), so it's captured by captureStream.
-   ============================================================= */
-
-class LiveRecorder {
-
-  constructor(canvasEl, videoEl, bubbleEl) {
-    this.canvas     = canvasEl;
-    this.videoEl    = videoEl;   // <video id="bubbleVideo">
-    this.bubbleEl   = bubbleEl;  // <div id="cameraBubble">
-
-    this.mediaRecorder  = null;
-    this.chunks         = [];
-    this.cameraStream   = null;
-    this.videoTrack     = null;   // canvas stream video track
-    this.rafId          = null;
-
-    // Timer
-    this.seconds        = 0;
-    this.timerInterval  = null;
-
-    // Camera bubble position on canvas (bottom-right default)
-    this.bubble = { x: null, y: null, size: 160, pad: 24, dragging: false, ox: 0, oy: 0 };
-
-    // Bind canvas drag listeners for bubble repositioning
-    this._onPointerDown = this._bubblePointerDown.bind(this);
-    this._onPointerMove = this._bubblePointerMove.bind(this);
-    this._onPointerUp   = this._bubblePointerUp.bind(this);
-  }
-
-  /* ── PUBLIC: start ── */
-  async start() {
-    if(this.mediaRecorder && this.mediaRecorder.state !== "inactive") return;
-
-    // 1. Request camera + mic
-    try {
-      this.cameraStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-    } catch(e) {
-      try {
-        this.cameraStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch(err) {
-        alert("Microphone access is required to record."); return;
-      }
-    }
-
-    // 2. Show DOM camera bubble (for the presenter's preview)
-    this.videoEl.srcObject = this.cameraStream;
-    this.bubbleEl.classList.add("show");
-
-    // 3. Reset bubble canvas position
-    this.bubble.x = null;
-    this.bubble.y = null;
-
-    // 4. Set up on-demand canvas stream (captureStream(0))
-    //    captureStream(0) means: "only capture when I call requestFrame()"
-    //    This guarantees every single redraw() is captured — nothing missed.
-    const canvasStream = this.canvas.captureStream(0);
-    this.videoTrack = canvasStream.getVideoTracks()[0];
-
-    // 5. Combine canvas video + mic audio into one stream
-    const combined = new MediaStream([
-      ...canvasStream.getTracks(),
-      ...this.cameraStream.getAudioTracks()
-    ]);
-
-    // 6. Pick best supported MIME type
-    const mimeType = ["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm","video/mp4"]
-      .find(t => MediaRecorder.isTypeSupported(t)) || "video/webm";
-
-    // 7. Create MediaRecorder
-    this.chunks = [];
-    this.mediaRecorder = new MediaRecorder(combined, { mimeType });
-
-    this.mediaRecorder.ondataavailable = e => {
-      if(e.data.size > 0) this.chunks.push(e.data);
-    };
-
-    this.mediaRecorder.onstop = () => this._onStop(mimeType);
-
-    this.mediaRecorder.start(100); // collect a chunk every 100ms
-
-    // 8. Start RAF render loop — redraws canvas every frame,
-    //    which in turn calls pushFrame() to feed the stream
-    this._startRenderLoop();
-
-    // 9. Start timer display
-    this.seconds = 0;
-    this._updateTimerDisplay();
-    this.timerInterval = setInterval(() => {
-      this.seconds++;
-      this._updateTimerDisplay();
-    }, 1000);
-
-    // 10. Register canvas drag listeners for bubble
-    this.canvas.addEventListener("pointerdown", this._onPointerDown, true);
-    this.canvas.addEventListener("pointermove", this._onPointerMove, true);
-    this.canvas.addEventListener("pointerup",   this._onPointerUp,   true);
-
-    // 11. Update UI
-    recordingIndicator.style.display = "flex";
-    recordTimer.style.display = "block";
-    startRecordBtn.disabled = true;
-    stopRecordBtn.disabled  = false;
-  }
-
-  /* ── PUBLIC: pause ── */
-  pause() {
-    if(this.mediaRecorder?.state === "recording") {
-      this.mediaRecorder.pause();
-      clearInterval(this.timerInterval);
-      this._stopRenderLoop();
-      recordingIndicator.style.opacity = "0.4";
-    }
-  }
-
-  /* ── PUBLIC: resume ── */
-  resume() {
-    if(this.mediaRecorder?.state === "paused") {
-      this.mediaRecorder.resume();
-      this.timerInterval = setInterval(() => {
-        this.seconds++;
-        this._updateTimerDisplay();
-      }, 1000);
-      this._startRenderLoop();
-      recordingIndicator.style.opacity = "1";
-    }
-  }
-
-  /* ── PUBLIC: stop ── */
-  stop() {
-    if(!this.mediaRecorder || this.mediaRecorder.state === "inactive") return;
-
-    this.mediaRecorder.stop();
-    this.cameraStream?.getTracks().forEach(t => t.stop());
-    this.videoTrack = null; // stop pushing frames
-
-    clearInterval(this.timerInterval);
-    this._stopRenderLoop();
-
-    // Hide DOM bubble
-    this.bubbleEl.classList.remove("show");
-    this.videoEl.srcObject = null;
-
-    // Hide recording UI
-    recordingIndicator.style.display  = "none";
-    recordingIndicator.style.opacity  = "1";
-    recordTimer.style.display         = "none";
-    recordTimer.innerText             = "00:00";
-
-    // Update buttons
-    startRecordBtn.disabled = false;
-    stopRecordBtn.disabled  = true;
-
-    // Remove canvas drag listeners
-    this.canvas.removeEventListener("pointerdown", this._onPointerDown, true);
-    this.canvas.removeEventListener("pointermove", this._onPointerMove, true);
-    this.canvas.removeEventListener("pointerup",   this._onPointerUp,   true);
-  }
-
-  /* ── PUBLIC: pushFrame — called at end of every redraw() ── */
-  pushFrame() {
-    if(this.videoTrack && this.mediaRecorder?.state === "recording") {
-      try { this.videoTrack.requestFrame(); } catch(e) {}
-    }
-  }
-
-  /* ── PUBLIC: drawBubble — called inside redraw() to paint camera onto canvas ── */
-  drawBubble(ctx, canvas) {
-    if(!this.videoTrack) return;                          // not recording
-    if(!this.videoEl?.srcObject) return;                  // no camera
-    if(this.videoEl.readyState < 2) return;               // video not ready
-
-    const b  = this.bubble;
-    if(b.x === null) {
-      b.x = canvas.width  - b.size - b.pad;
-      b.y = canvas.height - b.size - b.pad;
-    }
-    const r  = b.size / 2;
-    const cx = b.x + r;
-    const cy = b.y + r;
-
-    ctx.save();
-
-    // Drop shadow
-    ctx.shadowColor    = "rgba(0,0,0,0.6)";
-    ctx.shadowBlur     = 20;
-    ctx.shadowOffsetY  = 4;
-
-    // Circular clip
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.clip();
-
-    // Draw mirrored video
-    ctx.translate(cx, cy);
-    ctx.scale(-1, 1);
-    ctx.drawImage(this.videoEl, -r, -r, b.size, b.size);
-    ctx.scale(-1, 1);
-    ctx.translate(-cx, -cy);
-
-    ctx.restore();
-
-    // Pulsing red border
-    const pulse = 0.3 + 0.15 * Math.sin(Date.now() / 280);
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle   = "#f87171";
-    ctx.lineWidth     = 4;
-    ctx.shadowColor   = `rgba(248,113,113,${pulse})`;
-    ctx.shadowBlur    = 14;
-    ctx.stroke();
-    ctx.restore();
-
-    // LIVE label
-    ctx.save();
-    ctx.font      = "bold 12px 'DM Sans', sans-serif";
-    ctx.fillStyle = "rgba(248,113,113,0.95)";
-    ctx.shadowColor = "rgba(0,0,0,0.7)";
-    ctx.shadowBlur  = 4;
-    ctx.fillText("● LIVE", cx - r + 9, cy - r + 19);
-    ctx.restore();
-  }
-
-  /* ── PRIVATE: RAF render loop ── */
-  _startRenderLoop() {
-    if(this.rafId) return;
-    const loop = () => {
-      if(!this.rafId) return;
-      redraw(); // redraw() calls pushFrame() and drawBubble() at its end
-      this.rafId = requestAnimationFrame(loop);
-    };
-    this.rafId = requestAnimationFrame(loop);
-  }
-
-  _stopRenderLoop() {
-    if(this.rafId) {
-      cancelAnimationFrame(this.rafId);
-      this.rafId = null;
-    }
-  }
-
-  /* ── PRIVATE: save & download on stop ── */
-  _onStop(mimeType) {
-    const ext  = mimeType.includes("mp4") ? "mp4" : "webm";
-    const blob = new Blob(this.chunks, { type: mimeType });
-    const url  = URL.createObjectURL(blob);
-
-    // Auto-download
-    const a = document.createElement("a");
-    a.href     = url;
-    a.download = "recording_" + new Date().toISOString().slice(0,19).replace(/[:T]/g,"-") + "." + ext;
-    a.click();
-
-    // Save to history
-    let history = JSON.parse(localStorage.getItem("recordingHistory") || "[]");
-    history.push({ id: Date.now(), url, ext, date: new Date().toLocaleString() });
-    localStorage.setItem("recordingHistory", JSON.stringify(history));
-    loadRecordingHistory();
-  }
-
-  /* ── PRIVATE: timer display ── */
-  _updateTimerDisplay() {
-    const m = String(Math.floor(this.seconds / 60)).padStart(2, "0");
-    const s = String(this.seconds % 60).padStart(2, "0");
-    recordTimer.innerText = m + ":" + s;
-  }
-
-  /* ── PRIVATE: drag bubble on canvas ── */
-  _bubblePointerDown(e) {
-    const p = pos(e);
-    const b = this.bubble;
-    if(b.x === null) return;
-    const r = b.size / 2, cx = b.x + r, cy = b.y + r;
-    if(Math.hypot(p.x - cx, p.y - cy) <= r) {
-      b.dragging = true;
-      b.ox = p.x - b.x;
-      b.oy = p.y - b.y;
-      e.stopImmediatePropagation();
-    }
-  }
-
-  _bubblePointerMove(e) {
-    if(!this.bubble.dragging) return;
-    const p = pos(e);
-    const b = this.bubble;
-    b.x = Math.max(0, Math.min(this.canvas.width  - b.size, p.x - b.ox));
-    b.y = Math.max(0, Math.min(this.canvas.height - b.size, p.y - b.oy));
-  }
-
-  _bubblePointerUp() {
-    this.bubble.dragging = false;
-  }
-}
-
-/* ── Wire up buttons ── */
-startRecordBtn.onclick  = () => {
-  liveRecorder = new LiveRecorder(
-    canvas,
-    document.getElementById("bubbleVideo"),
-    document.getElementById("cameraBubble")
-  );
-  liveRecorder.start();
-};
-
-pauseRecordBtn.onclick  = () => liveRecorder?.pause();
-resumeRecordBtn.onclick = () => liveRecorder?.resume();
-stopRecordBtn.onclick   = () => liveRecorder?.stop();
-</script>
-<script>
-
-function openStoragePanel(){
- document.getElementById("storagePanel").classList.add("open");
- loadStorage();
-}
-
-function closeStoragePanel(){
- document.getElementById("storagePanel").classList.remove("open");
-}
-
-async function loadStorage(){
-
- let res = await fetch("https://script.google.com/macros/s/AKfycby-EK5rJGH1B5-n05tAdMmz0VY8NcbtBN0uCVq2uarVKFzTZ2Ju942VxCSTuMh4Cm0/exec",{
-  method:"POST",
-  body:JSON.stringify({
-   action:"getStorage",
-   userId:USER_ID
-  })
- });
-
- let data = await res.json();
-
- let table = document.querySelector("#storageTable tbody");
- table.innerHTML="";
-
- data.files.forEach(file=>{
-
-  let tr=document.createElement("tr");
-
-  tr.innerHTML=`
-   <td>${file.name}</td>
-   <td>${(file.size/1024).toFixed(2)} KB</td>
-   <td>${new Date(file.updated).toLocaleString()}</td>
-   <td>
-     <button onclick="loadBoardFromCloud()">Open</button>
-   </td>
-  `;
-
-  table.appendChild(tr);
-
- });
-
- document.getElementById("storageInfo").innerHTML =
- "Used: " + (data.totalSize/1024).toFixed(2) + " KB";
-
-}
-
 </script>
 <script>
 if (location.pathname.endsWith(".html")) {
@@ -3160,21 +1624,30 @@ const panel = document.getElementById("securityPanel");
 
 var lock = new PatternLock('#patternLock');
 
-lock.on('draw', function(pattern){
-
-// Your private pattern
+// ⚠️  SECURITY NOTE: The secret pattern is visible in client-side
+// source. For real security, validate the pattern server-side.
+// Anyone who reads this JS can unlock the panel without drawing.
 const SECRET_PATTERN = "1729";
 
-if(pattern === SECRET_PATTERN){
+// Add an error message element inside the security panel
+(function(){
+  var errMsg = document.createElement("p");
+  errMsg.id = "patternError";
+  errMsg.style.cssText = "color:#ff6b6b;margin-top:8px;font-size:14px;min-height:20px;";
+  document.getElementById("patternLock").after(errMsg);
+})();
 
-panel.style.display = "none";
-
-}else{
-
-alert("Wrong Pattern");
-
-}
-
+lock.on('draw', function(pattern){
+  var errEl = document.getElementById("patternError");
+  if(pattern === SECRET_PATTERN){
+    panel.style.display = "none";
+    errEl.textContent = "";
+  } else {
+    // FIX: use inline error instead of alert() — alert blocks UI
+    // and prevents the user from trying again without a page reload
+    errEl.textContent = "Wrong pattern — try again.";
+    setTimeout(function(){ lock.reset(); errEl.textContent = ""; }, 1200);
+  }
 });
 
 /* DevTools Detection */
@@ -3228,36 +1701,191 @@ panel.style.display="flex";
 
 </script>
 <script>
-/* CAMERA BUBBLE — drag & close */
-(function(){
-  const bubble = document.getElementById("cameraBubble");
-  const closeBtn = document.getElementById("closeBubble");
+function createProject(parentID = null) {
+  if (!currentUser) { alert("Login required"); return; }
 
-  let dragging = false, ox = 0, oy = 0;
+  let name = prompt("Project Name:", "Untitled Project");
+  if (!name) return;
 
-  bubble.addEventListener("pointerdown", e=>{
-    if(e.target === closeBtn) return;
-    dragging = true;
-    ox = e.clientX - bubble.getBoundingClientRect().left;
-    oy = e.clientY - bubble.getBoundingClientRect().top;
-    bubble.setPointerCapture(e.pointerId);
-    e.preventDefault();
+  const id = generateID();
+  data.projects.push({ id, name, parent: parentID });
+  save();
+  render();
+}
+function openProject(id){
+  // FIX: show project name in the main panel instead of a raw alert
+  const project = data.projects.find(p => p.id === id);
+  if(!project) return;
+  document.getElementById("main").innerHTML =
+    `<h1><i class="fa fa-briefcase"></i> ${project.name}</h1>
+     <p>Boards and folders inside this project are shown in the left panel.</p>`;
+}
+
+function renameProject(id){
+  let project = data.projects.find(p => p.id === id);
+  if(!project) return;
+  let newName = prompt("Rename project:", project.name);
+  if(!newName) return;
+  project.name = newName;
+  save();
+  render();
+}
+</script>
+<script>
+function searchExplorer(){
+
+const input = document.getElementById("searchInput").value.toLowerCase();
+
+const items = document.querySelectorAll("#tree .item");
+
+items.forEach(item => {
+
+const text = item.innerText.toLowerCase();
+
+if(text.includes(input)){
+item.style.display = "flex";
+}else{
+item.style.display = "none";
+}
+
+});
+
+}
+/* ================= THEME TOGGLE ================= */
+
+function toggleTheme(){
+
+const body = document.body;
+const btn = document.getElementById("themeToggle");
+
+body.classList.toggle("dark");
+
+if(body.classList.contains("dark")){
+localStorage.setItem("theme","dark");
+btn.innerHTML = '<i class="fa fa-sun"></i> Light Mode';
+}else{
+localStorage.setItem("theme","light");
+btn.innerHTML = '<i class="fa fa-moon"></i> Dark Mode';
+}
+
+}
+
+/* Load saved theme */
+
+window.addEventListener("load", function(){
+
+const savedTheme = localStorage.getItem("theme");
+
+if(savedTheme === "dark"){
+  document.body.classList.add("dark");
+  const btn = document.getElementById("themeToggle");
+  if(btn) btn.innerHTML = '<i class="fa fa-sun"></i> Light Mode';
+}
+
+});
+</script>
+<script>
+// ============================================================
+//  CLOUD SYNC — Save & Load user data (projects/folders/boards)
+//  as a JSON file in Google Drive via an Apps Script Web App.
+//
+//  HOW TO USE
+//  1. Open https://script.google.com  → New project
+//  2. Paste the Apps Script code from apps_script_backend.gs
+//  3. Deploy → New deployment → Web app
+//       Execute as  → Me
+//       Who has access → Anyone
+//  4. Copy the /exec URL into CLOUD_URL below.
+// ============================================================
+
+const CLOUD_URL =
+  "https://script.google.com/macros/s/AKfycbw0H820eqMY8WjrgwFBDJfBq-JzfFsEJ868DVphTWBpuQFLXps2wcb9HOg6NXgTffDG/exec";
+  // ↑ Replace with your own deployed /exec URL
+
+// ----------------------------------------------------------
+//  saveCloud()
+//  Sends the full data object (projects, folders, boards,
+//  trash) to the Apps Script endpoint as a JSON string.
+//  Uses mode:"no-cors" to avoid CORS pre-flight blocks —
+//  the response is opaque but the write still succeeds.
+// ----------------------------------------------------------
+function saveCloud() {
+  if (!currentUser) return;
+
+  const payload = new URLSearchParams({
+    userId: currentUser.sub,
+    data:   JSON.stringify(data)
   });
 
-  bubble.addEventListener("pointermove", e=>{
-    if(!dragging) return;
-    bubble.style.right = "auto";
-    bubble.style.bottom = "auto";
-    bubble.style.left = (e.clientX - ox) + "px";
-    bubble.style.top  = (e.clientY - oy) + "px";
-  });
+  fetch(CLOUD_URL, {
+    method: "POST",
+    mode:   "no-cors",   // opaque response — expected & fine
+    body:   payload
+  })
+  .then(() => console.log("☁️  saveCloud: data sent (opaque response is normal)"))
+  .catch(err => console.error("❌ saveCloud error:", err));
+}
 
-  bubble.addEventListener("pointerup", ()=>{ dragging=false; });
+// ----------------------------------------------------------
+//  loadCloud()
+//  Fetches the user's saved JSON from the Apps Script
+//  endpoint and merges it into the local `data` object.
+//  Called once after a successful Google login.
+// ----------------------------------------------------------
+async function loadCloud() {
+  if (!currentUser) return;
 
-  closeBtn.addEventListener("click", ()=>{
-    bubble.classList.remove("show");
-  });
-})();
+  try {
+    const res = await fetch(
+      `${CLOUD_URL}?userId=${encodeURIComponent(currentUser.sub)}`
+    );
+
+    if (!res.ok) {
+      console.warn("⚠️ loadCloud: server returned", res.status);
+      return;
+    }
+
+    const cloudData = await res.json();
+
+    // Only update if the response looks like valid app data
+    if (cloudData && Array.isArray(cloudData.projects)) {
+      data = {
+        projects: cloudData.projects || [],
+        folders:  cloudData.folders  || [],
+        boards:   cloudData.boards   || [],
+        trash:    cloudData.trash    || []
+      };
+
+      // Persist to localStorage as a local cache
+      localStorage.setItem(getKey(), JSON.stringify(data));
+
+      render();
+      console.log("☁️  loadCloud: data restored from Drive");
+    } else {
+      console.log("ℹ️  loadCloud: no cloud data found for this user yet");
+    }
+
+  } catch (err) {
+    console.error("❌ loadCloud error:", err);
+  }
+}
+
+</script>
+<script>
+function updateStats(){
+
+  document.getElementById("statProjects").textContent = data.projects.length;
+
+  document.getElementById("statBoards").textContent = data.boards.length;
+
+  document.getElementById("statTrash").textContent = data.trash.length;
+
+  const folderStat = document.getElementById("statFolders");
+  if(folderStat){
+    folderStat.textContent = data.folders.length;
+  }
+
+}
 </script>
 </body>
 </html>
