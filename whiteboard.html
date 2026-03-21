@@ -3482,85 +3482,63 @@ panel.style.display="flex";
 </script>
 <script>
 /* ══════════════════════════════════════════════════════════════
-   LIVE ROOM — Google Apps Script + Sheets (No Firebase)
-   All helpers: showRoomToast, addPeerTile, removePeerTile,
-   setRoomUI, joinRoom, leaveRoom, broadcastStroke, pollLoop
+   LIVE ROOM — Google Apps Script + Sheets
+   ──────────────────────────────────────────────────────────────
+   ROLES:
+     ADMIN  = User A — creates room, draws, approves viewers
+     VIEWER = User B — joins via link, watches only (read-only)
+
+   FLOW:
+     1. A clicks Create → gets shareable link
+     2. B opens link → sees "Waiting for approval" screen
+     3. A sees approval popup → clicks Approve / Deny
+     4. If approved: B enters viewer mode (board + A's video)
+     5. Board strokes sync via polling every 1.5s
+     6. Video is streamed peer-to-peer via WebRTC
 ══════════════════════════════════════════════════════════════ */
 
 const GAS_LIVE_URL = "https://script.google.com/macros/s/AKfycbyUtG-zUNdDRoT_ZwItM-zkkPL34ipZ-m4bpMbtA-KLRksf0E4hIMW-gzJrpw_tT7Cs/exec";
 
-let MY_PEER_ID   = Math.random().toString(36).slice(2, 10);
+/* ── State ── */
+let MY_PEER_ID   = "u" + Math.random().toString(36).slice(2, 10);
+let MY_ROLE      = null;   // "admin" | "viewer"
 let currentRoom  = null;
-let localStream  = null;
-let peerConns    = {};
+let localStream  = null;   // admin camera stream
+let peerConns    = {};     // peerId → RTCPeerConnection
 let lastPollTs   = 0;
 let pollInterval = null;
+let pendingViewers = {};   // viewerId → name (waiting approval)
 
 const ICE_CFG = { iceServers: [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" }
 ]};
 
-/* ── Toast ── */
-function showRoomToast(msg) {
+/* ════════════════════════════════════════════
+   TOAST
+════════════════════════════════════════════ */
+function showRoomToast(msg, dur = 3500) {
   const t = document.getElementById("roomToast");
   t.textContent = msg;
   t.style.opacity = "1";
   clearTimeout(t._tid);
-  t._tid = setTimeout(() => { t.style.opacity = "0"; }, 3200);
+  t._tid = setTimeout(() => { t.style.opacity = "0"; }, dur);
 }
 
-/* ── Peer Tiles ── */
-function addPeerTile(peerId, stream, isLocal) {
-  removePeerTile(peerId);
-  const grid = document.getElementById("peerGrid");
-  const wrap = document.createElement("div");
-  wrap.id = "tile-" + peerId;
-  wrap.className = "peer-tile" + (isLocal ? " local-tile" : "");
-
-  const vid = document.createElement("video");
-  vid.srcObject = stream;
-  vid.autoplay = true;
-  vid.playsInline = true;
-  if (isLocal) vid.muted = true;
-  vid.style.cssText = "width:100%;height:100%;object-fit:cover;" + (isLocal ? "transform:scaleX(-1);" : "");
-
-  const lbl = document.createElement("div");
-  lbl.className = "peer-label";
-  lbl.textContent = isLocal ? "You" : ("Peer " + peerId.slice(0,4));
-
-  wrap.appendChild(vid);
-  wrap.appendChild(lbl);
-  grid.appendChild(wrap);
-}
-
-function removePeerTile(peerId) {
-  document.getElementById("tile-" + peerId)?.remove();
-}
-
-/* ── Room UI ── */
-function setRoomUI(inRoom, roomId = "") {
-  document.getElementById("createRoomBtn").style.display  = inRoom ? "none" : "";
-  document.getElementById("joinRoomBtn").style.display    = inRoom ? "none" : "";
-  document.getElementById("leaveRoomBtn").style.display   = inRoom ? "" : "none";
-  document.getElementById("copyInviteBtn").style.display  = inRoom ? "" : "none";
-  document.getElementById("roomIdInput").disabled         = inRoom;
-  document.getElementById("roomIdInput").value            = inRoom ? roomId : "";
-  document.getElementById("roomStatus").textContent       = inRoom ? ("🟢 " + roomId) : "";
-}
-
-function buildInviteLink(roomId) {
-  return location.origin + location.pathname + "?room=" + roomId;
-}
-
-/* ── GAS helpers ── */
-async function gasWrite(type, data) {
+/* ════════════════════════════════════════════
+   GAS TRANSPORT
+════════════════════════════════════════════ */
+async function gasWrite(type, extra = {}) {
   try {
     await fetch(GAS_LIVE_URL, {
       method: "POST",
-      body: JSON.stringify({ action: "write", room: currentRoom, userId: MY_PEER_ID, data: { type, ...data } })
+      body: JSON.stringify({
+        action: "write", room: currentRoom,
+        userId: MY_PEER_ID,
+        data: { type, ...extra }
+      })
     });
-  } catch(e) { console.warn("gasWrite error", e); }
+  } catch(e) { console.warn("gasWrite:", e); }
 }
 
 async function gasPoll() {
@@ -3570,30 +3548,358 @@ async function gasPoll() {
   return rows.filter(r => r.userId !== MY_PEER_ID);
 }
 
-/* ── Local media ── */
-async function getLocalStream() {
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    addPeerTile(MY_PEER_ID, localStream, true);
-  } catch(e) {
-    showRoomToast("❌ Camera/mic denied"); throw e;
+/* ════════════════════════════════════════════
+   VIEWER WAITING SCREEN (shown to User B)
+════════════════════════════════════════════ */
+function showViewerWaiting(roomId) {
+  // Dim everything with an overlay
+  let ov = document.getElementById("viewerWaitOverlay");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.id = "viewerWaitOverlay";
+    ov.style.cssText = `
+      position:fixed;inset:0;background:rgba(15,17,23,0.97);
+      z-index:999998;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;gap:16px;
+      font-family:'DM Sans',sans-serif;color:#e8ecf4;
+    `;
+    ov.innerHTML = `
+      <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#4f7dff,#a78bfa);
+        display:flex;align-items:center;justify-content:center;font-size:22px;">
+        <i class="fa fa-tower-broadcast"></i>
+      </div>
+      <h2 style="font-size:20px;font-weight:600;margin:0;">Waiting for approval</h2>
+      <p style="color:#8892a8;font-size:13px;margin:0;">
+        Room <strong style="color:#4f7dff;font-family:'DM Mono',monospace;">${roomId}</strong>
+        — the host needs to let you in
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+        <div class="wait-dot"></div><div class="wait-dot"></div><div class="wait-dot"></div>
+      </div>
+      <button id="cancelJoinBtn" style="margin-top:8px;padding:8px 20px;border-radius:6px;
+        border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);
+        color:#8892a8;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;">
+        Cancel
+      </button>
+      <style>
+        .wait-dot{width:8px;height:8px;border-radius:50%;background:#4f7dff;
+          animation:waitBounce 1.4s infinite ease-in-out;}
+        .wait-dot:nth-child(2){animation-delay:0.2s;}
+        .wait-dot:nth-child(3){animation-delay:0.4s;}
+        @keyframes waitBounce{0%,80%,100%{transform:scale(0.6);opacity:0.4}40%{transform:scale(1);opacity:1}}
+      </style>
+    `;
+    document.body.appendChild(ov);
+    document.getElementById("cancelJoinBtn").onclick = () => {
+      gasWrite("viewer_cancel");
+      currentRoom = null;
+      clearInterval(pollInterval);
+      ov.remove();
+    };
+  }
+  ov.style.display = "flex";
+}
+
+function hideViewerWaiting() {
+  document.getElementById("viewerWaitOverlay")?.remove();
+}
+
+/* ════════════════════════════════════════════
+   ADMIN APPROVAL POPUP (shown to User A)
+════════════════════════════════════════════ */
+function showApprovalPopup(viewerId, viewerName) {
+  // Remove existing popup for same viewer
+  document.getElementById("approval-" + viewerId)?.remove();
+
+  const pop = document.createElement("div");
+  pop.id = "approval-" + viewerId;
+  pop.style.cssText = `
+    position:fixed;top:80px;right:20px;
+    background:#1c2030;border:1px solid rgba(79,125,255,0.4);
+    border-radius:12px;padding:18px 20px;width:300px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.6);
+    z-index:999997;font-family:'DM Sans',sans-serif;
+    animation:slideInRight 0.25s cubic-bezier(.4,0,.2,1);
+  `;
+  pop.innerHTML = `
+    <style>
+      @keyframes slideInRight{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+    </style>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#4f7dff,#a78bfa);
+        display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;flex-shrink:0;">
+        <i class="fa fa-user"></i>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:#e8ecf4;">Join Request</div>
+        <div style="font-size:11px;color:#8892a8;font-family:'DM Mono',monospace;">${viewerName}</div>
+      </div>
+    </div>
+    <p style="font-size:12px;color:#8892a8;margin:0 0 14px 0;">
+      wants to watch your session as a viewer.
+    </p>
+    <div style="display:flex;gap:8px;">
+      <button id="approveBtn-${viewerId}" style="flex:1;padding:8px;border-radius:6px;border:1px solid #34d399;
+        background:rgba(52,211,153,0.1);color:#34d399;cursor:pointer;font-size:12px;
+        font-family:'DM Sans',sans-serif;font-weight:500;transition:all 0.15s;">
+        ✓ Approve
+      </button>
+      <button id="denyBtn-${viewerId}" style="flex:1;padding:8px;border-radius:6px;border:1px solid #f87171;
+        background:rgba(248,113,113,0.1);color:#f87171;cursor:pointer;font-size:12px;
+        font-family:'DM Sans',sans-serif;font-weight:500;transition:all 0.15s;">
+        ✕ Deny
+      </button>
+    </div>
+  `;
+  document.body.appendChild(pop);
+
+  document.getElementById("approveBtn-" + viewerId).onclick = async () => {
+    pop.remove();
+    delete pendingViewers[viewerId];
+    await gasWrite("viewer_approved", { to: viewerId });
+    showRoomToast("✅ Viewer approved");
+    // Send current full board state to viewer
+    await sendBoardSnapshot(viewerId);
+    // Initiate video call to viewer
+    await createPeer(viewerId, true);
+  };
+
+  document.getElementById("denyBtn-" + viewerId).onclick = () => {
+    pop.remove();
+    delete pendingViewers[viewerId];
+    gasWrite("viewer_denied", { to: viewerId });
+    showRoomToast("❌ Viewer denied");
+  };
+
+  // Auto-dismiss after 30s
+  setTimeout(() => { pop.remove(); delete pendingViewers[viewerId]; }, 30000);
+}
+
+/* ════════════════════════════════════════════
+   VIEWER MODE UI (User B after approval)
+════════════════════════════════════════════ */
+function enterViewerMode() {
+  hideViewerWaiting();
+
+  // Create full-screen viewer overlay
+  const ov = document.createElement("div");
+  ov.id = "viewerModeOverlay";
+  ov.style.cssText = `
+    position:fixed;inset:0;background:#0f1117;z-index:99990;
+    display:flex;flex-direction:column;font-family:'DM Sans',sans-serif;
+  `;
+  ov.innerHTML = `
+    <!-- Header bar -->
+    <div style="height:44px;background:#161a23;border-bottom:1px solid rgba(255,255,255,0.07);
+      display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;">
+      <div style="width:8px;height:8px;border-radius:50%;background:#f87171;
+        box-shadow:0 0 6px #f87171;animation:pulse 1.4s infinite;"></div>
+      <span style="font-size:13px;font-weight:600;color:#e8ecf4;">Live Session</span>
+      <span id="viewerRoomLabel" style="font-size:11px;color:#8892a8;font-family:'DM Mono',monospace;margin-left:4px;"></span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:#34d399;background:rgba(52,211,153,0.1);
+          padding:3px 10px;border-radius:100px;border:1px solid rgba(52,211,153,0.2);">
+          <i class="fa fa-eye"></i> Viewer
+        </span>
+        <button id="viewerLeaveBtn" style="padding:5px 12px;border-radius:6px;border:1px solid #f87171;
+          background:rgba(248,113,113,0.1);color:#f87171;cursor:pointer;font-size:11px;
+          font-family:'DM Sans',sans-serif;">
+          Leave
+        </button>
+      </div>
+    </div>
+
+    <!-- Main area: board replay + video -->
+    <div style="flex:1;display:flex;min-height:0;position:relative;">
+
+      <!-- Board canvas (viewer copy) -->
+      <div id="viewerBoardArea" style="flex:1;overflow:auto;background:#0f1117;
+        background-image:radial-gradient(circle,rgba(255,255,255,0.04) 1px,transparent 1px);
+        background-size:28px 28px;display:flex;align-items:flex-start;justify-content:center;padding:20px;">
+        <canvas id="viewerCanvas" width="1600" height="2000"
+          style="display:block;background:#fff;border-radius:10px;
+          box-shadow:0 0 0 1px rgba(255,255,255,0.06),0 12px 40px rgba(0,0,0,0.6);
+          max-width:100%;"></canvas>
+      </div>
+
+      <!-- Host video (top-right, draggable) -->
+      <div id="hostVideoTile" style="
+        position:absolute;top:16px;right:16px;
+        width:200px;height:150px;border-radius:12px;overflow:hidden;
+        background:#0a0c12;border:2px solid #4f7dff;
+        box-shadow:0 4px 20px rgba(79,125,255,0.3);
+        cursor:grab;z-index:10;
+      ">
+        <video id="hostVideo" autoplay playsinline
+          style="width:100%;height:100%;object-fit:cover;"></video>
+        <div style="position:absolute;bottom:5px;left:8px;font-size:10px;color:#fff;
+          background:rgba(0,0,0,0.55);padding:2px 7px;border-radius:4px;font-family:'DM Mono',monospace;">
+          Host
+        </div>
+        <div style="position:absolute;top:6px;right:6px;display:flex;gap:4px;align-items:center;">
+          <div style="width:6px;height:6px;border-radius:50%;background:#f87171;
+            box-shadow:0 0 4px #f87171;animation:pulse 1.4s infinite;"></div>
+          <span style="font-size:9px;color:#f87171;font-weight:600;letter-spacing:0.06em;">LIVE</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Status bar -->
+    <div style="height:24px;background:#161a23;border-top:1px solid rgba(255,255,255,0.07);
+      display:flex;align-items:center;padding:0 14px;gap:16px;font-size:11px;
+      color:#4d5568;font-family:'DM Mono',monospace;">
+      <span><i class="fa fa-eye"></i> Read-only mode</span>
+      <span id="viewerSyncStatus" style="margin-left:auto;">⏳ Syncing...</span>
+    </div>
+
+    <style>
+      @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+    </style>
+  `;
+  document.body.appendChild(ov);
+
+  document.getElementById("viewerRoomLabel").textContent = currentRoom;
+
+  // Make host video tile draggable
+  makeDraggable(document.getElementById("hostVideoTile"));
+
+  document.getElementById("viewerLeaveBtn").onclick = () => {
+    leaveSession();
+  };
+}
+
+function makeDraggable(el) {
+  let ox = 0, oy = 0, dragging = false;
+  el.addEventListener("pointerdown", e => {
+    dragging = true; ox = e.clientX - el.offsetLeft; oy = e.clientY - el.offsetTop;
+    el.style.cursor = "grabbing"; el.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  el.addEventListener("pointermove", e => {
+    if (!dragging) return;
+    el.style.right = "auto"; el.style.bottom = "auto";
+    el.style.left = (e.clientX - ox) + "px"; el.style.top = (e.clientY - oy) + "px";
+  });
+  el.addEventListener("pointerup", () => { dragging = false; el.style.cursor = "grab"; });
+}
+
+/* Viewer canvas — draw full board snapshot */
+function renderViewerBoard(boardData) {
+  const vc = document.getElementById("viewerCanvas");
+  if (!vc) return;
+  const vctx = vc.getContext("2d");
+
+  const p = boardData;
+  vctx.clearRect(0, 0, vc.width, vc.height);
+  vctx.fillStyle = p.bg || "#fff";
+  vctx.fillRect(0, 0, vc.width, vc.height);
+
+  (p.strokes || []).forEach(s => {
+    if (!s.points || s.points.length < 2) return;
+    vctx.strokeStyle = s.color || "#000";
+    vctx.lineWidth   = s.size  || 2;
+    vctx.lineCap     = "round";
+    vctx.globalAlpha = (s.type === "highlighter") ? (s.alpha || 0.3) : 1;
+    vctx.beginPath();
+    vctx.moveTo(s.points[0].x, s.points[0].y);
+    s.points.slice(1).forEach(pt => vctx.lineTo(pt.x, pt.y));
+    vctx.stroke();
+    vctx.globalAlpha = 1;
+  });
+
+  const stat = document.getElementById("viewerSyncStatus");
+  if (stat) { stat.textContent = "✅ Synced " + new Date().toLocaleTimeString(); }
+}
+
+/* Viewer incremental stroke append */
+function appendViewerStroke(stroke) {
+  const vc = document.getElementById("viewerCanvas");
+  if (!vc || !stroke.points || stroke.points.length < 2) return;
+  const vctx = vc.getContext("2d");
+  vctx.strokeStyle = stroke.color || "#000";
+  vctx.lineWidth   = stroke.size  || 2;
+  vctx.lineCap     = "round";
+  vctx.globalAlpha = (stroke.type === "highlighter") ? (stroke.alpha || 0.3) : 1;
+  vctx.beginPath();
+  vctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+  stroke.points.slice(1).forEach(pt => vctx.lineTo(pt.x, pt.y));
+  vctx.stroke();
+  vctx.globalAlpha = 1;
+  const stat = document.getElementById("viewerSyncStatus");
+  if (stat) { stat.textContent = "✅ Synced " + new Date().toLocaleTimeString(); }
+}
+
+/* ════════════════════════════════════════════
+   BOARD SNAPSHOT (admin → viewer on approve)
+════════════════════════════════════════════ */
+async function sendBoardSnapshot(viewerId) {
+  // Send all pages worth of strokes as a snapshot
+  const snapshot = pages.map(p => ({
+    bg:      p.bg,
+    strokes: p.strokes,
+    shapes:  p.shapes || []
+  }));
+  // Break into chunks if needed (Sheets cell limit ~50KB)
+  const payload = JSON.stringify(snapshot);
+  const CHUNK = 40000;
+  const total = Math.ceil(payload.length / CHUNK);
+  for (let i = 0; i < total; i++) {
+    await gasWrite("board_snapshot_chunk", {
+      to: viewerId,
+      chunk: i,
+      total,
+      data: payload.slice(i * CHUNK, (i + 1) * CHUNK)
+    });
   }
 }
 
-/* ── WebRTC peer ── */
+let snapshotBuffer = {};
+
+function handleSnapshotChunk(data) {
+  const key = data.from + "_snap";
+  if (!snapshotBuffer[key]) snapshotBuffer[key] = { chunks: {}, total: data.total };
+  snapshotBuffer[key].chunks[data.chunk] = data.data;
+
+  const received = Object.keys(snapshotBuffer[key].chunks).length;
+  if (received === snapshotBuffer[key].total) {
+    const fullJson = Array.from({ length: data.total }, (_, i) => snapshotBuffer[key].chunks[i]).join("");
+    delete snapshotBuffer[key];
+    try {
+      const boardData = JSON.parse(fullJson);
+      // Render current page
+      renderViewerBoard(boardData[0] || { bg: "#fff", strokes: [] });
+    } catch(e) { console.warn("Snapshot parse error", e); }
+  }
+}
+
+/* ════════════════════════════════════════════
+   WEBRTC — Admin streams video to Viewer
+════════════════════════════════════════════ */
 async function createPeer(peerId, isInitiator) {
   if (peerConns[peerId]) return peerConns[peerId];
   const pc = new RTCPeerConnection(ICE_CFG);
   peerConns[peerId] = pc;
 
-  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-  pc.ontrack = e => addPeerTile(peerId, e.streams[0], false);
+  // Admin adds camera tracks; viewer just receives
+  if (MY_ROLE === "admin" && localStream) {
+    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  }
+
+  pc.ontrack = e => {
+    // Viewer receives admin's video
+    if (MY_ROLE === "viewer") {
+      const vid = document.getElementById("hostVideo");
+      if (vid) { vid.srcObject = e.streams[0]; }
+    }
+  };
+
   pc.onicecandidate = e => {
     if (e.candidate) gasWrite("ice", { to: peerId, candidate: e.candidate });
   };
+
   pc.onconnectionstatechange = () => {
     if (["disconnected","failed","closed"].includes(pc.connectionState)) {
-      removePeerTile(peerId);
+      if (MY_ROLE === "viewer") showRoomToast("📵 Host disconnected");
       delete peerConns[peerId];
     }
   };
@@ -3606,14 +3912,40 @@ async function createPeer(peerId, isInitiator) {
   return pc;
 }
 
-/* ── Poll loop (signaling) ── */
+/* ════════════════════════════════════════════
+   POLL LOOP — handles all message types
+════════════════════════════════════════════ */
 async function pollLoop() {
   try {
     const msgs = await gasPoll();
     for (const { userId, data } of msgs) {
-      if (data.type === "join") {
-        if (!peerConns[userId]) await createPeer(userId, true);
+
+      /* ── Admin receives viewer join request ── */
+      if (data.type === "viewer_request" && MY_ROLE === "admin") {
+        if (!pendingViewers[userId]) {
+          pendingViewers[userId] = data.viewerName || userId.slice(0,8);
+          showApprovalPopup(userId, pendingViewers[userId]);
+        }
       }
+
+      /* ── Viewer receives approval ── */
+      else if (data.type === "viewer_approved" && data.to === MY_PEER_ID && MY_ROLE === "viewer") {
+        enterViewerMode();
+        showRoomToast("✅ You've been approved! Welcome.");
+        // Start WebRTC to receive admin video — viewer is NOT initiator
+        await createPeer(userId, false);
+      }
+
+      /* ── Viewer receives denial ── */
+      else if (data.type === "viewer_denied" && data.to === MY_PEER_ID) {
+        hideViewerWaiting();
+        currentRoom = null;
+        clearInterval(pollInterval);
+        pollInterval = null;
+        showDeniedScreen();
+      }
+
+      /* ── WebRTC signaling ── */
       else if (data.type === "offer" && data.to === MY_PEER_ID) {
         const pc = await createPeer(userId, false);
         if (pc.signalingState === "stable") {
@@ -3632,18 +3964,84 @@ async function pollLoop() {
         const pc = peerConns[userId];
         if (pc) try { await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch(e){}
       }
-      else if (data.type === "stroke") {
-        replayRemoteStroke(data);
+
+      /* ── Board snapshot chunks (viewer receives) ── */
+      else if (data.type === "board_snapshot_chunk" && data.to === MY_PEER_ID) {
+        handleSnapshotChunk({ ...data, from: userId });
       }
-      else if (data.type === "leave") {
-        const pc = peerConns[userId];
-        if (pc) { pc.close(); delete peerConns[userId]; removePeerTile(userId); }
+
+      /* ── Incremental stroke (viewer receives) ── */
+      else if (data.type === "stroke") {
+        if (MY_ROLE === "viewer") {
+          appendViewerStroke(data);
+        } else {
+          replayRemoteStroke(data); // fallback for old behaviour
+        }
+      }
+
+      /* ── Board clear signal ── */
+      else if (data.type === "board_clear" && MY_ROLE === "viewer") {
+        const vc = document.getElementById("viewerCanvas");
+        if (vc) {
+          const vctx = vc.getContext("2d");
+          vctx.fillStyle = data.bg || "#fff";
+          vctx.fillRect(0, 0, vc.width, vc.height);
+        }
+      }
+
+      /* ── Page change signal ── */
+      else if (data.type === "page_change" && MY_ROLE === "viewer") {
+        // Re-render new page from snapshot
+        if (data.pageData) renderViewerBoard(data.pageData);
+      }
+
+      /* ── Host ending session ── */
+      else if (data.type === "session_end" && MY_ROLE === "viewer") {
+        showRoomToast("📵 Host ended the session");
+        setTimeout(() => leaveSession(), 2000);
+      }
+
+      /* ── Viewer cancel ── */
+      else if (data.type === "viewer_cancel" && MY_ROLE === "admin") {
+        document.getElementById("approval-" + userId)?.remove();
+        delete pendingViewers[userId];
+        showRoomToast("ℹ️ A viewer cancelled their request");
       }
     }
   } catch(e) { console.warn("Poll error", e); }
 }
 
-/* ── Replay remote stroke ── */
+/* ════════════════════════════════════════════
+   DENIED SCREEN
+════════════════════════════════════════════ */
+function showDeniedScreen() {
+  hideViewerWaiting();
+  const ov = document.createElement("div");
+  ov.id = "deniedOverlay";
+  ov.style.cssText = `
+    position:fixed;inset:0;background:rgba(15,17,23,0.97);z-index:999998;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    font-family:'DM Sans',sans-serif;color:#e8ecf4;
+  `;
+  ov.innerHTML = `
+    <div style="font-size:48px;">🚫</div>
+    <h2 style="font-size:20px;font-weight:600;margin:0;">Access Denied</h2>
+    <p style="color:#8892a8;font-size:13px;margin:0;text-align:center;max-width:280px;">
+      The host declined your request to join this session.
+    </p>
+    <button onclick="document.getElementById('deniedOverlay').remove()" style="
+      margin-top:8px;padding:9px 24px;border-radius:6px;
+      border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);
+      color:#8892a8;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;">
+      Close
+    </button>
+  `;
+  document.body.appendChild(ov);
+}
+
+/* ════════════════════════════════════════════
+   REPLAY STROKE (admin canvas — legacy support)
+════════════════════════════════════════════ */
 function replayRemoteStroke(data) {
   if (!data.points || data.points.length < 2) return;
   const pageIdx = data.page != null ? data.page : 0;
@@ -3659,9 +4057,11 @@ function replayRemoteStroke(data) {
   saveToLocalStorage();
 }
 
-/* ── Broadcast stroke ── */
+/* ════════════════════════════════════════════
+   BROADCAST STROKE (admin → all viewers)
+════════════════════════════════════════════ */
 function broadcastStroke(stroke) {
-  if (!currentRoom || !stroke || stroke.points.length < 2) return;
+  if (!currentRoom || MY_ROLE !== "admin" || !stroke || stroke.points.length < 2) return;
   gasWrite("stroke", {
     page:   current,
     color:  stroke.color,
@@ -3672,64 +4072,157 @@ function broadcastStroke(stroke) {
   });
 }
 
-/* ── Join ── */
-async function joinRoom(roomId) {
-  roomId = roomId.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
-  if (!roomId) { showRoomToast("❌ Enter a Room ID first"); return; }
-  if (currentRoom) { showRoomToast("⚠️ Already in a room — leave first"); return; }
+/* Also broadcast clear and page changes */
+function broadcastClear(bg) {
+  if (!currentRoom || MY_ROLE !== "admin") return;
+  gasWrite("board_clear", { bg: bg || "#fff" });
+}
 
-  try { await getLocalStream(); } catch(e) { return; }
+function broadcastPageChange(pageIdx) {
+  if (!currentRoom || MY_ROLE !== "admin") return;
+  const p = pages[pageIdx];
+  if (!p) return;
+  gasWrite("page_change", {
+    pageIdx,
+    pageData: { bg: p.bg, strokes: p.strokes, shapes: p.shapes || [] }
+  });
+}
 
+/* ════════════════════════════════════════════
+   CREATE ROOM (Admin = User A)
+════════════════════════════════════════════ */
+async function createRoom() {
+  const roomId = Math.random().toString(36).slice(2, 8).toUpperCase();
+
+  // Admin gets camera
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  } catch(e) {
+    try { localStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch(err) { showRoomToast("⚠️ No camera/mic found — continuing without media"); }
+  }
+
+  MY_ROLE     = "admin";
   currentRoom = roomId;
-  lastPollTs  = Date.now() - 2000;
+  lastPollTs  = Date.now() - 500;
 
-  await gasWrite("join", {});
+  // Show admin's own video in header bubble area
+  if (localStream) {
+    const vid = document.getElementById("bubbleVideo");
+    if (vid) { vid.srcObject = localStream; document.getElementById("cameraBubble").classList.add("show"); }
+  }
+
+  await gasWrite("room_created", {});
   pollInterval = setInterval(pollLoop, 1500);
   setRoomUI(true, roomId);
-  showRoomToast("✅ Joined room " + roomId);
+  showRoomToast("🎉 Room created — share the link!");
+
+  // Show invite modal
+  const link = buildInviteLink(roomId);
+  document.getElementById("inviteRoomId").textContent = roomId;
+  document.getElementById("inviteLink").textContent   = link;
+  document.getElementById("roomInviteModal").classList.add("open");
 }
 
-/* ── Leave ── */
-function leaveRoom() {
-  if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
-  if (currentRoom) gasWrite("leave", {});
+/* ════════════════════════════════════════════
+   JOIN ROOM AS VIEWER (User B from URL)
+════════════════════════════════════════════ */
+async function joinAsViewer(roomId) {
+  roomId = roomId.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+  if (!roomId) return;
 
-  Object.entries(peerConns).forEach(([id, pc]) => {
-    pc.close(); removePeerTile(id); delete peerConns[id];
-  });
-  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-  removePeerTile(MY_PEER_ID);
+  MY_ROLE     = "viewer";
+  currentRoom = roomId;
+  lastPollTs  = Date.now() - 500;
+
+  // Show waiting screen immediately
+  showViewerWaiting(roomId);
+
+  // Send join request to admin
+  const viewerName = "Viewer-" + MY_PEER_ID.slice(1, 5).toUpperCase();
+  await gasWrite("viewer_request", { viewerName });
+
+  // Start polling for approval/denial
+  pollInterval = setInterval(pollLoop, 1500);
+}
+
+/* ════════════════════════════════════════════
+   LEAVE SESSION
+════════════════════════════════════════════ */
+function leaveSession() {
+  if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+
+  if (MY_ROLE === "admin") {
+    gasWrite("session_end", {});
+    // Stop camera
+    if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+    document.getElementById("cameraBubble")?.classList.remove("show");
+    setRoomUI(false);
+    showRoomToast("👋 Session ended");
+  } else {
+    gasWrite("viewer_cancel", {});
+    document.getElementById("viewerModeOverlay")?.remove();
+    hideViewerWaiting();
+    showRoomToast("👋 Left the session");
+  }
+
+  // Close all peer connections
+  Object.entries(peerConns).forEach(([id, pc]) => { pc.close(); delete peerConns[id]; });
 
   currentRoom = null;
-  setRoomUI(false);
-  showRoomToast("👋 Left the room");
+  MY_ROLE     = null;
 }
 
-/* ── Button wiring ── */
+/* ════════════════════════════════════════════
+   UI HELPERS
+════════════════════════════════════════════ */
+function setRoomUI(inRoom, roomId = "") {
+  document.getElementById("createRoomBtn").style.display  = inRoom ? "none" : "";
+  document.getElementById("joinRoomBtn").style.display    = inRoom ? "none" : "";
+  document.getElementById("leaveRoomBtn").style.display   = inRoom ? "" : "none";
+  document.getElementById("copyInviteBtn").style.display  = inRoom ? "" : "none";
+  document.getElementById("roomIdInput").disabled         = inRoom;
+  document.getElementById("roomIdInput").value            = inRoom ? roomId : "";
+  document.getElementById("roomStatus").textContent       = inRoom ? ("🟢 " + roomId) : "";
+}
+
+function buildInviteLink(roomId) {
+  return location.origin + location.pathname + "?room=" + roomId;
+}
+
+function showRoomToast(msg, dur = 3500) {
+  const t = document.getElementById("roomToast");
+  if (!t) return;
+  t.textContent = msg;
+  t.style.opacity = "1";
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => { t.style.opacity = "0"; }, dur);
+}
+
+/* ════════════════════════════════════════════
+   BUTTON WIRING
+════════════════════════════════════════════ */
 document.getElementById("openLiveRoomBtn").addEventListener("click", () => {
   const bar = document.getElementById("liveRoomBar");
   bar.style.display = (bar.style.display === "flex") ? "none" : "flex";
 });
 
-document.getElementById("createRoomBtn").addEventListener("click", async () => {
-  const roomId = Math.random().toString(36).slice(2, 8).toUpperCase();
-  document.getElementById("roomIdInput").value = roomId;
-  await joinRoom(roomId);
-  const link = buildInviteLink(roomId);
-  document.getElementById("inviteRoomId").textContent = roomId;
-  document.getElementById("inviteLink").textContent   = link;
-  document.getElementById("roomInviteModal").classList.add("open");
+document.getElementById("createRoomBtn").addEventListener("click", createRoom);
+
+document.getElementById("joinRoomBtn").addEventListener("click", () => {
+  const id = document.getElementById("roomIdInput").value;
+  if (id.trim()) joinAsViewer(id);
+  else showRoomToast("❌ Enter a room code first");
 });
 
-document.getElementById("joinRoomBtn").addEventListener("click", async () => {
-  await joinRoom(document.getElementById("roomIdInput").value);
+document.getElementById("roomIdInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    const id = e.target.value;
+    if (id.trim()) joinAsViewer(id);
+  }
 });
 
-document.getElementById("roomIdInput").addEventListener("keydown", async e => {
-  if (e.key === "Enter") await joinRoom(e.target.value);
-});
-
-document.getElementById("leaveRoomBtn").addEventListener("click", leaveRoom);
+document.getElementById("leaveRoomBtn").addEventListener("click", leaveSession);
 
 document.getElementById("copyInviteBtn").addEventListener("click", () => {
   if (!currentRoom) return;
@@ -3747,19 +4240,25 @@ document.getElementById("closeInviteBtn").addEventListener("click", () => {
   document.getElementById("roomInviteModal").classList.remove("open");
 });
 
-/* ── Auto-join from URL ?room=XXXX ── */
+/* ════════════════════════════════════════════
+   AUTO-JOIN FROM URL  ?room=XXXXXX  (User B)
+════════════════════════════════════════════ */
 window.addEventListener("DOMContentLoaded", () => {
   const urlRoom = new URLSearchParams(location.search).get("room");
   if (urlRoom) {
-    const bar = document.getElementById("liveRoomBar");
-    bar.style.display = "flex";
+    // Show the live room bar
+    document.getElementById("liveRoomBar").style.display = "flex";
     document.getElementById("roomIdInput").value = urlRoom.toUpperCase();
-    setTimeout(() => joinRoom(urlRoom), 700);
+    // Auto trigger viewer join after page loads
+    setTimeout(() => joinAsViewer(urlRoom), 800);
   }
 });
 
-/* ── Hook broadcastStroke into canvas pointer up ── */
+/* ════════════════════════════════════════════
+   HOOK STROKE BROADCAST + CLEAR + PAGE CHANGE
+════════════════════════════════════════════ */
 window.addEventListener("load", () => {
+  // Broadcast stroke on pointer up
   const origUp = canvas.onpointerup;
   canvas.onpointerup = function(e) {
     if (origUp) origUp.call(this, e);
@@ -3767,6 +4266,26 @@ window.addEventListener("load", () => {
       broadcastStroke(currentStroke);
     }
   };
+
+  // Broadcast when admin clears canvas
+  const clearBtn = document.getElementById("clearBtn");
+  if (clearBtn) {
+    const origClear = clearBtn.onclick;
+    clearBtn.onclick = function(e) {
+      if (origClear) origClear.call(this, e);
+      broadcastClear(pages[current]?.bg);
+    };
+  }
+
+  // Broadcast page changes
+  const addPageBtn = document.getElementById("addPageBtn");
+  if (addPageBtn) {
+    const origAdd = addPageBtn.onclick;
+    addPageBtn.onclick = function(e) {
+      if (origAdd) origAdd.call(this, e);
+      broadcastPageChange(current);
+    };
+  }
 });
 </script>
 </body>
