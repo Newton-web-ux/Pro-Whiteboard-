@@ -3783,92 +3783,198 @@ function makeDraggable(el) {
   el.addEventListener("pointerup", () => { dragging = false; el.style.cursor = "grab"; });
 }
 
-/* Viewer canvas — draw full board snapshot */
-function renderViewerBoard(boardData) {
+/* ════════════════════════════════════════════
+   VIEWER CANVAS RENDERING
+   — page-aware, stores strokes locally,
+     draws shapes + strokes + correct bg
+════════════════════════════════════════════ */
+
+function updateViewerSyncStatus(msg) {
+  const el = document.getElementById("viewerSyncStatus");
+  if (el) el.textContent = msg;
+}
+
+function renderViewerPage(pageIdx) {
   const vc = document.getElementById("viewerCanvas");
   if (!vc) return;
   const vctx = vc.getContext("2d");
+  const p = viewerPages[pageIdx];
+  if (!p) return;
 
-  const p = boardData;
+  // Clear + background
   vctx.clearRect(0, 0, vc.width, vc.height);
-  vctx.fillStyle = p.bg || "#fff";
+  vctx.fillStyle = p.bg || "#ffffff";
   vctx.fillRect(0, 0, vc.width, vc.height);
 
-  (p.strokes || []).forEach(s => {
-    if (!s.points || s.points.length < 2) return;
+  // Draw shapes
+  (p.shapes || []).forEach(s => {
     vctx.strokeStyle = s.color || "#000";
-    vctx.lineWidth   = s.size  || 2;
-    vctx.lineCap     = "round";
-    vctx.globalAlpha = (s.type === "highlighter") ? (s.alpha || 0.3) : 1;
-    vctx.beginPath();
-    vctx.moveTo(s.points[0].x, s.points[0].y);
-    s.points.slice(1).forEach(pt => vctx.lineTo(pt.x, pt.y));
-    vctx.stroke();
+    vctx.fillStyle   = s.color || "#000";
+    vctx.lineWidth   = 2;
     vctx.globalAlpha = 1;
+
+    if (s.type === "rect")   { vctx.strokeRect(s.x, s.y, s.w, s.h); }
+    else if (s.type === "circle") {
+      vctx.beginPath();
+      vctx.ellipse(s.x + s.w/2, s.y + s.h/2, Math.abs(s.w/2), Math.abs(s.h/2), 0, 0, Math.PI*2);
+      vctx.stroke();
+    }
+    else if (s.type === "line") {
+      vctx.beginPath(); vctx.moveTo(s.x, s.y); vctx.lineTo(s.x+s.w, s.y+s.h); vctx.stroke();
+    }
+    else if (s.type === "arrow") {
+      const angle = Math.atan2(s.h, s.w), head = 15;
+      vctx.beginPath(); vctx.moveTo(s.x, s.y); vctx.lineTo(s.x+s.w, s.y+s.h); vctx.stroke();
+      vctx.beginPath();
+      vctx.moveTo(s.x+s.w, s.y+s.h);
+      vctx.lineTo(s.x+s.w - head*Math.cos(angle-Math.PI/6), s.y+s.h - head*Math.sin(angle-Math.PI/6));
+      vctx.lineTo(s.x+s.w - head*Math.cos(angle+Math.PI/6), s.y+s.h - head*Math.sin(angle+Math.PI/6));
+      vctx.closePath(); vctx.fill();
+    }
   });
 
-  const stat = document.getElementById("viewerSyncStatus");
-  if (stat) { stat.textContent = "✅ Synced " + new Date().toLocaleTimeString(); }
+  // Draw all strokes for this page
+  (p.strokes || []).forEach(s => drawViewerStroke(vctx, s));
+
+  updateViewerSyncStatus("✅ Synced " + new Date().toLocaleTimeString());
 }
 
-/* Viewer incremental stroke append */
-function appendViewerStroke(stroke) {
-  const vc = document.getElementById("viewerCanvas");
-  if (!vc || !stroke.points || stroke.points.length < 2) return;
-  const vctx = vc.getContext("2d");
-  vctx.strokeStyle = stroke.color || "#000";
-  vctx.lineWidth   = stroke.size  || 2;
+// Draw a single stroke onto a ctx
+function drawViewerStroke(vctx, s) {
+  if (!s.points || s.points.length < 2) return;
+  vctx.strokeStyle = s.color || "#000";
+  vctx.lineWidth   = s.size  || 2;
   vctx.lineCap     = "round";
-  vctx.globalAlpha = (stroke.type === "highlighter") ? (stroke.alpha || 0.3) : 1;
+  vctx.lineJoin    = "round";
+  vctx.globalAlpha = (s.type === "highlighter") ? (s.alpha || 0.3) : 1;
   vctx.beginPath();
-  vctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-  stroke.points.slice(1).forEach(pt => vctx.lineTo(pt.x, pt.y));
+  vctx.moveTo(s.points[0].x, s.points[0].y);
+  for (let i = 1; i < s.points.length; i++) vctx.lineTo(s.points[i].x, s.points[i].y);
   vctx.stroke();
   vctx.globalAlpha = 1;
-  const stat = document.getElementById("viewerSyncStatus");
-  if (stat) { stat.textContent = "✅ Synced " + new Date().toLocaleTimeString(); }
+}
+
+// Keep old name as alias so existing calls still work
+function renderViewerBoard(pageData) {
+  if (!pageData) return;
+  // If called with a raw page object, put it in viewerPages[0] and render
+  if (!viewerPages[0]) viewerPages[0] = pageData;
+  else Object.assign(viewerPages[0], pageData);
+  renderViewerPage(0);
+}
+
+// Append a new stroke to the viewer's local store AND draw it
+function appendViewerStroke(stroke) {
+  const pageIdx = stroke.page != null ? stroke.page : viewerCurrentPage;
+
+  // Ensure viewerPages has enough slots
+  while (viewerPages.length <= pageIdx) {
+    viewerPages.push({ bg: "#ffffff", strokes: [], shapes: [] });
+  }
+
+  const strokeData = {
+    color:  stroke.color  || "#000",
+    size:   stroke.size   || 2,
+    type:   stroke.type   || "pen",
+    alpha:  stroke.alpha  || 1,
+    points: stroke.points || []
+  };
+
+  // Store it
+  viewerPages[pageIdx].strokes.push(strokeData);
+
+  // Only draw immediately if we're on the right page
+  if (pageIdx === viewerCurrentPage) {
+    const vc = document.getElementById("viewerCanvas");
+    if (vc) drawViewerStroke(vc.getContext("2d"), strokeData);
+    updateViewerSyncStatus("✅ Synced " + new Date().toLocaleTimeString());
+  }
 }
 
 /* ════════════════════════════════════════════
    BOARD SNAPSHOT (admin → viewer on approve)
+   Strategy: compress strokes to minimal form,
+   send as base64 to avoid GAS row size limits,
+   split into 20KB chunks max.
 ════════════════════════════════════════════ */
+
+// Viewer-side board store (mirrors admin's pages)
+let viewerPages = [];   // [{bg, strokes, shapes}]
+let viewerCurrentPage = 0;
+
 async function sendBoardSnapshot(viewerId) {
-  // Send all pages worth of strokes as a snapshot
-  const snapshot = pages.map(p => ({
-    bg:      p.bg,
-    strokes: p.strokes,
-    shapes:  p.shapes || []
-  }));
-  // Break into chunks if needed (Sheets cell limit ~50KB)
+  // Build compact snapshot of ALL pages
+  const snapshot = {
+    currentPage: current,
+    pages: pages.map(p => ({
+      bg:      p.bg      || "#ffffff",
+      strokes: p.strokes || [],
+      shapes:  p.shapes  || []
+    }))
+  };
+
   const payload = JSON.stringify(snapshot);
-  const CHUNK = 40000;
-  const total = Math.ceil(payload.length / CHUNK);
+
+  // Encode as base64 to safely pass through GAS/Sheets
+  const encoded = btoa(unescape(encodeURIComponent(payload)));
+
+  // Split into 15KB chunks (safe GAS cell limit)
+  const CHUNK = 15000;
+  const total = Math.ceil(encoded.length / CHUNK);
+
+  console.log(`Sending snapshot: ${payload.length} chars → ${total} chunks to ${viewerId}`);
+
   for (let i = 0; i < total; i++) {
     await gasWrite("board_snapshot_chunk", {
-      to: viewerId,
+      to:    viewerId,
       chunk: i,
-      total,
-      data: payload.slice(i * CHUNK, (i + 1) * CHUNK)
+      total: total,
+      sid:   MY_PEER_ID, // snapshot session id to avoid mix-ups
+      data:  encoded.slice(i * CHUNK, (i + 1) * CHUNK)
     });
+    // Small delay between chunks to avoid GAS rate limits
+    if (total > 1) await new Promise(r => setTimeout(r, 300));
   }
 }
 
+// Buffer to reassemble incoming chunks on viewer side
 let snapshotBuffer = {};
 
-function handleSnapshotChunk(data) {
-  const key = data.from + "_snap";
-  if (!snapshotBuffer[key]) snapshotBuffer[key] = { chunks: {}, total: data.total };
+function handleSnapshotChunk(fromUserId, data) {
+  const key = fromUserId + "_" + (data.sid || "snap");
+  if (!snapshotBuffer[key]) {
+    snapshotBuffer[key] = { chunks: {}, total: data.total };
+  }
   snapshotBuffer[key].chunks[data.chunk] = data.data;
 
   const received = Object.keys(snapshotBuffer[key].chunks).length;
-  if (received === snapshotBuffer[key].total) {
-    const fullJson = Array.from({ length: data.total }, (_, i) => snapshotBuffer[key].chunks[i]).join("");
+  console.log(`Snapshot chunk ${data.chunk + 1}/${data.total} received`);
+
+  if (received >= snapshotBuffer[key].total) {
+    // Reassemble in order
+    const encoded = Array.from(
+      { length: data.total },
+      (_, i) => snapshotBuffer[key].chunks[i] || ""
+    ).join("");
     delete snapshotBuffer[key];
+
     try {
-      const boardData = JSON.parse(fullJson);
-      // Render current page
-      renderViewerBoard(boardData[0] || { bg: "#fff", strokes: [] });
-    } catch(e) { console.warn("Snapshot parse error", e); }
+      const payload = decodeURIComponent(escape(atob(encoded)));
+      const snapshot = JSON.parse(payload);
+
+      // Store full board in viewerPages
+      viewerPages = snapshot.pages || [];
+      viewerCurrentPage = snapshot.currentPage || 0;
+
+      console.log(`Snapshot applied: ${viewerPages.length} pages, showing page ${viewerCurrentPage}`);
+
+      // Render the current page
+      renderViewerPage(viewerCurrentPage);
+      updateViewerSyncStatus("✅ Board synced — " + viewerPages.length + " page(s)");
+    } catch(e) {
+      console.error("Snapshot parse error:", e);
+      updateViewerSyncStatus("⚠️ Sync error — retrying...");
+    }
   }
 }
 
@@ -3967,7 +4073,7 @@ async function pollLoop() {
 
       /* ── Board snapshot chunks (viewer receives) ── */
       else if (data.type === "board_snapshot_chunk" && data.to === MY_PEER_ID) {
-        handleSnapshotChunk({ ...data, from: userId });
+        handleSnapshotChunk(userId, data);
       }
 
       /* ── Incremental stroke (viewer receives) ── */
@@ -3981,18 +4087,30 @@ async function pollLoop() {
 
       /* ── Board clear signal ── */
       else if (data.type === "board_clear" && MY_ROLE === "viewer") {
-        const vc = document.getElementById("viewerCanvas");
-        if (vc) {
-          const vctx = vc.getContext("2d");
-          vctx.fillStyle = data.bg || "#fff";
-          vctx.fillRect(0, 0, vc.width, vc.height);
+        const pageIdx = data.pageIdx != null ? data.pageIdx : viewerCurrentPage;
+        if (viewerPages[pageIdx]) {
+          viewerPages[pageIdx].strokes = [];
+          viewerPages[pageIdx].shapes  = [];
+          viewerPages[pageIdx].bg      = data.bg || "#ffffff";
         }
+        if (pageIdx === viewerCurrentPage) renderViewerPage(viewerCurrentPage);
       }
 
       /* ── Page change signal ── */
       else if (data.type === "page_change" && MY_ROLE === "viewer") {
-        // Re-render new page from snapshot
-        if (data.pageData) renderViewerBoard(data.pageData);
+        viewerCurrentPage = data.pageIdx || 0;
+        // If we have this page cached, render it immediately
+        if (viewerPages[viewerCurrentPage]) {
+          renderViewerPage(viewerCurrentPage);
+        } else if (data.pageData) {
+          // Admin sent page data along with the change
+          viewerPages[viewerCurrentPage] = {
+            bg:      data.pageData.bg      || "#ffffff",
+            strokes: data.pageData.strokes || [],
+            shapes:  data.pageData.shapes  || []
+          };
+          renderViewerPage(viewerCurrentPage);
+        }
       }
 
       /* ── Host ending session ── */
@@ -4075,7 +4193,7 @@ function broadcastStroke(stroke) {
 /* Also broadcast clear and page changes */
 function broadcastClear(bg) {
   if (!currentRoom || MY_ROLE !== "admin") return;
-  gasWrite("board_clear", { bg: bg || "#fff" });
+  gasWrite("board_clear", { bg: bg || "#fff", pageIdx: current });
 }
 
 function broadcastPageChange(pageIdx) {
@@ -4277,15 +4395,42 @@ window.addEventListener("load", () => {
     };
   }
 
-  // Broadcast page changes
+  // Broadcast page changes — hook thumbnail clicks via MutationObserver on sidebar
+  // and also hook addPage, deletePage, prevSlide, nextSlide
+  const _broadcastCurrentPage = () => broadcastPageChange(current);
+
   const addPageBtn = document.getElementById("addPageBtn");
   if (addPageBtn) {
     const origAdd = addPageBtn.onclick;
     addPageBtn.onclick = function(e) {
       if (origAdd) origAdd.call(this, e);
-      broadcastPageChange(current);
+      setTimeout(_broadcastCurrentPage, 50); // wait for page to be created
     };
   }
+
+  const deletePageBtn = document.getElementById("deletePageBtn");
+  if (deletePageBtn) {
+    const origDel = deletePageBtn.onclick;
+    deletePageBtn.onclick = function(e) {
+      if (origDel) origDel.call(this, e);
+      setTimeout(_broadcastCurrentPage, 50);
+    };
+  }
+
+  // Hook sidebar thumbnail clicks via event delegation
+  const sidebar = document.getElementById("sidebar");
+  if (sidebar) {
+    sidebar.addEventListener("click", () => {
+      // Thumbnail click changes `current` — broadcast after a tick
+      setTimeout(_broadcastCurrentPage, 50);
+    });
+  }
+
+  // Hook slideshow prev/next
+  const prevSlideBtn = document.getElementById("prevSlide");
+  const nextSlideBtn = document.getElementById("nextSlide");
+  if (prevSlideBtn) { prevSlideBtn.addEventListener("click", () => setTimeout(_broadcastCurrentPage, 50)); }
+  if (nextSlideBtn) { nextSlideBtn.addEventListener("click", () => setTimeout(_broadcastCurrentPage, 50)); }
 });
 </script>
 </body>
