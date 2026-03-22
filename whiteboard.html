@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.11.0/dist/pptxgen.bundle.js"></script>
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
@@ -1037,6 +1038,34 @@ canvas {
 }
 .peer-tile.self-tile { border-color: var(--accent); }
 .peer-tile video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.kick-btn {
+  position: absolute;
+  top: 5px; right: 5px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(248,113,113,0.85);
+  color: #fff;
+  font-size: 10px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: background .15s;
+}
+.peer-tile:hover .kick-btn { display: flex; }
+.kick-btn:hover { background: var(--danger); }
+#viewerCountBadge {
+  font-size: 11px;
+  color: var(--success);
+  font-family: var(--mono);
+  background: rgba(52,211,153,0.1);
+  padding: 2px 8px;
+  border-radius: 100px;
+  border: 1px solid rgba(52,211,153,0.2);
+  margin-left: 4px;
+}
 .peer-tile .peer-label {
   position: absolute;
   bottom: 5px;
@@ -1371,6 +1400,7 @@ canvas {
   <button class="room-btn danger" id="leaveRoomBtn" style="display:none;"><i class="fa fa-sign-out-alt"></i> Leave</button>
   <button class="room-btn" id="copyInviteBtn" style="display:none;" title="Copy invite link"><i class="fa fa-link"></i> Copy Link</button>
   <span id="roomStatus"></span>
+  <span id="viewerCountBadge"></span>
 </div>
 
 <!-- ================= PARTICIPANT VIDEO TILES ================= -->
@@ -3373,12 +3403,16 @@ if (location.pathname.endsWith(".html")) {
 </script>
 <script>
 /* =============================================================
-   LIVE ROOM — Firebase Realtime DB signaling + WebRTC
-   Google Meet-style: create/join rooms, multi-user video,
-   real-time whiteboard stroke sync across all participants.
+   LIVE ROOM — Firebase Realtime DB + WebRTC
+   Google Meet-style admission:
+     • Admin creates room → draws on whiteboard
+     • Viewers join via link → land in LOBBY (waiting screen)
+     • Admin sees approval popup → Admit / Deny
+     • Admitted viewers see read-only canvas + video panel
+     • Admin can kick any viewer at any time
    ============================================================= */
 
-/* ── Firebase init (using compat SDK loaded via CDN) ── */
+/* ── Firebase init ── */
 const firebaseConfig = {
   apiKey:            "AIzaSyCtvevbs_-Wp1Wh6TNhgrN1KZp7_6f0dfs",
   authDomain:        "prowhiteboard-20dc0.firebaseapp.com",
@@ -3389,25 +3423,30 @@ const firebaseConfig = {
   appId:             "1:851259077192:web:a9ace3040034c8342d1e7d"
 };
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const rtdb = firebase.database();
+const rtdb  = firebase.database();
+const fauth = firebase.auth();
 
-/* ── Identity ── */
+// Sign in anonymously — gives every user a real auth.uid for security rules
+let MY_UID = null;
+fauth.signInAnonymously().catch(e => console.warn("Auth failed:", e));
+fauth.onAuthStateChanged(user => { if (user) MY_UID = user.uid; });
+
+/* ── Identity & state ── */
 const MY_PEER_ID = "p" + Math.random().toString(36).slice(2, 10);
-let roomRef        = null;
-let currentRoom    = null;
-let localStream    = null;
-const peerConns    = {};   // peerId → RTCPeerConnection
+let MY_ROLE      = null;   // "admin" | "viewer"
+let roomRef      = null;
+let currentRoom  = null;
+let localStream  = null;
+let viewerStream = null;
+const peerConns  = {};
 
-const ICE_SERVERS = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun2.l.google.com:19302" }
-  ]
-};
+const ICE_SERVERS = { iceServers: [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" }
+]};
 
 /* ─────────────────────────────────────────
-   TOAST HELPER
+   TOAST
 ───────────────────────────────────────── */
 function showRoomToast(msg, ms = 3200) {
   const el = document.getElementById("roomToast");
@@ -3418,52 +3457,55 @@ function showRoomToast(msg, ms = 3200) {
 }
 
 /* ─────────────────────────────────────────
-   LOCAL CAMERA / MIC
+   MEDIA HELPERS
 ───────────────────────────────────────── */
-async function getLocalStream() {
+async function getAdminStream() {
   if (localStream) return localStream;
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
   } catch(e) {
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      showRoomToast("⚠️ Camera unavailable — audio only");
-    } catch(err) {
-      showRoomToast("❌ Mic/camera access denied");
-      throw err;
-    }
+    try { localStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch(err) { showRoomToast("⚠️ No camera/mic — continuing without media"); }
   }
-  addPeerTile(MY_PEER_ID, localStream, true);
   return localStream;
+}
+
+async function getViewerStream() {
+  if (viewerStream) return viewerStream;
+  try {
+    viewerStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  } catch(e) {
+    try { viewerStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch(err) { /* viewer proceeds without media */ }
+  }
+  return viewerStream;
 }
 
 /* ─────────────────────────────────────────
    VIDEO TILE MANAGEMENT
 ───────────────────────────────────────── */
-function addPeerTile(peerId, stream, isSelf = false) {
+function addPeerTile(peerId, stream, label = "Peer") {
   const tileId = "tile-" + peerId;
   let tile = document.getElementById(tileId);
-  if (tile) {
-    const v = tile.querySelector("video");
-    if (v) v.srcObject = stream;
-    return;
-  }
+  if (tile) { const v = tile.querySelector("video"); if (v) v.srcObject = stream; return; }
   tile = document.createElement("div");
   tile.id = tileId;
-  tile.className = "peer-tile" + (isSelf ? " self-tile" : "");
-
+  tile.className = "peer-tile" + (peerId === MY_PEER_ID ? " self-tile" : "");
   const video = document.createElement("video");
-  video.autoplay    = true;
-  video.playsInline = true;
-  video.muted       = isSelf;
-  video.srcObject   = stream;
+  video.autoplay = true; video.playsInline = true; video.muted = (peerId === MY_PEER_ID);
+  video.srcObject = stream;
   tile.appendChild(video);
-
-  const label = document.createElement("div");
-  label.className   = "peer-label";
-  label.textContent = isSelf ? "You" : "Peer " + peerId.slice(1, 6);
-  tile.appendChild(label);
-
+  const lbl = document.createElement("div");
+  lbl.className = "peer-label"; lbl.textContent = label;
+  tile.appendChild(lbl);
+  // Kick button (only admin sees it, not on own tile)
+  if (MY_ROLE === "admin" && peerId !== MY_PEER_ID) {
+    const kick = document.createElement("button");
+    kick.className = "kick-btn"; kick.title = "Remove viewer";
+    kick.innerHTML = '<i class="fa fa-xmark"></i>';
+    kick.onclick = () => kickViewer(peerId);
+    tile.appendChild(kick);
+  }
   document.getElementById("participantTiles").appendChild(tile);
 }
 
@@ -3472,158 +3514,605 @@ function removePeerTile(peerId) {
 }
 
 /* ─────────────────────────────────────────
-   WEBRTC PEER CONNECTION
+   WEBRTC
 ───────────────────────────────────────── */
 async function createPeerConn(peerId, isInitiator) {
   if (peerConns[peerId]) return peerConns[peerId];
-
   const pc = new RTCPeerConnection(ICE_SERVERS);
   peerConns[peerId] = pc;
 
-  // Send local tracks to remote peer
-  const stream = await getLocalStream();
-  stream.getTracks().forEach(t => pc.addTrack(t, stream));
+  const stream = MY_ROLE === "admin" ? localStream : viewerStream;
+  if (stream) stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
-  // Receive remote tracks → show their tile
   pc.ontrack = e => {
-    if (e.streams && e.streams[0]) addPeerTile(peerId, e.streams[0]);
+    if (e.streams && e.streams[0]) {
+      if (MY_ROLE === "viewer") {
+        // Route host video directly into the viewer overlay panel
+        const hostVid = document.getElementById("hostVideo");
+        if (hostVid) hostVid.srcObject = e.streams[0];
+      } else {
+        // Admin sees viewer tiles in the participant tray
+        addPeerTile(peerId, e.streams[0], "Viewer");
+      }
+    }
   };
 
-  // Send ICE candidates via Firebase
   pc.onicecandidate = e => {
-    if (e.candidate && roomRef) {
-      roomRef.child(`ice/${MY_PEER_ID}__${peerId}`).push(e.candidate.toJSON());
-    }
+    if (e.candidate && roomRef)
+      roomRef.child("ice/" + MY_PEER_ID + "__" + peerId).push(e.candidate.toJSON());
   };
 
   pc.onconnectionstatechange = () => {
-    if (pc.connectionState === "connected") showRoomToast("✅ Peer connected!");
     if (["disconnected","failed","closed"].includes(pc.connectionState)) {
-      removePeerTile(peerId);
-      pc.close();
-      delete peerConns[peerId];
+      removePeerTile(peerId); pc.close(); delete peerConns[peerId];
     }
   };
 
-  // Initiator creates offer first
   if (isInitiator) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    roomRef.child(`offers/${MY_PEER_ID}__${peerId}`).set({ type: offer.type, sdp: offer.sdp });
+    roomRef.child("offers/" + MY_PEER_ID + "__" + peerId).set({ type: offer.type, sdp: offer.sdp });
   }
-
   return pc;
 }
 
 /* ─────────────────────────────────────────
-   FIREBASE SIGNALING LISTENERS
+   FIREBASE SIGNALING LISTENERS (shared)
 ───────────────────────────────────────── */
 function listenSignals() {
-
-  // Someone sent US an offer → answer it
   roomRef.child("offers").on("child_added", async snap => {
-    const key   = snap.key;              // "fromId__toId"
-    const parts = key.split("__");
-    const from  = parts[0];
-    const to    = parts[1];
+    const [from, to] = snap.key.split("__");
     if (to !== MY_PEER_ID) return;
-
     const pc = await createPeerConn(from, false);
     if (pc.signalingState !== "stable") return;
-
     await pc.setRemoteDescription(new RTCSessionDescription(snap.val()));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    roomRef.child(`answers/${MY_PEER_ID}__${from}`).set({ type: answer.type, sdp: answer.sdp });
+    roomRef.child("answers/" + MY_PEER_ID + "__" + from).set({ type: answer.type, sdp: answer.sdp });
   });
 
-  // Someone answered OUR offer
   roomRef.child("answers").on("child_added", async snap => {
-    const key   = snap.key;
-    const parts = key.split("__");
-    const from  = parts[0];
-    const to    = parts[1];
+    const [from, to] = snap.key.split("__");
     if (to !== MY_PEER_ID) return;
-
     const pc = peerConns[from];
-    if (pc && pc.signalingState === "have-local-offer") {
+    if (pc && pc.signalingState === "have-local-offer")
       await pc.setRemoteDescription(new RTCSessionDescription(snap.val()));
+  });
+
+  roomRef.child("ice").on("child_added", snap => {
+    const [from, to] = snap.key.split("__");
+    if (to !== MY_PEER_ID) return;
+    const pc = peerConns[from];
+    if (!pc) return;
+    snap.forEach(child => pc.addIceCandidate(new RTCIceCandidate(child.val())).catch(() => {}));
+  });
+}
+
+/* ═════════════════════════════════════════
+   ADMIN — CREATE ROOM
+═════════════════════════════════════════ */
+async function createRoom() {
+  // Wait for anonymous auth to complete before writing (security rules need auth.uid)
+  if (!MY_UID) {
+    showRoomToast("⏳ Connecting… please try again in a moment");
+    await new Promise(res => fauth.onAuthStateChanged(u => { if (u) { MY_UID = u.uid; res(); } }));
+  }
+  const roomId = Math.random().toString(36).slice(2, 8).toUpperCase();
+  MY_ROLE      = "admin";
+  currentRoom  = roomId;
+  roomRef      = rtdb.ref("liverooms/" + roomId);
+
+  // Mark this room with the auth UID as adminId — security rules check this
+  const adminId = MY_UID || MY_PEER_ID;  // MY_UID is the real auth.uid
+  await roomRef.child("meta").set({ adminId, createdAt: Date.now() });
+  roomRef.child("meta").onDisconnect().remove();  // clean up room on admin leave
+
+  await getAdminStream();
+  if (localStream) addPeerTile(MY_PEER_ID, localStream, "You (Host)");
+
+  listenSignals();
+
+  // Watch for knock requests
+  roomRef.child("knock").on("child_added", snap => {
+    const viewerId   = snap.key;
+    const viewerName = snap.val().name || viewerId.slice(0, 8);
+    showAdmissionPopup(viewerId, viewerName);
+  });
+
+  // Watch for viewers being admitted — connect WebRTC to them
+  roomRef.child("admitted").on("child_added", snap => {
+    const viewerId = snap.key;
+    if (viewerId === MY_PEER_ID) return;
+    showRoomToast("✅ Viewer admitted");
+    createPeerConn(viewerId, true);  // admin initiates
+  });
+
+  // Watch for viewer leaving
+  roomRef.child("admitted").on("child_removed", snap => {
+    const viewerId = snap.key;
+    removePeerTile(viewerId);
+    const pc = peerConns[viewerId];
+    if (pc) { pc.close(); delete peerConns[viewerId]; }
+    showRoomToast("👋 A viewer left");
+    updateViewerCount();
+  });
+
+  setRoomUI(true, roomId, "admin");
+  showRoomToast("🎉 Room created!");
+
+  // Push initial empty snapshot
+  pushBoardSnapshot();
+
+  // Show invite modal
+  const link = buildInviteLink(roomId);
+  document.getElementById("inviteRoomId").textContent = roomId;
+  document.getElementById("inviteLink").textContent   = link;
+  document.getElementById("roomInviteModal").classList.add("open");
+}
+
+/* ─────────────────────────────────────────
+   ADMIN — ADMISSION POPUP (Google Meet style)
+───────────────────────────────────────── */
+function showAdmissionPopup(viewerId, viewerName) {
+  // Don't show duplicate
+  if (document.getElementById("admit-" + viewerId)) return;
+
+  const pop = document.createElement("div");
+  pop.id = "admit-" + viewerId;
+  pop.style.cssText = `
+    position:fixed;top:80px;right:20px;
+    background:var(--bg-panel);border:1px solid var(--border-bright);
+    border-radius:var(--radius-lg);padding:20px 22px;width:280px;
+    box-shadow:var(--shadow-lg);z-index:999997;
+    font-family:var(--font);animation:admitSlideIn .25s ease;
+  `;
+  pop.innerHTML = `
+    <style>@keyframes admitSlideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}</style>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));
+        display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;flex-shrink:0;">
+        <i class="fa fa-user"></i>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text-primary);">Someone wants to join</div>
+        <div style="font-size:11px;color:var(--accent);font-family:var(--mono);margin-top:2px;">${viewerName}</div>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-secondary);margin:0 0 14px;">wants to view your live board</p>
+    <div style="display:flex;gap:8px;">
+      <button id="admitBtn-${viewerId}" style="flex:1;padding:8px 0;border-radius:var(--radius-sm);
+        border:1px solid var(--success);background:rgba(52,211,153,0.12);color:var(--success);
+        cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;">
+        <i class="fa fa-check"></i> Admit
+      </button>
+      <button id="denyBtn-${viewerId}" style="flex:1;padding:8px 0;border-radius:var(--radius-sm);
+        border:1px solid var(--danger);background:rgba(248,113,113,0.12);color:var(--danger);
+        cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;">
+        <i class="fa fa-xmark"></i> Deny
+      </button>
+    </div>
+  `;
+  document.body.appendChild(pop);
+
+  document.getElementById("admitBtn-" + viewerId).onclick = async () => {
+    pop.remove();
+    // Mark viewer as admitted in Firebase
+    await roomRef.child("admitted/" + viewerId).set({ admittedAt: Date.now(), name: viewerName });
+    // Remove from knock queue
+    roomRef.child("knock/" + viewerId).remove();
+    updateViewerCount();
+  };
+
+  document.getElementById("denyBtn-" + viewerId).onclick = () => {
+    pop.remove();
+    roomRef.child("knock/" + viewerId).update({ denied: true });
+    setTimeout(() => roomRef.child("knock/" + viewerId).remove(), 2000);
+  };
+
+  // Auto-dismiss after 30s
+  setTimeout(() => { pop.remove(); }, 30000);
+}
+
+/* ─────────────────────────────────────────
+   ADMIN — KICK VIEWER
+───────────────────────────────────────── */
+function kickViewer(viewerId) {
+  if (!roomRef) return;
+  roomRef.child("admitted/" + viewerId).update({ kicked: true });
+  setTimeout(() => roomRef.child("admitted/" + viewerId).remove(), 1000);
+  removePeerTile(viewerId);
+  const pc = peerConns[viewerId];
+  if (pc) { pc.close(); delete peerConns[viewerId]; }
+  showRoomToast("🚫 Viewer removed");
+  updateViewerCount();
+}
+
+function updateViewerCount() {
+  roomRef.child("admitted").once("value", snap => {
+    const count = snap.numChildren();
+    const el = document.getElementById("viewerCountBadge");
+    if (el) el.textContent = count > 0 ? count + " viewer" + (count > 1 ? "s" : "") : "";
+  });
+}
+
+/* ═════════════════════════════════════════
+   VIEWER — KNOCK (request to join)
+═════════════════════════════════════════ */
+async function knockOnRoom(roomId) {
+  roomId = roomId.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+  if (!roomId) { showRoomToast("❌ Enter a Room ID first"); return; }
+  if (currentRoom) { showRoomToast("⚠️ Already in a room"); return; }
+
+  // Check room exists
+  const metaSnap = await rtdb.ref("liverooms/" + roomId + "/meta").once("value");
+  if (!metaSnap.exists()) { showRoomToast("❌ Room not found"); return; }
+
+  MY_ROLE     = "viewer";
+  currentRoom = roomId;
+  roomRef     = rtdb.ref("liverooms/" + roomId);
+
+  await getViewerStream();
+
+  // Show waiting lobby
+  showLobbyScreen(roomId);
+
+  // Write knock request
+  const viewerName = "Viewer-" + MY_PEER_ID.slice(1, 6).toUpperCase();
+  await roomRef.child("knock/" + MY_PEER_ID).set({ name: viewerName, ts: Date.now() });
+  roomRef.child("knock/" + MY_PEER_ID).onDisconnect().remove();
+
+  // Watch for admission or denial
+  roomRef.child("admitted/" + MY_PEER_ID).on("value", async snap => {
+    const val = snap.val();
+    if (!val) return;
+
+    if (val.kicked) {
+      // Admin kicked us
+      hideLobbyScreen();
+      hideViewerMode();
+      leaveRoom();
+      showRoomToast("🚫 You were removed by the host");
+      return;
+    }
+
+    // Admitted!
+    hideLobbyScreen();
+    enterViewerMode(roomId);
+    listenSignals();
+
+    // Register in admitted list with onDisconnect cleanup
+    roomRef.child("admitted/" + MY_PEER_ID).onDisconnect().remove();
+
+    // Load board snapshot immediately
+    loadBoardSnapshot(roomId);
+
+    // Also watch for snapshot updates (admin cleared board, changed page, etc.)
+    roomRef.child("boardSnapshot").on("value", snap => {
+      if (!snap.val()) return;
+      loadBoardSnapshot(roomId);
+    });
+
+    // Listen for live strokes in real-time
+    roomRef.child("strokes").on("child_added", snap => {
+      const data = snap.val();
+      if (!data || data.userId === MY_PEER_ID) return;
+      replayRemoteStroke(data);
+    });
+
+    setRoomUI(true, roomId, "viewer");
+    showRoomToast("✅ Admitted! Welcome.");
+  });
+
+  roomRef.child("knock/" + MY_PEER_ID).on("value", snap => {
+    if (snap.val()?.denied) {
+      hideLobbyScreen();
+      currentRoom = null; MY_ROLE = null; roomRef = null;
+      setRoomUI(false);
+      showRoomToast("❌ The host denied your request");
     }
   });
 
-  // ICE candidates for us
-  roomRef.child("ice").on("child_added", snap => {
-    const key   = snap.key;
-    const parts = key.split("__");
-    const from  = parts[0];
-    const to    = parts[1];
-    if (to !== MY_PEER_ID) return;
-
-    const pc = peerConns[from];
-    if (!pc) return;
-    snap.forEach(child => {
-      pc.addIceCandidate(new RTCIceCandidate(child.val())).catch(() => {});
-    });
-  });
-
-  // New peer joined the room → we initiate offer to them
-  roomRef.child("peers").on("child_added", snap => {
-    const peerId = snap.val();
-    if (peerId === MY_PEER_ID) return;
-    showRoomToast("👋 Someone joined the room");
-    createPeerConn(peerId, true);
-  });
-
-  // Peer left → clean up
-  roomRef.child("peers").on("child_removed", snap => {
-    const peerId = snap.val();
-    removePeerTile(peerId);
-    const pc = peerConns[peerId];
-    if (pc) { pc.close(); delete peerConns[peerId]; }
-    showRoomToast("👋 A participant left");
-  });
-
-  // Live stroke sync — replay remote strokes on our canvas
-  roomRef.child("strokes").on("child_added", snap => {
-    const data = snap.val();
-    if (!data || data.userId === MY_PEER_ID) return;
-    replayRemoteStroke(data);
+  // Watch for host ending the session
+  roomRef.child("sessionEnded").on("value", snap => {
+    if (!snap.val()) return;
+    hideLobbyScreen();
+    hideViewerMode();
+    showRoomToast("📵 The host ended the session");
+    // Clean up without writing anything back
+    if (roomRef) {
+      roomRef.child("offers").off();
+      roomRef.child("answers").off();
+      roomRef.child("ice").off();
+      roomRef.child("strokes").off();
+      roomRef.child("knock").off();
+      roomRef.child("admitted").off();
+      roomRef.child("boardSnapshot").off();
+      roomRef.child("sessionEnded").off();
+    }
+    Object.entries(peerConns).forEach(([id, pc]) => { pc.close(); removePeerTile(id); delete peerConns[id]; });
+    if (viewerStream) { viewerStream.getTracks().forEach(t => t.stop()); viewerStream = null; }
+    removePeerTile(MY_PEER_ID);
+    roomRef = null; currentRoom = null; MY_ROLE = null;
+    setRoomUI(false);
   });
 }
 
 /* ─────────────────────────────────────────
-   STROKE SYNC
+   VIEWER — LOBBY SCREEN (waiting to be admitted)
+───────────────────────────────────────── */
+function showLobbyScreen(roomId) {
+  if (document.getElementById("lobbyOverlay")) return;
+  const ov = document.createElement("div");
+  ov.id = "lobbyOverlay";
+  ov.style.cssText = `
+    position:fixed;inset:0;background:rgba(15,17,23,0.97);z-index:999998;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:18px;font-family:var(--font);color:var(--text-primary);
+  `;
+  ov.innerHTML = `
+    <div style="width:64px;height:64px;border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      display:flex;align-items:center;justify-content:center;font-size:26px;
+      box-shadow:0 0 32px var(--accent-glow);">
+      <i class="fa fa-door-open"></i>
+    </div>
+    <h2 style="font-size:22px;font-weight:700;margin:0;letter-spacing:-0.02em;">Waiting to be admitted</h2>
+    <p style="color:var(--text-secondary);font-size:13px;margin:0;text-align:center;max-width:280px;">
+      You're knocking on room <strong style="color:var(--accent);font-family:var(--mono);">${roomId}</strong>.<br>
+      The host will let you in shortly.
+    </p>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <div class="lobby-dot"></div><div class="lobby-dot"></div><div class="lobby-dot"></div>
+    </div>
+    <button id="cancelKnockBtn" style="margin-top:6px;padding:9px 22px;border-radius:var(--radius-sm);
+      border:1px solid var(--border-bright);background:var(--bg-hover);color:var(--text-secondary);
+      cursor:pointer;font-size:12.5px;font-family:var(--font);font-weight:500;">
+      <i class="fa fa-xmark"></i> Cancel
+    </button>
+    <style>
+      .lobby-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);
+        animation:lobbyBounce 1.4s infinite ease-in-out;}
+      .lobby-dot:nth-child(2){animation-delay:.2s;}
+      .lobby-dot:nth-child(3){animation-delay:.4s;}
+      @keyframes lobbyBounce{0%,80%,100%{transform:scale(.55);opacity:.4}40%{transform:scale(1);opacity:1}}
+    </style>
+  `;
+  document.body.appendChild(ov);
+  document.getElementById("cancelKnockBtn").onclick = () => {
+    hideLobbyScreen();
+    if (roomRef) roomRef.child("knock/" + MY_PEER_ID).remove();
+    currentRoom = null; MY_ROLE = null; roomRef = null;
+    setRoomUI(false);
+    showRoomToast("👋 Left the lobby");
+  };
+}
+
+function hideLobbyScreen() {
+  document.getElementById("lobbyOverlay")?.remove();
+}
+
+/* ─────────────────────────────────────────
+   VIEWER — VIEWER MODE OVERLAY
+   Read-only canvas + host video panel
+───────────────────────────────────────── */
+function enterViewerMode(roomId) {
+  if (document.getElementById("viewerModeOverlay")) return;
+  const ov = document.createElement("div");
+  ov.id = "viewerModeOverlay";
+  ov.style.cssText = `
+    position:fixed;inset:0;background:#0f1117;z-index:99990;
+    display:flex;flex-direction:column;font-family:var(--font);
+  `;
+  ov.innerHTML = `
+    <!-- Top bar -->
+    <div style="height:46px;background:var(--bg-chrome);border-bottom:1px solid var(--border);
+      display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;">
+      <div style="width:9px;height:9px;border-radius:50%;background:var(--danger);
+        box-shadow:0 0 7px var(--danger);animation:vmPulse 1.4s infinite;"></div>
+      <span style="font-size:13px;font-weight:600;color:var(--text-primary);">Live Session</span>
+      <span style="font-size:11px;color:var(--text-secondary);font-family:var(--mono);">${roomId}</span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:var(--success);background:rgba(52,211,153,.1);
+          padding:3px 10px;border-radius:100px;border:1px solid rgba(52,211,153,.2);">
+          <i class="fa fa-eye"></i> View only
+        </span>
+        <button id="viewerLeaveBtn" style="padding:5px 14px;border-radius:var(--radius-sm);
+          border:1px solid var(--danger);background:rgba(248,113,113,.1);color:var(--danger);
+          cursor:pointer;font-size:11.5px;font-family:var(--font);font-weight:500;">
+          <i class="fa fa-right-from-bracket"></i> Leave
+        </button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div style="flex:1;display:flex;min-height:0;">
+
+      <!-- Board area (read-only canvas) -->
+      <div id="viewerBoardArea" style="flex:1;overflow:auto;background:#0f1117;
+        background-image:radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1px);
+        background-size:28px 28px;display:flex;align-items:flex-start;justify-content:center;padding:20px;">
+        <canvas id="viewerCanvas" width="1600" height="2000"
+          style="display:block;background:#fff;border-radius:10px;max-width:100%;
+          box-shadow:0 0 0 1px rgba(255,255,255,.06),var(--shadow-lg);"></canvas>
+      </div>
+
+      <!-- Video sidebar -->
+      <div style="width:200px;flex-shrink:0;background:#111520;border-left:1px solid var(--border);
+        display:flex;flex-direction:column;overflow:hidden;">
+        <!-- Host video -->
+        <div style="flex:1;position:relative;background:#0a0c12;border-bottom:1px solid var(--border);">
+          <video id="hostVideo" autoplay playsinline
+            style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+          <div style="position:absolute;bottom:6px;left:7px;font-size:10px;color:#fff;
+            background:rgba(0,0,0,.6);padding:2px 7px;border-radius:4px;font-family:var(--mono);">
+            <i class="fa fa-circle" style="color:var(--danger);font-size:7px;margin-right:3px;"></i>Host
+          </div>
+        </div>
+        <!-- Self video -->
+        <div style="flex:1;position:relative;background:#0d1018;">
+          <video id="viewerSelfVideo" autoplay muted playsinline
+            style="width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1);"></video>
+          <div style="position:absolute;bottom:6px;left:7px;font-size:10px;color:#fff;
+            background:rgba(0,0,0,.6);padding:2px 7px;border-radius:4px;font-family:var(--mono);">You</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div style="height:24px;background:var(--bg-chrome);border-top:1px solid var(--border);
+      display:flex;align-items:center;padding:0 14px;gap:14px;font-size:11px;
+      color:var(--text-dim);font-family:var(--mono);">
+      <span><i class="fa fa-eye"></i> Read-only</span>
+      <span id="viewerSyncStatus" style="margin-left:auto;">⏳ Syncing board…</span>
+    </div>
+    <style>@keyframes vmPulse{0%,100%{opacity:1}50%{opacity:.4}}</style>
+  `;
+  document.body.appendChild(ov);
+
+  // Wire leave button
+  document.getElementById("viewerLeaveBtn").onclick = leaveRoom;
+
+  // Show viewer's own video
+  const selfVid = document.getElementById("viewerSelfVideo");
+  if (selfVid && viewerStream) selfVid.srcObject = viewerStream;
+
+  // Route incoming host video to #hostVideo
+  // (set by createPeerConn ontrack, but just in case set it now)
+}
+
+function hideViewerMode() {
+  document.getElementById("viewerModeOverlay")?.remove();
+}
+
+/* ─────────────────────────────────────────
+   VIEWER — LOAD & RENDER BOARD SNAPSHOT
+───────────────────────────────────────── */
+function loadBoardSnapshot(roomId) {
+  rtdb.ref("liverooms/" + roomId + "/boardSnapshot").once("value", snap => {
+    const snapshot = snap.val();
+    const vctx = getViewerCtx();
+    if (!vctx || !snapshot || !snapshot.pages) {
+      updateViewerSyncStatus("⚠️ No board data yet");
+      return;
+    }
+    const normPts = pts => {
+      if (!pts) return [];
+      if (Array.isArray(pts)) return pts;
+      return Object.keys(pts).sort((a,b) => Number(a)-Number(b)).map(k => pts[k]);
+    };
+    const pagesRaw = Array.isArray(snapshot.pages) ? snapshot.pages
+      : Object.keys(snapshot.pages).sort((a,b) => Number(a)-Number(b)).map(k => snapshot.pages[k]);
+
+    const curPage = pagesRaw[snapshot.currentPage || 0] || pagesRaw[0];
+    if (!curPage) return;
+
+    const bg = curPage.bg || "#ffffff";
+    vctx.fillStyle = bg;
+    vctx.fillRect(0, 0, 1600, 2000);
+
+    const strokesRaw = Array.isArray(curPage.strokes) ? curPage.strokes
+      : Object.keys(curPage.strokes || {}).sort((a,b) => Number(a)-Number(b)).map(k => curPage.strokes[k]);
+
+    // Draw shapes first (behind strokes)
+    const shapesRaw = Array.isArray(curPage.shapes) ? curPage.shapes
+      : Object.keys(curPage.shapes || {}).sort((a,b) => Number(a)-Number(b)).map(k => curPage.shapes[k]);
+    shapesRaw.forEach(s => {
+      vctx.save();
+      vctx.strokeStyle = s.color || "#000";
+      vctx.fillStyle   = s.color || "#000";
+      vctx.lineWidth   = 2;
+      if (s.type === "rect")   { vctx.strokeRect(s.x, s.y, s.w, s.h); }
+      else if (s.type === "circle") {
+        vctx.beginPath();
+        vctx.ellipse(s.x+s.w/2, s.y+s.h/2, Math.abs(s.w/2), Math.abs(s.h/2), 0, 0, Math.PI*2);
+        vctx.stroke();
+      }
+      else if (s.type === "line") {
+        vctx.beginPath(); vctx.moveTo(s.x, s.y); vctx.lineTo(s.x+s.w, s.y+s.h); vctx.stroke();
+      }
+      else if (s.type === "arrow") {
+        const ang = Math.atan2(s.h, s.w), head = 15;
+        vctx.beginPath(); vctx.moveTo(s.x, s.y); vctx.lineTo(s.x+s.w, s.y+s.h); vctx.stroke();
+        vctx.beginPath();
+        vctx.moveTo(s.x+s.w, s.y+s.h);
+        vctx.lineTo(s.x+s.w - head*Math.cos(ang-Math.PI/6), s.y+s.h - head*Math.sin(ang-Math.PI/6));
+        vctx.lineTo(s.x+s.w - head*Math.cos(ang+Math.PI/6), s.y+s.h - head*Math.sin(ang+Math.PI/6));
+        vctx.closePath(); vctx.fill();
+      }
+      vctx.restore();
+    });
+
+    // Draw strokes
+    strokesRaw.forEach(s => {
+      const pts = normPts(s.points);
+      if (pts.length < 2) return;
+      vctx.save();
+      vctx.strokeStyle = s.color || "#000";
+      vctx.lineWidth   = s.size  || 2;
+      vctx.lineCap     = "round"; vctx.lineJoin = "round";
+      vctx.globalAlpha = (s.stroke_type === "highlighter" || s.type === "highlighter") ? (s.alpha || 0.3) : 1;
+      vctx.beginPath();
+      vctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) vctx.lineTo(pts[i].x, pts[i].y);
+      vctx.stroke(); vctx.restore();
+    });
+
+    updateViewerSyncStatus("✅ Synced " + new Date().toLocaleTimeString());
+  });
+}
+
+function getViewerCtx() {
+  const vc = document.getElementById("viewerCanvas");
+  return vc ? vc.getContext("2d") : null;
+}
+
+function updateViewerSyncStatus(msg) {
+  const el = document.getElementById("viewerSyncStatus");
+  if (el) el.textContent = msg;
+}
+
+/* ─────────────────────────────────────────
+   VIEWER — REPLAY LIVE STROKES ONTO VIEWER CANVAS
 ───────────────────────────────────────── */
 function replayRemoteStroke(data) {
   if (!data.points) return;
-
-  // FIX: Firebase stores arrays as objects {"0":{x,y},"1":{x,y}...}
-  // Convert back to a proper array so loops and .length work correctly
   const points = Array.isArray(data.points)
     ? data.points
-    : Object.keys(data.points)
-        .sort((a, b) => Number(a) - Number(b))
-        .map(k => data.points[k]);
-
+    : Object.keys(data.points).sort((a,b) => Number(a)-Number(b)).map(k => data.points[k]);
   if (points.length < 2) return;
 
-  const pageIdx = data.page != null ? data.page : 0;
-  if (!pages[pageIdx]) return;
-
-  pages[pageIdx].strokes.push({
-    color:  data.color       || "#000",
-    size:   data.size        || 3,
-    type:   data.stroke_type || "pen",
-    alpha:  data.alpha       || 1,
-    points: points            // always a real array
-  });
-
-  if (pageIdx === current) redraw();
-  saveToLocalStorage();
+  if (MY_ROLE === "viewer") {
+    // Draw directly onto viewerCanvas
+    const vctx = getViewerCtx();
+    if (!vctx) return;
+    vctx.save();
+    vctx.strokeStyle = data.color || "#000";
+    vctx.lineWidth   = data.size  || 2;
+    vctx.lineCap     = "round"; vctx.lineJoin = "round";
+    vctx.globalAlpha = (data.stroke_type === "highlighter") ? (data.alpha || 0.3) : 1;
+    vctx.beginPath();
+    vctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) vctx.lineTo(points[i].x, points[i].y);
+    vctx.stroke(); vctx.restore();
+    updateViewerSyncStatus("✅ Synced " + new Date().toLocaleTimeString());
+  } else {
+    // Admin receiving own strokes from another device (legacy)
+    const pageIdx = data.page != null ? data.page : 0;
+    if (!pages[pageIdx]) return;
+    pages[pageIdx].strokes.push({
+      color: data.color || "#000", size: data.size || 3,
+      type: data.stroke_type || "pen", alpha: data.alpha || 1, points
+    });
+    if (pageIdx === current) redraw();
+    saveToLocalStorage();
+  }
 }
 
+/* ─────────────────────────────────────────
+   STROKE BROADCAST (admin only)
+───────────────────────────────────────── */
 function broadcastStroke(stroke) {
-  if (!roomRef || !stroke || stroke.points.length < 2) return;
+  if (!roomRef || MY_ROLE !== "admin" || !stroke || stroke.points.length < 2) return;
   roomRef.child("strokes").push({
     userId:      MY_PEER_ID,
     page:        current,
@@ -3634,14 +4123,13 @@ function broadcastStroke(stroke) {
     points:      stroke.points,
     ts:          Date.now()
   });
-  // FIX: Also update the full board snapshot so late joiners always get the complete board
   pushBoardSnapshot();
 }
 
-// Debounced snapshot writer — avoids hammering Firebase on every stroke point
+// Debounced full board snapshot writer
 let _snapshotTimer = null;
 function pushBoardSnapshot() {
-  if (!roomRef) return;
+  if (!roomRef || MY_ROLE !== "admin") return;
   clearTimeout(_snapshotTimer);
   _snapshotTimer = setTimeout(() => {
     const snapshot = {
@@ -3653,107 +4141,49 @@ function pushBoardSnapshot() {
       }))
     };
     roomRef.child("boardSnapshot").set(snapshot);
-  }, 800); // wait 800ms after last stroke before writing
+  }, 800);
 }
 
 /* ─────────────────────────────────────────
-   JOIN / LEAVE
+   LEAVE ROOM (works for both roles)
 ───────────────────────────────────────── */
-async function joinRoom(roomId) {
-  roomId = roomId.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
-  if (!roomId) { showRoomToast("❌ Enter a Room ID first"); return; }
-  if (currentRoom) { showRoomToast("⚠️ Already in a room — leave first"); return; }
-
-  try {
-    await getLocalStream();
-  } catch(e) { return; }
-
-  currentRoom = roomId;
-  roomRef     = rtdb.ref("liverooms/" + roomId);
-
-  listenSignals();
-
-  // Register; auto-remove on disconnect
-  const myEntry = roomRef.child("peers").push(MY_PEER_ID);
-  myEntry.onDisconnect().remove();
-
-  // FIX: Load any existing board snapshot from Firebase immediately on join
-  // This ensures User B sees everything User A drew before they joined
-  roomRef.child("boardSnapshot").once("value", snap => {
-    const snapshot = snap.val();
-    if (!snapshot || !snapshot.pages) return;
-
-    // Firebase converts arrays to objects — normalize a points array back to real JS array
-    const normPoints = pts => {
-      if (!pts) return [];
-      if (Array.isArray(pts)) return pts;
-      return Object.keys(pts).sort((a,b) => Number(a)-Number(b)).map(k => pts[k]);
-    };
-
-    // Firebase also converts page arrays to objects — normalize those too
-    const pagesRaw = Array.isArray(snapshot.pages)
-      ? snapshot.pages
-      : Object.keys(snapshot.pages).sort((a,b) => Number(a)-Number(b)).map(k => snapshot.pages[k]);
-
-    pagesRaw.forEach((p, idx) => {
-      if (!pages[idx]) {
-        pages.push({ bg: "#ffffff", strokes: [], images: [], shapes: [], undo: [], redo: [] });
-      }
-      pages[idx].bg     = p.bg || "#ffffff";
-      pages[idx].shapes = Array.isArray(p.shapes) ? p.shapes
-        : Object.keys(p.shapes || {}).sort((a,b) => Number(a)-Number(b)).map(k => p.shapes[k]);
-      // Normalize each stroke's points
-      const strokesRaw = Array.isArray(p.strokes) ? p.strokes
-        : Object.keys(p.strokes || {}).sort((a,b) => Number(a)-Number(b)).map(k => p.strokes[k]);
-      pages[idx].strokes = strokesRaw.map(s => ({
-        color:  s.color       || "#000",
-        size:   s.size        || 3,
-        type:   s.stroke_type || s.type || "pen",
-        alpha:  s.alpha       || 1,
-        points: normPoints(s.points)
-      })).filter(s => s.points.length >= 2);
-    });
-
-    current = snapshot.currentPage || 0;
-    redraw();
-    saveToLocalStorage();
-    showRoomToast("✅ Joined room " + roomId + " — board synced");
-  });
-
-  setRoomUI(true, roomId);
-  showRoomToast("✅ Joined room " + roomId);
-}
-
 function leaveRoom() {
-  // Turn off all Firebase listeners
   if (roomRef) {
     roomRef.child("offers").off();
     roomRef.child("answers").off();
     roomRef.child("ice").off();
-    roomRef.child("peers").off();
     roomRef.child("strokes").off();
+    roomRef.child("knock").off();
+    roomRef.child("admitted").off();
     roomRef.child("boardSnapshot").off();
-    // Remove ourselves from peers list
-    roomRef.child("peers").orderByValue().equalTo(MY_PEER_ID)
-      .once("value", snap => snap.forEach(c => c.ref.remove()));
+
+    if (MY_ROLE === "viewer") {
+      roomRef.child("knock/" + MY_PEER_ID).remove();
+      roomRef.child("admitted/" + MY_PEER_ID).remove();
+    }
+    if (MY_ROLE === "admin") {
+      roomRef.child("meta").remove();
+      roomRef.child("boardSnapshot").remove();
+      // Notify all viewers the session ended
+      roomRef.child("sessionEnded").set(true);
+      setTimeout(() => roomRef.remove(), 2000);
+    }
   }
 
-  // Close all peer connections
   Object.entries(peerConns).forEach(([id, pc]) => {
-    pc.close();
-    removePeerTile(id);
-    delete peerConns[id];
+    pc.close(); removePeerTile(id); delete peerConns[id];
   });
 
-  // Stop local camera/mic
-  if (localStream) {
-    localStream.getTracks().forEach(t => t.stop());
-    localStream = null;
-  }
+  if (localStream)  { localStream.getTracks().forEach(t => t.stop());  localStream  = null; }
+  if (viewerStream) { viewerStream.getTracks().forEach(t => t.stop()); viewerStream = null; }
+
   removePeerTile(MY_PEER_ID);
+  hideLobbyScreen();
+  hideViewerMode();
 
   roomRef     = null;
   currentRoom = null;
+  MY_ROLE     = null;
 
   setRoomUI(false);
   showRoomToast("👋 Left the room");
@@ -3762,14 +4192,16 @@ function leaveRoom() {
 /* ─────────────────────────────────────────
    UI HELPERS
 ───────────────────────────────────────── */
-function setRoomUI(inRoom, roomId = "") {
-  document.getElementById("createRoomBtn").style.display  = inRoom ? "none" : "";
-  document.getElementById("joinRoomBtn").style.display    = inRoom ? "none" : "";
-  document.getElementById("leaveRoomBtn").style.display   = inRoom ? "" : "none";
-  document.getElementById("copyInviteBtn").style.display  = inRoom ? "" : "none";
-  document.getElementById("roomIdInput").disabled         = inRoom;
-  document.getElementById("roomIdInput").value            = inRoom ? roomId : "";
-  document.getElementById("roomStatus").textContent       = inRoom ? "🟢 " + roomId : "";
+function setRoomUI(inRoom, roomId = "", role = "") {
+  document.getElementById("createRoomBtn").style.display = inRoom ? "none" : "";
+  document.getElementById("joinRoomBtn").style.display   = inRoom ? "none" : "";
+  document.getElementById("leaveRoomBtn").style.display  = inRoom ? "" : "none";
+  document.getElementById("copyInviteBtn").style.display = (inRoom && role === "admin") ? "" : "none";
+  document.getElementById("roomIdInput").disabled        = inRoom;
+  document.getElementById("roomIdInput").value           = inRoom ? roomId : "";
+  document.getElementById("roomStatus").textContent      = inRoom
+    ? (role === "admin" ? "🟢 " + roomId + " (Host)" : "🟣 " + roomId + " (Viewer)")
+    : "";
 }
 
 function buildInviteLink(roomId) {
@@ -3784,28 +4216,14 @@ document.getElementById("openLiveRoomBtn").addEventListener("click", () => {
   bar.style.display = (bar.style.display === "flex") ? "none" : "flex";
 });
 
-document.getElementById("createRoomBtn").addEventListener("click", async () => {
-  const roomId = Math.random().toString(36).slice(2, 8).toUpperCase();
-  document.getElementById("roomIdInput").value = roomId;
-  await joinRoom(roomId);
+document.getElementById("createRoomBtn").addEventListener("click", createRoom);
 
-  // Show invite modal
-  const link = buildInviteLink(roomId);
-  document.getElementById("inviteRoomId").textContent = roomId;
-  document.getElementById("inviteLink").textContent   = link;
-  document.getElementById("roomInviteModal").classList.add("open");
+document.getElementById("joinRoomBtn").addEventListener("click", () => {
+  knockOnRoom(document.getElementById("roomIdInput").value);
 });
 
-document.getElementById("joinRoomBtn").addEventListener("click", async () => {
-  const id = document.getElementById("roomIdInput").value;
-  await joinRoom(id);
-});
-
-document.getElementById("roomIdInput").addEventListener("keydown", async e => {
-  if (e.key === "Enter") {
-    const id = e.target.value;
-    await joinRoom(id);
-  }
+document.getElementById("roomIdInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") knockOnRoom(e.target.value);
 });
 
 document.getElementById("leaveRoomBtn").addEventListener("click", leaveRoom);
@@ -3813,13 +4231,13 @@ document.getElementById("leaveRoomBtn").addEventListener("click", leaveRoom);
 document.getElementById("copyInviteBtn").addEventListener("click", () => {
   if (!currentRoom) return;
   navigator.clipboard.writeText(buildInviteLink(currentRoom))
-    .then(()  => showRoomToast("📋 Invite link copied!"))
-    .catch(()  => showRoomToast("❌ Copy failed — check browser permissions"));
+    .then(() => showRoomToast("📋 Invite link copied!"))
+    .catch(() => showRoomToast("❌ Copy failed"));
 });
 
 document.getElementById("copyLinkBtn").addEventListener("click", () => {
-  const link = document.getElementById("inviteLink").textContent;
-  navigator.clipboard.writeText(link).then(() => showRoomToast("📋 Copied!")).catch(() => {});
+  navigator.clipboard.writeText(document.getElementById("inviteLink").textContent)
+    .then(() => showRoomToast("📋 Copied!")).catch(() => {});
 });
 
 document.getElementById("closeInviteBtn").addEventListener("click", () => {
@@ -3827,50 +4245,54 @@ document.getElementById("closeInviteBtn").addEventListener("click", () => {
 });
 
 /* ─────────────────────────────────────────
-   AUTO-JOIN FROM URL PARAM  ?room=XXXXXX
+   AUTO-JOIN FROM URL  ?room=XXXXXX
 ───────────────────────────────────────── */
 window.addEventListener("DOMContentLoaded", () => {
   const urlRoom = new URLSearchParams(location.search).get("room");
   if (urlRoom) {
     document.getElementById("liveRoomBar").style.display = "flex";
     document.getElementById("roomIdInput").value = urlRoom.toUpperCase();
-    setTimeout(() => joinRoom(urlRoom), 600);
+    setTimeout(() => knockOnRoom(urlRoom), 600);
   }
 });
 
 /* ─────────────────────────────────────────
-   HOOK INTO EXISTING POINTER-UP TO BROADCAST STROKES
-   We patch canvas.onpointerup after all other scripts run.
+   HOOK STROKE BROADCAST (admin only)
 ───────────────────────────────────────── */
 window.addEventListener("load", () => {
   const origUp = canvas.onpointerup;
   canvas.onpointerup = function(e) {
     if (origUp) origUp.call(this, e);
-    // Broadcast the stroke that was just committed
-    if (currentStroke && currentStroke.points && currentStroke.points.length > 1) {
+    if (MY_ROLE === "admin" && currentStroke && currentStroke.points && currentStroke.points.length > 1) {
       broadcastStroke(currentStroke);
     }
   };
 
-  // FIX: Push snapshot when board is cleared so late joiners see empty board
   const clearBtn = document.getElementById("clearBtn");
-  if (clearBtn) {
-    const origClear = clearBtn.addEventListener;
-    clearBtn.addEventListener("click", () => {
-      // Wait a tick for the clear to execute, then push snapshot
-      setTimeout(() => { if (roomRef) pushBoardSnapshot(); }, 50);
-    });
-  }
+  if (clearBtn) clearBtn.addEventListener("click", () => {
+    setTimeout(() => { if (roomRef && MY_ROLE === "admin") pushBoardSnapshot(); }, 50);
+  });
 
-  // FIX: Push snapshot on page add/delete/switch so late joiners see correct page state
   const addPageBtn = document.getElementById("addPageBtn");
-  if (addPageBtn) {
-    addPageBtn.addEventListener("click", () => setTimeout(() => { if (roomRef) pushBoardSnapshot(); }, 50));
-  }
+  if (addPageBtn) addPageBtn.addEventListener("click", () => {
+    setTimeout(() => { if (roomRef && MY_ROLE === "admin") pushBoardSnapshot(); }, 50);
+  });
+
   const deletePageBtn = document.getElementById("deletePageBtn");
-  if (deletePageBtn) {
-    deletePageBtn.addEventListener("click", () => setTimeout(() => { if (roomRef) pushBoardSnapshot(); }, 50));
-  }
+  if (deletePageBtn) deletePageBtn.addEventListener("click", () => {
+    setTimeout(() => { if (roomRef && MY_ROLE === "admin") pushBoardSnapshot(); }, 50);
+  });
+
+  // Push snapshot when background colour changes
+  const bgPicker = document.getElementById("bgPicker");
+  if (bgPicker) bgPicker.addEventListener("input", () => {
+    setTimeout(() => { if (roomRef && MY_ROLE === "admin") pushBoardSnapshot(); }, 50);
+  });
+
+  // Prevent viewers from drawing — disable canvas pointer events when in viewer mode
+  canvas.addEventListener("pointerdown", e => {
+    if (MY_ROLE === "viewer") { e.stopImmediatePropagation(); e.preventDefault(); }
+  }, true);
 });
 </script>
 <script>
