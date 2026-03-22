@@ -3681,6 +3681,10 @@ function showApprovalPopup(viewerId, viewerName) {
 function enterViewerMode() {
   hideViewerWaiting();
 
+  // Reset viewer state for fresh session
+  viewerReady = false;
+  viewerStrokeQueue = [];
+
   // Create full-screen viewer overlay
   const ov = document.createElement("div");
   ov.id = "viewerModeOverlay";
@@ -3750,7 +3754,7 @@ function enterViewerMode() {
       display:flex;align-items:center;padding:0 14px;gap:16px;font-size:11px;
       color:#4d5568;font-family:'DM Mono',monospace;">
       <span><i class="fa fa-eye"></i> Read-only mode</span>
-      <span id="viewerSyncStatus" style="margin-left:auto;">⏳ Syncing...</span>
+      <span id="viewerSyncStatus" style="margin-left:auto;">⏳ Waiting for board...</span>
     </div>
 
     <style>
@@ -3760,13 +3764,13 @@ function enterViewerMode() {
   document.body.appendChild(ov);
 
   document.getElementById("viewerRoomLabel").textContent = currentRoom;
-
-  // Make host video tile draggable
   makeDraggable(document.getElementById("hostVideoTile"));
+  document.getElementById("viewerLeaveBtn").onclick = leaveSession;
 
-  document.getElementById("viewerLeaveBtn").onclick = () => {
-    leaveSession();
-  };
+  // If snapshot already arrived before overlay was created, render it now
+  if (viewerReady && viewerPages.length > 0) {
+    renderViewerPage(viewerCurrentPage);
+  }
 }
 
 function makeDraggable(el) {
@@ -3784,64 +3788,104 @@ function makeDraggable(el) {
 }
 
 /* ════════════════════════════════════════════
-   VIEWER CANVAS RENDERING
-   — page-aware, stores strokes locally,
-     draws shapes + strokes + correct bg
+   VIEWER DATA STORE
+   Declared first so ALL functions below can use it.
+   This is the single source of truth for B's board.
 ════════════════════════════════════════════ */
+let viewerPages       = [];   // [{bg, strokes:[], shapes:[]}]
+let viewerCurrentPage = 0;
+let viewerReady       = false; // true once snapshot received
+let viewerStrokeQueue = [];    // strokes that arrive before snapshot is ready
 
+function viewerEnsurePage(idx) {
+  while (viewerPages.length <= idx) {
+    viewerPages.push({ bg: "#ffffff", strokes: [], shapes: [] });
+  }
+}
+
+/* ════════════════════════════════════════════
+   VIEWER CANVAS — the one persistent canvas
+   we draw everything onto. Created once inside
+   enterViewerMode, then NEVER recreated.
+════════════════════════════════════════════ */
 function updateViewerSyncStatus(msg) {
   const el = document.getElementById("viewerSyncStatus");
   if (el) el.textContent = msg;
 }
 
-function renderViewerPage(pageIdx) {
+function getViewerCtx() {
   const vc = document.getElementById("viewerCanvas");
-  if (!vc) return;
-  const vctx = vc.getContext("2d");
+  return vc ? vc.getContext("2d") : null;
+}
+
+/* Full re-render of one page from viewerPages store */
+function renderViewerPage(pageIdx) {
+  const vctx = getViewerCtx();
+  if (!vctx) return;
+  viewerEnsurePage(pageIdx);
   const p = viewerPages[pageIdx];
-  if (!p) return;
 
-  // Clear + background
-  vctx.clearRect(0, 0, vc.width, vc.height);
+  // Background
+  vctx.clearRect(0, 0, 1600, 2000);
   vctx.fillStyle = p.bg || "#ffffff";
-  vctx.fillRect(0, 0, vc.width, vc.height);
+  vctx.fillRect(0, 0, 1600, 2000);
 
-  // Draw shapes
-  (p.shapes || []).forEach(s => {
-    vctx.strokeStyle = s.color || "#000";
-    vctx.fillStyle   = s.color || "#000";
-    vctx.lineWidth   = 2;
-    vctx.globalAlpha = 1;
+  // Shapes
+  (p.shapes || []).forEach(s => _drawShape(vctx, s));
 
-    if (s.type === "rect")   { vctx.strokeRect(s.x, s.y, s.w, s.h); }
-    else if (s.type === "circle") {
-      vctx.beginPath();
-      vctx.ellipse(s.x + s.w/2, s.y + s.h/2, Math.abs(s.w/2), Math.abs(s.h/2), 0, 0, Math.PI*2);
-      vctx.stroke();
-    }
-    else if (s.type === "line") {
-      vctx.beginPath(); vctx.moveTo(s.x, s.y); vctx.lineTo(s.x+s.w, s.y+s.h); vctx.stroke();
-    }
-    else if (s.type === "arrow") {
-      const angle = Math.atan2(s.h, s.w), head = 15;
-      vctx.beginPath(); vctx.moveTo(s.x, s.y); vctx.lineTo(s.x+s.w, s.y+s.h); vctx.stroke();
-      vctx.beginPath();
-      vctx.moveTo(s.x+s.w, s.y+s.h);
-      vctx.lineTo(s.x+s.w - head*Math.cos(angle-Math.PI/6), s.y+s.h - head*Math.sin(angle-Math.PI/6));
-      vctx.lineTo(s.x+s.w - head*Math.cos(angle+Math.PI/6), s.y+s.h - head*Math.sin(angle+Math.PI/6));
-      vctx.closePath(); vctx.fill();
-    }
-  });
-
-  // Draw all strokes for this page
-  (p.strokes || []).forEach(s => drawViewerStroke(vctx, s));
+  // Strokes
+  (p.strokes || []).forEach(s => _drawStroke(vctx, s));
 
   updateViewerSyncStatus("✅ Synced " + new Date().toLocaleTimeString());
 }
 
-// Draw a single stroke onto a ctx
-function drawViewerStroke(vctx, s) {
+/* Append one stroke to store + draw it incrementally */
+function appendViewerStroke(stroke) {
+  const pageIdx = (stroke.page != null) ? stroke.page : viewerCurrentPage;
+  viewerEnsurePage(pageIdx);
+
+  const s = {
+    color:  stroke.color  || "#000000",
+    size:   stroke.size   || 2,
+    type:   stroke.type   || "pen",
+    alpha:  stroke.alpha  || 1,
+    points: stroke.points || []
+  };
+
+  if (!viewerReady) {
+    // Snapshot not yet received — queue for later
+    viewerStrokeQueue.push({ ...s, page: pageIdx });
+    return;
+  }
+
+  viewerPages[pageIdx].strokes.push(s);
+
+  // Only paint immediately if this is the current page
+  if (pageIdx === viewerCurrentPage) {
+    const vctx = getViewerCtx();
+    if (vctx) _drawStroke(vctx, s);
+    updateViewerSyncStatus("✅ Synced " + new Date().toLocaleTimeString());
+  }
+}
+
+/* Drain the pre-snapshot queue after snapshot arrives */
+function flushViewerStrokeQueue() {
+  if (!viewerStrokeQueue.length) return;
+  console.log(`Flushing ${viewerStrokeQueue.length} queued strokes`);
+  viewerStrokeQueue.forEach(s => {
+    const pageIdx = s.page || 0;
+    viewerEnsurePage(pageIdx);
+    viewerPages[pageIdx].strokes.push(s);
+  });
+  viewerStrokeQueue = [];
+  // Re-render current page to show queued strokes
+  renderViewerPage(viewerCurrentPage);
+}
+
+/* ── Low-level draw helpers ── */
+function _drawStroke(vctx, s) {
   if (!s.points || s.points.length < 2) return;
+  vctx.save();
   vctx.strokeStyle = s.color || "#000";
   vctx.lineWidth   = s.size  || 2;
   vctx.lineCap     = "round";
@@ -3851,59 +3895,52 @@ function drawViewerStroke(vctx, s) {
   vctx.moveTo(s.points[0].x, s.points[0].y);
   for (let i = 1; i < s.points.length; i++) vctx.lineTo(s.points[i].x, s.points[i].y);
   vctx.stroke();
-  vctx.globalAlpha = 1;
+  vctx.restore();
 }
 
-// Keep old name as alias so existing calls still work
+function _drawShape(vctx, s) {
+  vctx.save();
+  vctx.strokeStyle = s.color || "#000";
+  vctx.fillStyle   = s.color || "#000";
+  vctx.lineWidth   = 2;
+  vctx.globalAlpha = 1;
+  if (s.type === "rect")   { vctx.strokeRect(s.x, s.y, s.w, s.h); }
+  else if (s.type === "circle") {
+    vctx.beginPath();
+    vctx.ellipse(s.x+s.w/2, s.y+s.h/2, Math.abs(s.w/2), Math.abs(s.h/2), 0, 0, Math.PI*2);
+    vctx.stroke();
+  }
+  else if (s.type === "line") {
+    vctx.beginPath(); vctx.moveTo(s.x,s.y); vctx.lineTo(s.x+s.w,s.y+s.h); vctx.stroke();
+  }
+  else if (s.type === "arrow") {
+    const ang = Math.atan2(s.h, s.w), head = 15;
+    vctx.beginPath(); vctx.moveTo(s.x,s.y); vctx.lineTo(s.x+s.w,s.y+s.h); vctx.stroke();
+    vctx.beginPath();
+    vctx.moveTo(s.x+s.w, s.y+s.h);
+    vctx.lineTo(s.x+s.w - head*Math.cos(ang-Math.PI/6), s.y+s.h - head*Math.sin(ang-Math.PI/6));
+    vctx.lineTo(s.x+s.w - head*Math.cos(ang+Math.PI/6), s.y+s.h - head*Math.sin(ang+Math.PI/6));
+    vctx.closePath(); vctx.fill();
+  }
+  vctx.restore();
+}
+
+/* Legacy alias — some call sites still use this */
 function renderViewerBoard(pageData) {
   if (!pageData) return;
-  // If called with a raw page object, put it in viewerPages[0] and render
-  if (!viewerPages[0]) viewerPages[0] = pageData;
-  else Object.assign(viewerPages[0], pageData);
+  viewerEnsurePage(0);
+  Object.assign(viewerPages[0], pageData);
   renderViewerPage(0);
 }
 
-// Append a new stroke to the viewer's local store AND draw it
-function appendViewerStroke(stroke) {
-  const pageIdx = stroke.page != null ? stroke.page : viewerCurrentPage;
-
-  // Ensure viewerPages has enough slots
-  while (viewerPages.length <= pageIdx) {
-    viewerPages.push({ bg: "#ffffff", strokes: [], shapes: [] });
-  }
-
-  const strokeData = {
-    color:  stroke.color  || "#000",
-    size:   stroke.size   || 2,
-    type:   stroke.type   || "pen",
-    alpha:  stroke.alpha  || 1,
-    points: stroke.points || []
-  };
-
-  // Store it
-  viewerPages[pageIdx].strokes.push(strokeData);
-
-  // Only draw immediately if we're on the right page
-  if (pageIdx === viewerCurrentPage) {
-    const vc = document.getElementById("viewerCanvas");
-    if (vc) drawViewerStroke(vc.getContext("2d"), strokeData);
-    updateViewerSyncStatus("✅ Synced " + new Date().toLocaleTimeString());
-  }
-}
-
 /* ════════════════════════════════════════════
-   BOARD SNAPSHOT (admin → viewer on approve)
-   Strategy: compress strokes to minimal form,
-   send as base64 to avoid GAS row size limits,
-   split into 20KB chunks max.
+   BOARD SNAPSHOT — Admin sends full state to B
+   Base64 encoded, 15KB chunks, queued strokes
+   flushed after snapshot lands.
 ════════════════════════════════════════════ */
-
-// Viewer-side board store (mirrors admin's pages)
-let viewerPages = [];   // [{bg, strokes, shapes}]
-let viewerCurrentPage = 0;
+let snapshotBuffer = {};
 
 async function sendBoardSnapshot(viewerId) {
-  // Build compact snapshot of ALL pages
   const snapshot = {
     currentPage: current,
     pages: pages.map(p => ({
@@ -3914,66 +3951,61 @@ async function sendBoardSnapshot(viewerId) {
   };
 
   const payload = JSON.stringify(snapshot);
-
-  // Encode as base64 to safely pass through GAS/Sheets
   const encoded = btoa(unescape(encodeURIComponent(payload)));
+  const CHUNK   = 15000;
+  const total   = Math.ceil(encoded.length / CHUNK);
 
-  // Split into 15KB chunks (safe GAS cell limit)
-  const CHUNK = 15000;
-  const total = Math.ceil(encoded.length / CHUNK);
-
-  console.log(`Sending snapshot: ${payload.length} chars → ${total} chunks to ${viewerId}`);
+  console.log(`Snapshot: ${payload.length}B → ${total} chunk(s) → ${viewerId}`);
 
   for (let i = 0; i < total; i++) {
     await gasWrite("board_snapshot_chunk", {
       to:    viewerId,
       chunk: i,
       total: total,
-      sid:   MY_PEER_ID, // snapshot session id to avoid mix-ups
+      sid:   MY_PEER_ID,
       data:  encoded.slice(i * CHUNK, (i + 1) * CHUNK)
     });
-    // Small delay between chunks to avoid GAS rate limits
     if (total > 1) await new Promise(r => setTimeout(r, 300));
   }
 }
 
-// Buffer to reassemble incoming chunks on viewer side
-let snapshotBuffer = {};
-
 function handleSnapshotChunk(fromUserId, data) {
   const key = fromUserId + "_" + (data.sid || "snap");
-  if (!snapshotBuffer[key]) {
-    snapshotBuffer[key] = { chunks: {}, total: data.total };
-  }
+  if (!snapshotBuffer[key]) snapshotBuffer[key] = { chunks: {}, total: data.total };
   snapshotBuffer[key].chunks[data.chunk] = data.data;
 
   const received = Object.keys(snapshotBuffer[key].chunks).length;
-  console.log(`Snapshot chunk ${data.chunk + 1}/${data.total} received`);
+  updateViewerSyncStatus(`⏳ Receiving board… ${received}/${data.total}`);
 
   if (received >= snapshotBuffer[key].total) {
-    // Reassemble in order
-    const encoded = Array.from(
-      { length: data.total },
-      (_, i) => snapshotBuffer[key].chunks[i] || ""
+    const encoded = Array.from({ length: data.total }, (_, i) =>
+      snapshotBuffer[key].chunks[i] || ""
     ).join("");
     delete snapshotBuffer[key];
 
     try {
-      const payload = decodeURIComponent(escape(atob(encoded)));
+      const payload  = decodeURIComponent(escape(atob(encoded)));
       const snapshot = JSON.parse(payload);
 
-      // Store full board in viewerPages
-      viewerPages = snapshot.pages || [];
+      // Load all pages into viewerPages
+      viewerPages = (snapshot.pages || []).map(p => ({
+        bg:      p.bg      || "#ffffff",
+        strokes: p.strokes || [],
+        shapes:  p.shapes  || []
+      }));
       viewerCurrentPage = snapshot.currentPage || 0;
+      viewerReady = true;
 
-      console.log(`Snapshot applied: ${viewerPages.length} pages, showing page ${viewerCurrentPage}`);
+      // Merge any strokes that arrived before the snapshot
+      flushViewerStrokeQueue();
 
-      // Render the current page
+      // Render the current page — this is what B sees
       renderViewerPage(viewerCurrentPage);
-      updateViewerSyncStatus("✅ Board synced — " + viewerPages.length + " page(s)");
+
+      console.log(`Snapshot applied: ${viewerPages.length} page(s), showing page ${viewerCurrentPage}`);
     } catch(e) {
-      console.error("Snapshot parse error:", e);
-      updateViewerSyncStatus("⚠️ Sync error — retrying...");
+      console.error("Snapshot error:", e);
+      updateViewerSyncStatus("⚠️ Sync failed — please rejoin");
     }
   }
 }
