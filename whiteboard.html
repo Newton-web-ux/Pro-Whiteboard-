@@ -1525,10 +1525,18 @@ return;
 
 let parsed = JSON.parse(saved);
 
+// ── Template canvasData compatibility ──
+// Templates from dashboard use { pages, currentPage }
+// Normal saves use { pages, current } — both handled below.
+if(!parsed.pages || !Array.isArray(parsed.pages)){
+pages = [{bg:"#ffffff",strokes:[],images:[],shapes:[],undo:[],redo:[]}];
+return;
+}
+
 pages = parsed.pages.map(p => {
 let images = [];
 
-p.images.forEach(imgData => {
+(p.images || []).forEach(imgData => {
 let img = new Image();
 img.src = imgData.src;
 
@@ -1542,16 +1550,23 @@ h: imgData.h
 });
 
 return {
-bg: p.bg,
+bg: p.bg || "#ffffff",
 strokes: p.strokes || [],
 images: images,
-shapes: p.shapes || [],   // ✅ ADD THIS
+shapes: p.shapes || [],
 undo: [],
 redo: []
 };
 });
 
-current = parsed.current || 0;
+// Support both 'current' (normal save) and 'currentPage' (template format)
+current = parsed.current || parsed.currentPage || 0;
+
+// Apply template bg to bgPicker on first open
+try {
+  const bgPicker = document.getElementById("bgPicker");
+  if(bgPicker && pages[current]) bgPicker.value = pages[current].bg || "#ffffff";
+} catch(e) {}
 }
 /* SAVE STATE FOR UNDO */
 function saveState(){
