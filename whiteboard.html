@@ -1603,222 +1603,169 @@ ctx.fillRect(0,0,canvas.width,canvas.height);
    ===================================================== */
 
 (p.shapes || []).forEach(s=>{
-ctx.strokeStyle = s.color || "#000";
-ctx.fillStyle   = s.color || "#000";
-ctx.lineWidth   = 2;
+ctx.save();
 
+/* ── style from shape props ── */
+const fillColor   = s.fill || "transparent";
+const strokeColor = s.strokeColor || s.color || "#000000";
+const lw          = s.lineWidth || 2;
+ctx.strokeStyle   = strokeColor;
+ctx.fillStyle     = fillColor;
+ctx.lineWidth     = lw;
 
-/* ---------- RECTANGLE ---------- */
+/* ─────────── RECTANGLE (supports fill + label) ─────────── */
 if(s.type==="rect"){
-ctx.strokeRect(s.x,s.y,s.w,s.h);
+  if(fillColor && fillColor!=="transparent" && fillColor!=="none"){
+    ctx.fillRect(s.x, s.y, s.w, s.h);
+  }
+  if(!s.noStroke && strokeColor && strokeColor!=="transparent"){
+    ctx.strokeRect(s.x, s.y, s.w, s.h);
+  }
+  /* Text label rendering with word-wrap */
+  if(s.label){
+    const pad     = s.labelPad  !== undefined ? s.labelPad  : 14;
+    const topOff  = s.labelTop  !== undefined ? s.labelTop  : 14;
+    const fSize   = s.fontSize  || 14;
+    const lineH   = fSize * 1.55;
+    const maxW    = Math.max(s.w - pad*2, 10);
+    ctx.fillStyle    = s.labelColor || "#1e293b";
+    ctx.font         = (s.labelBold ? "bold " : "") + fSize + "px 'DM Sans',sans-serif";
+    ctx.textAlign    = s.textAlign || "left";
+    ctx.textBaseline = "top";
+    const startX  = s.textAlign==="center" ? s.x + s.w/2 : s.x + pad;
+    let curY      = s.y + topOff;
+    const rawLines = s.label.split("\n");
+    rawLines.forEach(rawLine => {
+      if(!rawLine.trim()){
+        curY += lineH;
+        return;
+      }
+      const words = rawLine.split(" ");
+      let row = "";
+      words.forEach(word => {
+        const test = row ? row + " " + word : word;
+        if(ctx.measureText(test).width > maxW && row){
+          ctx.fillText(row, startX, curY);
+          row = word; curY += lineH;
+        } else { row = test; }
+      });
+      if(row){ ctx.fillText(row, startX, curY); curY += lineH; }
+    });
+  }
 }
 
-
-/* ---------- CIRCLE ---------- */
+/* ─────────── CIRCLE / ELLIPSE ─────────── */
 if(s.type==="circle"){
-ctx.beginPath();
-ctx.ellipse(
-s.x + s.w/2,
-s.y + s.h/2,
-Math.abs(s.w/2),
-Math.abs(s.h/2),
-0,0,Math.PI*2
-);
-ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(s.x+s.w/2, s.y+s.h/2, Math.abs(s.w/2), Math.abs(s.h/2), 0, 0, Math.PI*2);
+  if(fillColor && fillColor!=="transparent"){ ctx.fill(); }
+  if(!s.noStroke){ ctx.stroke(); }
 }
 
-
-/* ---------- LINE ---------- */
+/* ─────────── LINE ─────────── */
 if(s.type==="line"){
-ctx.beginPath();
-ctx.moveTo(s.x,s.y);
-ctx.lineTo(s.x+s.w,s.y+s.h);
-ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s.x, s.y);
+  ctx.lineTo(s.x+s.w, s.y+s.h);
+  ctx.stroke();
 }
 
-
-/* ---------- ARROW ---------- */
+/* ─────────── ARROW ─────────── */
 if(s.type==="arrow"){
-
-let x1=s.x, y1=s.y;
-let x2=s.x+s.w, y2=s.y+s.h;
-
-ctx.beginPath();
-ctx.moveTo(x1,y1);
-ctx.lineTo(x2,y2);
-ctx.stroke();
-
-/* arrow head */
-let angle=Math.atan2(y2-y1,x2-x1);
-let head=15;
-
-ctx.beginPath();
-ctx.moveTo(x2,y2);
-ctx.lineTo(
-x2-head*Math.cos(angle-Math.PI/6),
-y2-head*Math.sin(angle-Math.PI/6)
-);
-ctx.lineTo(
-x2-head*Math.cos(angle+Math.PI/6),
-y2-head*Math.sin(angle+Math.PI/6)
-);
-ctx.closePath();
-ctx.fill();
+  let x1=s.x,y1=s.y,x2=s.x+s.w,y2=s.y+s.h;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  let angle=Math.atan2(y2-y1,x2-x1), head=15;
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-head*Math.cos(angle-Math.PI/6), y2-head*Math.sin(angle-Math.PI/6));
+  ctx.lineTo(x2-head*Math.cos(angle+Math.PI/6), y2-head*Math.sin(angle+Math.PI/6));
+  ctx.closePath(); ctx.fill();
 }
 
-
-/* ---------- PARALLELOGRAM ---------- */
+/* ─────────── PARALLELOGRAM ─────────── */
 if(s.type==="para"){
-ctx.beginPath();
-ctx.moveTo(s.x+30,s.y);
-ctx.lineTo(s.x+s.w,s.y);
-ctx.lineTo(s.x+s.w-30,s.y+s.h);
-ctx.lineTo(s.x,s.y+s.h);
-ctx.closePath();
-ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s.x+30,s.y); ctx.lineTo(s.x+s.w,s.y);
+  ctx.lineTo(s.x+s.w-30,s.y+s.h); ctx.lineTo(s.x,s.y+s.h);
+  ctx.closePath(); ctx.stroke();
 }
 
-
-/* ---------- RHOMBUS ---------- */
+/* ─────────── RHOMBUS ─────────── */
 if(s.type==="rhombus"){
-ctx.beginPath();
-ctx.moveTo(s.x+s.w/2,s.y);
-ctx.lineTo(s.x+s.w,s.y+s.h/2);
-ctx.lineTo(s.x+s.w/2,s.y+s.h);
-ctx.lineTo(s.x,s.y+s.h/2);
-ctx.closePath();
-ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s.x+s.w/2,s.y); ctx.lineTo(s.x+s.w,s.y+s.h/2);
+  ctx.lineTo(s.x+s.w/2,s.y+s.h); ctx.lineTo(s.x,s.y+s.h/2);
+  ctx.closePath(); ctx.stroke();
 }
 
-
-/* ---------- TRAPEZIUM ---------- */
+/* ─────────── TRAPEZIUM ─────────── */
 if(s.type==="trapezium"){
-ctx.beginPath();
-ctx.moveTo(s.x+30,s.y);
-ctx.lineTo(s.x+s.w-30,s.y);
-ctx.lineTo(s.x+s.w,s.y+s.h);
-ctx.lineTo(s.x,s.y+s.h);
-ctx.closePath();
-ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s.x+30,s.y); ctx.lineTo(s.x+s.w-30,s.y);
+  ctx.lineTo(s.x+s.w,s.y+s.h); ctx.lineTo(s.x,s.y+s.h);
+  ctx.closePath(); ctx.stroke();
 }
 
-
-/* ---------- CUBE ---------- */
+/* ─────────── CUBE ─────────── */
 if(s.type==="cube"){
-let offset=20;
-
-ctx.strokeRect(s.x,s.y,s.w,s.h);
-ctx.strokeRect(s.x+offset,s.y-offset,s.w,s.h);
-
-ctx.beginPath();
-ctx.moveTo(s.x,s.y);
-ctx.lineTo(s.x+offset,s.y-offset);
-
-ctx.moveTo(s.x+s.w,s.y);
-ctx.lineTo(s.x+s.w+offset,s.y-offset);
-
-ctx.moveTo(s.x,s.y+s.h);
-ctx.lineTo(s.x+offset,s.y+s.h-offset);
-
-ctx.moveTo(s.x+s.w,s.y+s.h);
-ctx.lineTo(s.x+s.w+offset,s.y+s.h-offset);
-ctx.stroke();
+  let off=20;
+  ctx.strokeRect(s.x,s.y,s.w,s.h);
+  ctx.strokeRect(s.x+off,s.y-off,s.w,s.h);
+  ctx.beginPath();
+  ctx.moveTo(s.x,s.y); ctx.lineTo(s.x+off,s.y-off);
+  ctx.moveTo(s.x+s.w,s.y); ctx.lineTo(s.x+s.w+off,s.y-off);
+  ctx.moveTo(s.x,s.y+s.h); ctx.lineTo(s.x+off,s.y+s.h-off);
+  ctx.moveTo(s.x+s.w,s.y+s.h); ctx.lineTo(s.x+s.w+off,s.y+s.h-off);
+  ctx.stroke();
 }
 
-
-/* ---------- CYLINDER ---------- */
+/* ─────────── CYLINDER ─────────── */
 if(s.type==="cylinder"){
-
-ctx.beginPath();
-ctx.ellipse(s.x+s.w/2,s.y,s.w/2,20,0,0,Math.PI*2);
-ctx.stroke();
-
-ctx.strokeRect(s.x,s.y,s.w,s.h);
-
-ctx.beginPath();
-ctx.ellipse(s.x+s.w/2,s.y+s.h,s.w/2,20,0,0,Math.PI);
-ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(s.x+s.w/2,s.y,s.w/2,20,0,0,Math.PI*2); ctx.stroke();
+  ctx.strokeRect(s.x,s.y,s.w,s.h);
+  ctx.beginPath(); ctx.ellipse(s.x+s.w/2,s.y+s.h,s.w/2,20,0,0,Math.PI); ctx.stroke();
 }
 
-
-/* ---------- SPHERE ---------- */
+/* ─────────── SPHERE ─────────── */
 if(s.type==="sphere"){
-
-ctx.beginPath();
-ctx.arc(
-s.x+s.w/2,
-s.y+s.h/2,
-Math.abs(s.w/2),
-0,Math.PI*2
-);
-ctx.stroke();
-
-/* horizontal curve */
-ctx.beginPath();
-ctx.ellipse(
-s.x+s.w/2,
-s.y+s.h/2,
-s.w/2,
-15,
-0,0,Math.PI*2
-);
-ctx.stroke();
+  ctx.beginPath(); ctx.arc(s.x+s.w/2,s.y+s.h/2,Math.abs(s.w/2),0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(s.x+s.w/2,s.y+s.h/2,s.w/2,15,0,0,Math.PI*2); ctx.stroke();
 }
 
-
-/* ---------- CONE ---------- */
+/* ─────────── CONE ─────────── */
 if(s.type==="cone"){
-
-ctx.beginPath();
-ctx.moveTo(s.x+s.w/2,s.y);
-ctx.lineTo(s.x,s.y+s.h);
-ctx.lineTo(s.x+s.w,s.y+s.h);
-ctx.closePath();
-ctx.stroke();
-
-ctx.beginPath();
-ctx.ellipse(
-s.x+s.w/2,
-s.y+s.h,
-s.w/2,
-15,
-0,0,Math.PI
-);
-ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s.x+s.w/2,s.y); ctx.lineTo(s.x,s.y+s.h); ctx.lineTo(s.x+s.w,s.y+s.h);
+  ctx.closePath(); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(s.x+s.w/2,s.y+s.h,s.w/2,15,0,0,Math.PI); ctx.stroke();
 }
 
-
-/* ---------- PYRAMID ---------- */
+/* ─────────── PYRAMID ─────────── */
 if(s.type==="pyramid"){
-
-ctx.beginPath();
-ctx.moveTo(s.x+s.w/2,s.y);
-ctx.lineTo(s.x,s.y+s.h);
-ctx.lineTo(s.x+s.w,s.y+s.h);
-ctx.closePath();
-ctx.stroke();
-
-ctx.beginPath();
-ctx.moveTo(s.x+s.w/2,s.y);
-ctx.lineTo(s.x+s.w/2,s.y+s.h);
-ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s.x+s.w/2,s.y); ctx.lineTo(s.x,s.y+s.h); ctx.lineTo(s.x+s.w,s.y+s.h);
+  ctx.closePath(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(s.x+s.w/2,s.y); ctx.lineTo(s.x+s.w/2,s.y+s.h); ctx.stroke();
 }
 
+ctx.restore();
 
-/* ---------- SELECTION OUTLINE ---------- */
+/* ── Selection outline ── */
 if(s===selectedShape){
-
-ctx.strokeStyle="blue";
-ctx.lineWidth=2;
-
-ctx.strokeRect(s.x,s.y,s.w,s.h);
-
-/* resize handle */
-ctx.fillStyle="blue";
-ctx.fillRect(s.x+s.w-10,s.y+s.h-10,10,10);
+  ctx.save();
+  ctx.strokeStyle="rgba(37,99,235,0.9)";
+  ctx.lineWidth=2;
+  ctx.setLineDash([6,3]);
+  ctx.strokeRect(s.x-2,s.y-2,s.w+4,s.h+4);
+  ctx.setLineDash([]);
+  /* resize handle */
+  ctx.fillStyle="#2563eb";
+  ctx.fillRect(s.x+s.w-8,s.y+s.h-8,12,12);
+  ctx.restore();
 }
 
 });
+
 
 /* ===== DRAW IMAGES ===== */
 p.images.forEach(img=>{
@@ -2353,24 +2300,24 @@ tc.scale(100/canvas.width,70/canvas.height);
 
 /* ===== DRAW SHAPES FIRST ===== */
 p.shapes?.forEach(s=>{
-tc.strokeStyle=s.color || "#000";
-tc.lineWidth=2;
-
-if(s.type==="rect"){
-tc.strokeRect(s.x,s.y,s.w,s.h);
-}
-
-if(s.type==="circle"){
-tc.beginPath();
-tc.ellipse(
-s.x+s.w/2,
-s.y+s.h/2,
-Math.abs(s.w/2),
-Math.abs(s.h/2),
-0,0,Math.PI*2
-);
-tc.stroke();
-}
+  tc.save();
+  tc.strokeStyle = s.strokeColor || s.color || "#aaa";
+  tc.fillStyle   = s.fill || "transparent";
+  tc.lineWidth   = s.lineWidth || 2;
+  if(s.type==="rect"){
+    if(s.fill && s.fill!=="transparent"){ tc.fillRect(s.x,s.y,s.w,s.h); }
+    if(!s.noStroke && s.strokeColor!=="transparent"){ tc.strokeRect(s.x,s.y,s.w,s.h); }
+  }
+  if(s.type==="circle"){
+    tc.beginPath();
+    tc.ellipse(s.x+s.w/2,s.y+s.h/2,Math.abs(s.w/2),Math.abs(s.h/2),0,0,Math.PI*2);
+    if(s.fill && s.fill!=="transparent"){ tc.fill(); }
+    if(!s.noStroke){ tc.stroke(); }
+  }
+  if(s.type==="line"){
+    tc.beginPath(); tc.moveTo(s.x,s.y); tc.lineTo(s.x+s.w,s.y+s.h); tc.stroke();
+  }
+  tc.restore();
 });
 
 /* ===== DRAW IMAGES ===== */
