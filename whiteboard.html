@@ -2090,6 +2090,11 @@ if(scrollMode && isPanning && e.pointerId === panPointerId){
   /* ===== SAVE AFTER NORMAL ACTION ===== */
  saveToLocalStorage();
 cloudAutoSaveTrigger();
+
+ /* ===== TRACK DRAW (solo + live room) ===== */
+ if (currentStroke && currentStroke.points && currentStroke.points.length > 1) {
+   trackDraw();
+ }
 };
 /* ERASER */
 function eraseAt(p){
@@ -3404,40 +3409,53 @@ const peerConns  = {};
 
 /* ═══════════════════════════════════════════════
    USER TRACKING — Posts events to GAS / Google Sheet
+   Works for ALL visitors: solo drawers + live room users.
    Replace GAS_ENDPOINT with your deployed Web App URL.
 ═══════════════════════════════════════════════ */
-const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzVHaQzh8RymOEZ29kEPyoq4-eq-yjoq2NoboGB6rffBHxG02046vB2ufVoAwyrDEmBZQ/exec"; // ← paste your /exec URL
+const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzoA_qOtE_pCnZca14Z90DGEmdKjPDsr3HK8lepff-kjqFnm18aRVmpucO409ZP4kMYZw/exec";
 
-let _sessionStart  = null;   // set on join
-let _strokeCount   = 0;      // debounce draw tracking
-const DRAW_BATCH   = 10;     // log a "draw" event every N strokes
+let _sessionStart  = Date.now();  // starts immediately on page load
+let _strokeCount   = 0;
+let _hasTrackedVisit = false;
+const DRAW_BATCH   = 10;          // send a "draw" row every N strokes
 
 /**
- * Send a tracking event to the GAS backend.
- * @param {string} action  - "join" | "leave" | "draw" | "create_room"
- * @param {object} extra   - optional overrides (duration, etc.)
+ * Core POST to GAS. Fire-and-forget (no-cors).
+ * userId  = localStorage USER_ID (persistent across visits)
+ * name    = "Solo-XXXXX" | "Host-XXXXX" | "Viewer-XXXXX"
+ * boardId = live room ID or "solo" for local-only sessions
  */
 function trackEvent(action, extra = {}) {
   if (!GAS_ENDPOINT || GAS_ENDPOINT === "YOUR_GAS_WEB_APP_URL_HERE") return;
-  const myName = MY_ROLE === "admin"
-    ? "Host-" + MY_PEER_ID.slice(1, 6).toUpperCase()
-    : "Viewer-" + MY_PEER_ID.slice(1, 6).toUpperCase();
+
+  // Resolve display name based on role (MY_ROLE only set in live rooms)
+  let displayName;
+  if (MY_ROLE === "admin")       displayName = "Host-"   + MY_PEER_ID.slice(1,6).toUpperCase();
+  else if (MY_ROLE === "viewer") displayName = "Viewer-" + MY_PEER_ID.slice(1,6).toUpperCase();
+  else                           displayName = "Solo-"   + (typeof USER_ID !== "undefined" ? USER_ID.slice(-5).toUpperCase() : MY_PEER_ID.slice(1,6).toUpperCase());
 
   const payload = {
-    email:   MY_UID   || MY_PEER_ID,   // Firebase UID or fallback peer ID
-    name:    myName,
-    boardId: currentRoom || "—",
+    email:    (typeof USER_ID !== "undefined" ? USER_ID : MY_PEER_ID),
+    name:     displayName,
+    boardId:  currentRoom || "solo",
     action,
-    duration: extra.duration || "",
+    duration: extra.duration !== undefined ? extra.duration : "",
     ...extra
   };
 
   fetch(GAS_ENDPOINT, {
-    method: "POST",
-    mode:   "no-cors",   // GAS doesn't send CORS headers — fire-and-forget
+    method:  "POST",
+    mode:    "no-cors",
     headers: { "Content-Type": "application/json" },
     body:    JSON.stringify(payload)
   }).catch(err => console.warn("[Tracker] POST failed:", err));
+}
+
+/** Fire once on first page load */
+function trackVisit() {
+  if (_hasTrackedVisit) return;
+  _hasTrackedVisit = true;
+  trackEvent("visit");
 }
 
 /** Call on room join (admin or viewer admitted) */
@@ -3452,17 +3470,35 @@ function trackLeave() {
     ? Math.round((Date.now() - _sessionStart) / 1000)
     : "";
   trackEvent("leave", { duration });
-  _sessionStart = null;
+  _sessionStart = Date.now(); // reset so solo session continues
   _strokeCount  = 0;
 }
 
-/** Call on each stroke — batched every DRAW_BATCH strokes */
+/** Called on every completed stroke — batched every DRAW_BATCH */
 function trackDraw() {
+  // First draw triggers a visit log if not in a live room
+  if (!_hasTrackedVisit) trackVisit();
   _strokeCount++;
   if (_strokeCount % DRAW_BATCH === 0) {
-    trackEvent("draw", { duration: _strokeCount + " strokes" });
+    trackEvent("draw", { duration: _strokeCount + " strokes total" });
   }
 }
+
+/** Send a final "session_end" when the user closes/leaves the tab */
+window.addEventListener("beforeunload", () => {
+  if (!GAS_ENDPOINT || GAS_ENDPOINT === "YOUR_GAS_WEB_APP_URL_HERE") return;
+  const duration = Math.round((Date.now() - _sessionStart) / 1000);
+  // Use sendBeacon so it survives tab close
+  const payload = JSON.stringify({
+    email:    (typeof USER_ID !== "undefined" ? USER_ID : MY_PEER_ID),
+    name:     MY_ROLE ? (MY_ROLE === "admin" ? "Host-" : "Viewer-") + MY_PEER_ID.slice(1,6).toUpperCase()
+                      : "Solo-" + (typeof USER_ID !== "undefined" ? USER_ID.slice(-5).toUpperCase() : MY_PEER_ID.slice(1,6).toUpperCase()),
+    boardId:  currentRoom || "solo",
+    action:   "session_end",
+    duration
+  });
+  navigator.sendBeacon(GAS_ENDPOINT, new Blob([payload], { type: "application/json" }));
+});
 
 const ICE_SERVERS = { iceServers: [
   { urls: "stun:stun.l.google.com:19302" },
@@ -4279,6 +4315,10 @@ document.getElementById("closeInviteBtn").addEventListener("click", () => {
    AUTO-JOIN FROM URL  ?room=XXXXXX
 ───────────────────────────────────────── */
 window.addEventListener("DOMContentLoaded", () => {
+  // Track every visitor on page load
+  // (will wait until USER_ID is defined via getUserId below)
+  setTimeout(trackVisit, 500);
+
   const urlRoom = new URLSearchParams(location.search).get("room");
   if (urlRoom) {
     document.getElementById("liveRoomBar").style.display = "flex";
