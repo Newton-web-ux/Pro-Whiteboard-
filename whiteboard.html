@@ -3402,6 +3402,68 @@ let localStream  = null;
 let viewerStream = null;
 const peerConns  = {};
 
+/* ═══════════════════════════════════════════════
+   USER TRACKING — Posts events to GAS / Google Sheet
+   Replace GAS_ENDPOINT with your deployed Web App URL.
+═══════════════════════════════════════════════ */
+const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzVHaQzh8RymOEZ29kEPyoq4-eq-yjoq2NoboGB6rffBHxG02046vB2ufVoAwyrDEmBZQ/exec"; // ← paste your /exec URL
+
+let _sessionStart  = null;   // set on join
+let _strokeCount   = 0;      // debounce draw tracking
+const DRAW_BATCH   = 10;     // log a "draw" event every N strokes
+
+/**
+ * Send a tracking event to the GAS backend.
+ * @param {string} action  - "join" | "leave" | "draw" | "create_room"
+ * @param {object} extra   - optional overrides (duration, etc.)
+ */
+function trackEvent(action, extra = {}) {
+  if (!GAS_ENDPOINT || GAS_ENDPOINT === "YOUR_GAS_WEB_APP_URL_HERE") return;
+  const myName = MY_ROLE === "admin"
+    ? "Host-" + MY_PEER_ID.slice(1, 6).toUpperCase()
+    : "Viewer-" + MY_PEER_ID.slice(1, 6).toUpperCase();
+
+  const payload = {
+    email:   MY_UID   || MY_PEER_ID,   // Firebase UID or fallback peer ID
+    name:    myName,
+    boardId: currentRoom || "—",
+    action,
+    duration: extra.duration || "",
+    ...extra
+  };
+
+  fetch(GAS_ENDPOINT, {
+    method: "POST",
+    mode:   "no-cors",   // GAS doesn't send CORS headers — fire-and-forget
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify(payload)
+  }).catch(err => console.warn("[Tracker] POST failed:", err));
+}
+
+/** Call on room join (admin or viewer admitted) */
+function trackJoin() {
+  _sessionStart = Date.now();
+  trackEvent("join");
+}
+
+/** Call on room leave — computes session duration in seconds */
+function trackLeave() {
+  const duration = _sessionStart
+    ? Math.round((Date.now() - _sessionStart) / 1000)
+    : "";
+  trackEvent("leave", { duration });
+  _sessionStart = null;
+  _strokeCount  = 0;
+}
+
+/** Call on each stroke — batched every DRAW_BATCH strokes */
+function trackDraw() {
+  _strokeCount++;
+  if (_strokeCount % DRAW_BATCH === 0) {
+    trackEvent("draw", { duration: _strokeCount + " strokes" });
+  }
+}
+
 const ICE_SERVERS = { iceServers: [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" }
@@ -3601,6 +3663,8 @@ async function createRoom() {
 
   setRoomUI(true, roomId, "admin");
   showRoomToast("🎉 Room created!");
+  trackEvent("create_room");
+  trackJoin();
 
   // Push initial empty snapshot
   pushBoardSnapshot();
@@ -3741,6 +3805,7 @@ async function knockOnRoom(roomId) {
     hideLobbyScreen();
     enterViewerMode(roomId);
     listenSignals();
+    trackJoin();
 
     // Register in admitted list with onDisconnect cleanup
     roomRef.child("admitted/" + MY_PEER_ID).onDisconnect().remove();
@@ -3780,6 +3845,7 @@ async function knockOnRoom(roomId) {
     hideLobbyScreen();
     hideViewerMode();
     showRoomToast("📵 The host ended the session");
+    trackLeave();
     // Clean up without writing anything back
     if (roomRef) {
       roomRef.child("offers").off();
@@ -3842,6 +3908,7 @@ function showLobbyScreen(roomId) {
   document.body.appendChild(ov);
   document.getElementById("cancelKnockBtn").onclick = () => {
     hideLobbyScreen();
+    trackLeave();
     if (roomRef) roomRef.child("knock/" + MY_PEER_ID).remove();
     currentRoom = null; MY_ROLE = null; roomRef = null;
     setRoomUI(false);
@@ -4075,6 +4142,7 @@ function replayRemoteStroke(data) {
 ───────────────────────────────────────── */
 function broadcastStroke(stroke) {
   if (!roomRef || MY_ROLE !== "admin" || !stroke || stroke.points.length < 2) return;
+  trackDraw();
   roomRef.child("strokes").push({
     userId:      MY_PEER_ID,
     page:        current,
@@ -4110,6 +4178,7 @@ function pushBoardSnapshot() {
    LEAVE ROOM (works for both roles)
 ───────────────────────────────────────── */
 function leaveRoom() {
+  trackLeave();
   if (roomRef) {
     roomRef.child("offers").off();
     roomRef.child("answers").off();
