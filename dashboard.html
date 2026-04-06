@@ -1211,183 +1211,6 @@ body.dark .tpl-preview { background: #1a2035; }
 }
 .qa-card.template-qa i { margin-bottom: 0; font-size: 16px; }
 .qa-card.template-qa span { font-size: 13px; color: var(--accent); }
-
-/* ============ PLAN BADGE ============ */
-.plan-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 10px 6px;
-  padding: 8px 11px;
-  border-radius: var(--radius-sm);
-  font-size: 12.5px;
-  font-weight: 500;
-  border: 1px solid var(--border);
-  background: var(--surface-hover);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all var(--transition);
-  text-decoration: none;
-}
-.plan-badge:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
-.plan-badge.pro   { background: rgba(245,158,11,.07); border-color: rgba(245,158,11,.25); color: #d97706; }
-.plan-badge.team  { background: rgba(47,129,247,.07); border-color: rgba(47,129,247,.25); color: var(--accent); }
-.plan-badge.pending { background: rgba(239,68,68,.05); border-color: rgba(239,68,68,.2); color: var(--danger); }
-body.dark .plan-badge.pro { color: #f59e0b; }
-
-/* ============ SIDEBAR USAGE BARS ============ */
-.sidebar-usage {
-  margin: 0 10px 4px;
-  padding: 9px 11px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface-hover);
-  font-size: 11.5px;
-  color: var(--text-muted);
-}
-.usage-header {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .07em;
-  color: var(--text-subtle);
-  margin-bottom: 8px;
-}
-.usage-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 3px;
-  font-size: 11.5px;
-}
-.usage-row span:last-child { font-weight: 600; color: var(--text); }
-.usage-bar {
-  height: 4px;
-  background: var(--border);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 7px;
-}
-.usage-bar-inner {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 2px;
-  transition: width .4s ease;
-}
-.usage-bar-inner.warn { background: #f59e0b; }
-.usage-bar-inner.full { background: var(--danger); }
-
-/* ============ LIMIT MODAL ============ */
-#limitModal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.6);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 999990;
-  backdrop-filter: blur(6px);
-}
-#limitModal.open { display: flex; }
-.limit-modal-box {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 36px 32px;
-  width: 420px;
-  max-width: 92vw;
-  box-shadow: var(--shadow-lg);
-  text-align: center;
-  animation: limitPop .3s cubic-bezier(.34,1.56,.64,1) both;
-}
-@keyframes limitPop {
-  from { opacity:0; transform:scale(.88) translateY(12px); }
-  to   { opacity:1; transform:scale(1)   translateY(0); }
-}
-.limit-icon {
-  width: 58px; height: 58px;
-  background: #fef3c7;
-  border: 1px solid #fcd34d;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 18px;
-  font-size: 26px;
-}
-body.dark .limit-icon { background: rgba(253,230,138,.1); border-color: rgba(253,230,138,.2); }
-.limit-modal-box h2 {
-  margin: 0 0 8px;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: -.4px;
-}
-.limit-modal-box p {
-  font-size: 14px;
-  color: var(--text-muted);
-  margin: 0 0 16px;
-  line-height: 1.6;
-}
-.limit-usage-box {
-  background: var(--surface-hover);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 16px;
-  margin: 0 0 16px;
-  text-align: left;
-}
-.limit-usage-box .lbl {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-bottom: 6px;
-}
-.limit-usage-box .lbl strong { color: var(--text); }
-.limit-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
-.limit-bar-fill { height: 100%; background: var(--danger); border-radius: 3px; }
-.limit-pro-box {
-  background: var(--accent-light);
-  border: 1px solid var(--accent-border);
-  border-radius: 10px;
-  padding: 12px 16px;
-  margin-bottom: 20px;
-  text-align: left;
-  font-size: 13px;
-  color: var(--text-muted);
-  line-height: 1.65;
-}
-.limit-pro-box strong { color: var(--accent); display: block; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
-.limit-upgrade-btn {
-  width: 100%;
-  padding: 13px;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  font-size: 15px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  margin-bottom: 9px;
-  box-shadow: 0 4px 16px rgba(37,99,235,.28);
-  transition: background var(--transition), transform var(--transition);
-}
-.limit-upgrade-btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
-.limit-later-btn {
-  width: 100%;
-  padding: 10px;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 13.5px;
-  color: var(--text-muted);
-  font-family: inherit;
-  cursor: pointer;
-  transition: background var(--transition);
-}
-.limit-later-btn:hover { background: var(--surface-hover); }
 </style>
 </head>
 <body>
@@ -1445,13 +1268,7 @@ body.dark .limit-icon { background: rgba(253,230,138,.1); border-color: rgba(253
     <button class="sidebar-btn" onclick="toggleGuidePanel()">
       <span class="btn-icon"><i class="fa fa-book-open"></i></span> User Guide
     </button>
-    <button class="sidebar-btn" onclick="goUpgradePage()" style="color:#d97706;font-weight:500;" id="upgradeNavBtn">
-      <span class="btn-icon"><i class="fa fa-star" style="color:#f59e0b;"></i></span> <span id="upgradeNavLabel">Upgrade to Pro</span>
-    </button>
   </div>
-
-  <!-- Plan badge + usage (injected by JS after login) -->
-  <div id="planBadgeWrap"></div>
 
   <!-- Google Sign In / User -->
   <div class="sidebar-user">
@@ -1818,30 +1635,6 @@ body.dark .limit-icon { background: rgba(253,230,138,.1); border-color: rgba(253
   </div>
 </div>
 
-<!-- ===== LIMIT MODAL ===== -->
-<div id="limitModal" onclick="if(event.target===this)closeLimitModal()">
-  <div class="limit-modal-box">
-    <div class="limit-icon">🔒</div>
-    <h2>Free Plan Limit Reached</h2>
-    <p id="limitModalMsg">You've used all your free slots.</p>
-    <div class="limit-usage-box">
-      <div class="lbl">
-        <span id="limitUsageLabel">Usage</span>
-        <strong id="limitUsageVal">—</strong>
-      </div>
-      <div class="limit-bar"><div class="limit-bar-fill" id="limitBarFill" style="width:100%"></div></div>
-    </div>
-    <div class="limit-pro-box">
-      <strong>✨ With Pro — Starting at ₹199/month</strong>
-      Unlimited Projects · Unlimited Folders · Unlimited Boards + exports, templates &amp; more
-    </div>
-    <button class="limit-upgrade-btn" onclick="goUpgradePage()">
-      <i class="fa fa-arrow-up-right-from-square"></i> Upgrade to Pro
-    </button>
-    <button class="limit-later-btn" onclick="closeLimitModal()">Maybe Later</button>
-  </div>
-</div>
-
 <!-- SECURITY PANEL (original structure preserved) -->
 <div id="securityPanel" style="
   position:fixed;
@@ -1855,10 +1648,7 @@ body.dark .limit-icon { background: rgba(253,230,138,.1); border-color: rgba(253
   flex-direction:column;
 ">
 </div>
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
-<script>
-const CLOUD_URL = "https://script.google.com/macros/s/AKfycbwl6TdJf2jLGPkiGN5ZH-yCEmI7DhNnKlMh21wwscVGhv18URrpJCRtr9Ux64NZL_YJ/exec"
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // ========== GOOGLE LOGIN ==========
 let currentUser = null;
 
@@ -1908,7 +1698,6 @@ function handleCredentialResponse(response){
   logUserToSheet(user);
   loadUserData();
   loadCloud();
-  setTimeout(loadUserPlan, 400);
 }
 
 window.onload=function(){
@@ -1929,7 +1718,6 @@ window.onload=function(){
     document.getElementById("userPic").src=currentUser.picture;
     document.getElementById("userName").textContent=currentUser.name;
     loadUserData();
-    setTimeout(loadUserPlan, 300);
   }else{
     disableButtons(true);
   }
@@ -1977,7 +1765,6 @@ function generateID(){return "id_"+Date.now()+"_"+Math.floor(Math.random()*1000)
 
 function createFolder(parentID=null){
   if(!currentUser){alert("Login required"); return;}
-  if(!isWithinLimit("folders")){ showLimitModal("folders"); return; }
 
   let parentName = "";
   if(parentID){
@@ -1990,12 +1777,11 @@ function createFolder(parentID=null){
   if(!name) return;
 
   data.folders.push({id:generateID(), name, parent:parentID});
-  save(); render(); updateSidebarUsage();
+  save(); render();
 }
 
 function createBoard(parentID=null){
   if(!currentUser){alert("Login required"); return;}
-  if(!isWithinLimit("boards")){ showLimitModal("boards"); return; }
 
   let parentName = "";
   if(parentID){
@@ -2008,7 +1794,7 @@ function createBoard(parentID=null){
 
   const id = generateID();
   data.boards.push({id, name, parent:parentID});
-  save(); render(); updateSidebarUsage();
+  save(); render();
 
   window.location.href = "whiteboard.html?board=" + id;
 }
@@ -2335,7 +2121,6 @@ panel.style.display="flex";
 <script>
 function createProject(parentID = null) {
   if (!currentUser) { alert("Login required"); return; }
-  if (!isWithinLimit("projects")) { showLimitModal("projects"); return; }
 
   let name = prompt("Project Name:", "Untitled Project");
   if (!name) return;
@@ -2344,7 +2129,6 @@ function createProject(parentID = null) {
   data.projects.push({ id, name, parent: parentID });
   save();
   render();
-  updateSidebarUsage();
 }
 function openProject(id){
   // FIX: show project name in the main panel instead of a raw alert
@@ -3332,13 +3116,6 @@ function updatePreviewPanel(tpl) {
 /* ── Create board from template ── */
 function createBoardFromTemplate() {
   if (!currentUser) { alert("Login required"); return; }
-
-  if (!isWithinLimit("boards")) {
-    closeTemplateModal();
-    showLimitModal("boards");
-    return;
-  }
-
   if (!_selectedTemplate) {
     // Shake the grid to indicate selection needed
     const grid = document.getElementById("tplGrid");
@@ -3366,7 +3143,6 @@ function createBoardFromTemplate() {
   data.boards.push({ id, name: boardName, parent: null, templateId: _selectedTemplate.id });
   save();
   render();
-  updateSidebarUsage();
   closeTemplateModal();
   window.location.href = "whiteboard.html?board=" + id;
 }
@@ -3396,221 +3172,6 @@ function welcomeCreate(type) {
   else if (type === 'folder') createFolder();
   else if (type === 'board') createBoard();
 }
-</script>
-
-<!-- ================================================================
-  SUBSCRIPTION & FREE TIER SYSTEM
-================================================================ -->
-<script>
-/* ── FREE TIER LIMITS (mirrors GAS backend FREE_LIMITS) ── */
-const FREE_LIMITS = { projects: 1, folders: 3, boards: 5 };
-
-/* ── GAS endpoint (same as CLOUD_URL — updated Code.gs handles subscription actions) ── */
-// Uses CLOUD_URL already defined above
-
-/* ── Current plan state ── */
-let _userPlan = { plan: "free", limits: FREE_LIMITS };
-let _limitHitType = null;
-
-/* ══════════════════════════════════════════════════════
-   loadUserPlan()
-   Fetches the user's subscription from GAS backend.
-   Called after every login (both fresh + cached).
-══════════════════════════════════════════════════════ */
-async function loadUserPlan() {
-  if (!currentUser) return;
-
-  // 1. Instant restore from localStorage cache
-  const cached = localStorage.getItem("userPlan_" + currentUser.sub);
-  if (cached) {
-    try {
-      _userPlan = JSON.parse(cached);
-      renderPlanUI();
-    } catch(_) {}
-  }
-
-  // 2. Fresh fetch from GAS
-  try {
-    const res = await fetch(
-      `${CLOUD_URL}?action=getsubscription&userId=${encodeURIComponent(currentUser.sub)}`
-    );
-    if (!res.ok) return;
-    const sub = await res.json();
-
-    if (sub && (sub.plan === "pro" || sub.plan === "team")) {
-      _userPlan = {
-        plan: sub.plan,
-        limits: sub.limits || { projects: 999999, folders: 999999, boards: 999999 },
-        expiresAt: sub.expiresAt || null
-      };
-    } else {
-      _userPlan = { plan: "free", limits: FREE_LIMITS };
-    }
-
-    localStorage.setItem("userPlan_" + currentUser.sub, JSON.stringify(_userPlan));
-    renderPlanUI();
-  } catch(e) {
-    console.warn("loadUserPlan:", e);
-  }
-
-  // 3. Show "pending" badge if user submitted payment but not yet approved
-  const pending = localStorage.getItem("pendingPlan");
-  if (pending && _userPlan.plan === "free") {
-    try {
-      const p = JSON.parse(pending);
-      renderPlanBadge("pending", p.plan);
-    } catch(_) {}
-  }
-}
-
-/* ══════════════════════════════════════════════════════
-   Limit helpers
-══════════════════════════════════════════════════════ */
-function isWithinLimit(type) {
-  const lim = (_userPlan.limits || FREE_LIMITS)[type] || 0;
-  if (lim >= 999999) return true;
-  const counts = {
-    projects: data.projects.length,
-    folders:  data.folders.length,
-    boards:   data.boards.length
-  };
-  return counts[type] < lim;
-}
-
-/* ══════════════════════════════════════════════════════
-   showLimitModal(type)  — "projects" | "folders" | "boards"
-══════════════════════════════════════════════════════ */
-function showLimitModal(type) {
-  _limitHitType = type;
-
-  const lim    = FREE_LIMITS[type];
-  const counts = { projects: data.projects.length, folders: data.folders.length, boards: data.boards.length };
-  const count  = counts[type];
-  const labels = { projects: "Projects", folders: "Folders", boards: "Boards" };
-
-  const msgs = {
-    projects: `You've used your <strong>${lim} free project</strong>. Upgrade to create unlimited projects.`,
-    folders:  `You've used all <strong>${lim} free folders</strong>. Upgrade to create unlimited folders.`,
-    boards:   `You've used all <strong>${lim} free boards</strong>. Upgrade to create unlimited boards.`
-  };
-
-  document.getElementById("limitModalMsg").innerHTML = msgs[type] || "You've reached your free plan limit.";
-  document.getElementById("limitUsageLabel").textContent = labels[type] + " used";
-  document.getElementById("limitUsageVal").textContent   = count + " / " + lim;
-  document.getElementById("limitBarFill").style.width    = "100%";
-
-  document.getElementById("limitModal").classList.add("open");
-}
-
-function closeLimitModal() {
-  document.getElementById("limitModal").classList.remove("open");
-}
-
-function goUpgradePage() {
-  window.location.href = "upgrade" + (_limitHitType ? "?limit=" + _limitHitType : "");
-}
-
-/* ══════════════════════════════════════════════════════
-   renderPlanUI()  — updates badge + usage bars
-══════════════════════════════════════════════════════ */
-function renderPlanUI() {
-  renderPlanBadge();
-  updateSidebarUsage();
-  updateUpgradeNavBtn();
-}
-
-/* ── Plan badge (injected into #planBadgeWrap) ── */
-function renderPlanBadge(overrideStatus, overridePlan) {
-  const wrap = document.getElementById("planBadgeWrap");
-  if (!wrap) return;
-
-  const plan   = overridePlan   || _userPlan.plan || "free";
-  const status = overrideStatus || "ok";
-
-  let cls = "plan-badge";
-  let html = "";
-
-  if (status === "pending") {
-    cls += " pending";
-    html = `<i class="fa fa-clock" style="font-size:11px"></i>
-            <span style="flex:1">Upgrade pending review</span>`;
-  } else if (plan === "pro") {
-    cls += " pro";
-    let expiry = "";
-    if (_userPlan.expiresAt) {
-      expiry = `<span style="font-size:10.5px;opacity:.7;margin-left:auto">${new Date(_userPlan.expiresAt).toLocaleDateString()}</span>`;
-    }
-    html = `<i class="fa fa-star" style="font-size:11px"></i>
-            <span style="flex:1">Pro Plan — Active</span>${expiry}`;
-  } else if (plan === "team") {
-    cls += " team";
-    html = `<i class="fa fa-users" style="font-size:11px"></i>
-            <span style="flex:1">Team Plan — Active</span>`;
-  } else {
-    html = `<i class="fa fa-arrow-up" style="font-size:11px"></i>
-            <span>Upgrade to Pro — ₹199/mo</span>`;
-  }
-
-  wrap.innerHTML = `<div class="${cls}" onclick="goUpgradePage()">${html}</div>`;
-}
-
-/* ── Sidebar usage bars (free users only) ── */
-function updateSidebarUsage() {
-  const wrap = document.getElementById("planBadgeWrap");
-  if (!wrap) return;
-
-  // Remove any existing usage widget
-  const old = document.getElementById("sidebarUsageEl");
-  if (old) old.remove();
-
-  if (_userPlan.plan !== "free") return; // paid users don't need usage bars
-
-  const lims   = FREE_LIMITS;
-  const counts = { projects: data.projects.length, folders: data.folders.length, boards: data.boards.length };
-
-  function barRow(label, key) {
-    const count = counts[key];
-    const max   = lims[key];
-    const pct   = Math.min(100, Math.round((count / max) * 100));
-    const cls   = pct >= 100 ? "full" : pct >= 67 ? "warn" : "";
-    return `
-      <div class="usage-row"><span>${label}</span><span>${count}/${max}</span></div>
-      <div class="usage-bar"><div class="usage-bar-inner ${cls}" style="width:${pct}%"></div></div>`;
-  }
-
-  const el = document.createElement("div");
-  el.id = "sidebarUsageEl";
-  el.className = "sidebar-usage";
-  el.innerHTML =
-    `<div class="usage-header">Free Plan Usage</div>` +
-    barRow("Projects", "projects") +
-    barRow("Folders",  "folders")  +
-    barRow("Boards",   "boards");
-
-  // Insert before the plan badge div
-  wrap.parentNode.insertBefore(el, wrap);
-}
-
-/* ── Hide/update the sidebar "Upgrade" nav button ── */
-function updateUpgradeNavBtn() {
-  const btn   = document.getElementById("upgradeNavBtn");
-  const label = document.getElementById("upgradeNavLabel");
-  if (!btn) return;
-
-  if (_userPlan.plan === "pro" || _userPlan.plan === "team") {
-    btn.style.display = "none"; // hide for paid users
-  } else {
-    btn.style.display = "";
-    if (label) label.textContent = "Upgrade to Pro";
-  }
-}
-
-/* ── Also refresh usage bars whenever render() runs ── */
-const _origRender = render;
-render = function() {
-  _origRender();
-  updateSidebarUsage();
-};
 </script>
 </body>
 </html>
