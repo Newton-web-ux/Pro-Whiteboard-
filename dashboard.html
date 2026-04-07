@@ -1469,6 +1469,29 @@ body.dark .tpl-preview { background: #1a2035; }
   transition: all var(--transition);
 }
 .limit-dismiss-btn:hover { background: var(--surface-hover); color: var(--text); }
+
+/* ── Polling dots ── */
+@keyframes pollPulse {
+  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+  40%            { opacity: 1;   transform: scale(1.2); }
+}
+.poll-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+  animation: pollPulse 1.4s ease-in-out infinite;
+}
+
+/* ── Unlock celebration ── */
+@keyframes popIn {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.1); }
+  100% { transform: scale(1);   opacity: 1; }
+}
+.unlock-celebrate {
+  animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
 </style>
 </head>
 <body>
@@ -1956,7 +1979,7 @@ body.dark .tpl-preview { background: #1a2035; }
     <!-- Active Pro State (hidden by default) -->
     <div id="proActiveCard" style="display:none;">
       <div class="access-card">
-        <div style="font-size:28px;margin-bottom:6px;">🎉</div>
+        <div style="font-size:36px;margin-bottom:6px;">🎉</div>
         <div class="plan-name">You're on Pro!</div>
         <div class="expiry-text" id="proExpiryText">Access active</div>
       </div>
@@ -1973,43 +1996,76 @@ body.dark .tpl-preview { background: #1a2035; }
       </div>
     </div>
 
-    <!-- Upgrade Form (shown by default) -->
+    <!-- Upgrade Form -->
     <div id="proUpgradeForm">
-      <div class="panel-section-label">Choose Plan</div>
-      <div class="plan-toggle">
-        <button type="button" id="planMonthlyBtn" class="active" onclick="selectPayPlan('monthly')">Monthly</button>
-        <button type="button" id="planYearlyBtn" onclick="selectPayPlan('yearly')">Yearly <span style="font-size:10px;opacity:0.8;">save 16%</span></button>
-      </div>
-      <div class="plan-price" id="payPlanPrice">₹199 / month</div>
 
-      <div class="panel-section-label">What you get</div>
-      <ul class="pro-features-list">
-        <li><i class="fa fa-check"></i> Unlimited Boards &amp; Folders</li>
-        <li><i class="fa fa-check"></i> Unlimited Images &amp; Files</li>
-        <li><i class="fa fa-check"></i> All Graphs &amp; Shapes</li>
-        <li><i class="fa fa-check"></i> Unlimited PDF / PNG Export</li>
-        <li><i class="fa fa-check"></i> PPT &amp; Video Export</li>
-        <li><i class="fa fa-check"></i> 20 Version History</li>
-      </ul>
+      <!-- STEP 1: Choose plan + QR -->
+      <div id="payStep1">
+        <div class="panel-section-label">Step 1 — Choose your plan</div>
+        <div class="plan-toggle">
+          <button type="button" id="planMonthlyBtn" class="active" onclick="selectPayPlan('monthly')">
+            Monthly &nbsp;<strong>₹199</strong>
+          </button>
+          <button type="button" id="planYearlyBtn" onclick="selectPayPlan('yearly')">
+            Yearly &nbsp;<strong>₹1999</strong>&nbsp;<span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:1px 5px;border-radius:8px;">Save 16%</span>
+          </button>
+        </div>
 
-      <div class="panel-section-label">Pay via UPI / GPay</div>
-      <div class="qr-wrap">
-        <a id="payUpiLink" target="_blank">
-          <img id="payQrImg" src="" alt="UPI QR Code">
-        </a>
+        <div class="panel-section-label" style="margin-top:4px;">Step 2 — Scan &amp; Pay via UPI</div>
+        <div class="qr-wrap" id="qrWrap">
+          <a id="payUpiLink" target="_blank" title="Tap to open in GPay / PhonePe / any UPI app">
+            <img id="payQrImg" src="" alt="UPI QR Code">
+          </a>
+          <div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;text-align:center;">
+            <i class="fa fa-mobile-alt"></i> Scan with GPay, PhonePe, Paytm or any UPI app<br>
+            <span style="font-size:11px;color:var(--text-subtle);">Or tap the QR to open directly in your UPI app</span>
+          </div>
+          <div style="margin-top:10px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;color:var(--text-muted);text-align:center;">
+            <i class="fa fa-user-circle" style="color:var(--accent)"></i>
+            &nbsp;Pay to: <strong style="color:var(--text);">Newtonian Academy</strong><br>
+            <span id="payAmountLabel" style="font-size:13px;font-weight:700;color:var(--accent);">₹199</span>
+          </div>
+        </div>
+
+        <button class="pay-btn" style="margin-top:14px;" onclick="goToStep2()">
+          <i class="fa fa-check-circle"></i> I've Paid — Enter Transaction ID
+        </button>
       </div>
 
-      <div class="panel-section-label" style="margin-top:14px;">Enter UTR / Transaction ID</div>
-      <input type="text" class="utr-input" id="payUtrInput" placeholder="e.g. 424212345678 (min 6 chars)" maxlength="40">
-      <button class="pay-btn" id="paySubmitBtn" onclick="submitPayment()">
-        <i class="fa fa-paper-plane"></i> I've Paid — Submit UTR
-      </button>
-      <div class="pay-status" id="payStatus"></div>
-      <div style="font-size:11.5px;color:var(--text-subtle);text-align:center;margin-top:8px;">
-        <i class="fa fa-clock"></i> Access unlocks after manual verification (usually within a few hours)
+      <!-- STEP 2: Enter UTR + polling -->
+      <div id="payStep2" style="display:none;">
+        <button onclick="goToStep1()" style="background:none;border:none;color:var(--accent);font-size:12.5px;font-family:inherit;cursor:pointer;padding:0 0 12px;display:flex;align-items:center;gap:5px;">
+          <i class="fa fa-arrow-left"></i> Back to QR
+        </button>
+
+        <div class="panel-section-label">Step 3 — Enter your UTR / Transaction ID</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.55;">
+          Find the <strong>12-digit UTR</strong> or transaction reference in your GPay / PhonePe transaction history after payment.
+        </div>
+        <input type="text" class="utr-input" id="payUtrInput"
+          placeholder="e.g. 424212345678"
+          maxlength="40"
+          oninput="document.getElementById('paySubmitBtn').disabled = this.value.trim().length < 6">
+
+        <button class="pay-btn" id="paySubmitBtn" onclick="submitPayment()" disabled>
+          <i class="fa fa-paper-plane"></i> Submit &amp; Activate
+        </button>
+        <div class="pay-status" id="payStatus"></div>
+
+        <!-- Polling state (hidden until UTR submitted) -->
+        <div id="pollingBox" style="display:none;margin-top:14px;padding:14px;background:var(--accent-light);border:1px solid var(--accent-border);border-radius:var(--radius-md);text-align:center;">
+          <div id="pollingIcon" style="font-size:26px;margin-bottom:6px;">⏳</div>
+          <div style="font-size:13px;font-weight:600;color:var(--accent);" id="pollingTitle">Waiting for admin verification…</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px;" id="pollingSubtitle">We're checking every 10 seconds. This usually takes a few minutes.</div>
+          <div style="margin-top:10px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--text-subtle);">
+            <span class="poll-dot"></span>
+            <span class="poll-dot" style="animation-delay:0.3s"></span>
+            <span class="poll-dot" style="animation-delay:0.6s"></span>
+          </div>
+        </div>
       </div>
+
     </div>
-
   </div>
 </div>
 
@@ -2789,121 +2845,151 @@ function updateStats(){
 <script>
 /* ================================================================
    PAYMENT + PRO ACCESS SYSTEM
-   Integrates with Google Apps Script backend (backend.gs)
-   API actions: register, checkAccess, submitPayment
+   Flow: Plan select → QR scan → UTR submit → auto-poll → unlock
 ================================================================ */
 
 const PAYMENT_API_URL =
-  "https://script.google.com/macros/s/AKfycbzgkP9IwqFAJNB22yJlUavGLAkmHWrEgnvy0E0pTxIx0k8WqkRSw_2NGV_95m7x1kVI/exec";
+  "https://script.google.com/macros/s/AKfycbxnQ6G6U40leGl1dRQhiXi0K9cavaWRpbGnCSbLCK-4khJOrDM85ohD6id-o58nJVCR/exec";
 
-let _selectedPayPlan = "monthly";
+let _selectedPayPlan  = "monthly";
 let _userAccessStatus = "unknown"; // "active" | "inactive" | "not_found" | "unknown"
+let _pollInterval     = null;      // setInterval handle for access polling
+let _pollCount        = 0;         // how many polls done so far
 
 const PAY_PLANS = {
-  monthly: { price: 199, label: "₹199 / month" },
-  yearly:  { price: 1999, label: "₹1999 / year" }
+  monthly: { price: 199,  label: "₹199 / month" },
+  yearly:  { price: 1999, label: "₹1999 / year"  }
 };
 
-/* ── Init QR on page load ── */
-window.addEventListener("load", function(){
-  selectPayPlan("monthly");
-});
+/* ── Init QR on load ── */
+window.addEventListener("load", function(){ selectPayPlan("monthly"); });
 
-/* ── Plan toggle ── */
+/* ════════════════════════════════════════
+   PLAN TOGGLE
+════════════════════════════════════════ */
 function selectPayPlan(type){
   _selectedPayPlan = type;
   document.getElementById("planMonthlyBtn").classList.toggle("active", type === "monthly");
   document.getElementById("planYearlyBtn").classList.toggle("active",  type === "yearly");
-  document.getElementById("payPlanPrice").textContent = PAY_PLANS[type].label;
 
   const amount = PAY_PLANS[type].price;
-  const upi = `upi://pay?pa=banerjeearnab.live@oksbi&pn=Newtonian Academy&am=${amount}&cu=INR`;
+  const upi    = `upi://pay?pa=banerjeearnab.live@oksbi&pn=Newtonian Academy&am=${amount}&cu=INR`;
+
   document.getElementById("payUpiLink").href = upi;
-  document.getElementById("payQrImg").src =
-    `https://api.qrserver.com/v1/create-qr-code/?size=190x190&data=${encodeURIComponent(upi)}`;
+  document.getElementById("payQrImg").src    =
+    `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upi)}`;
+  document.getElementById("payAmountLabel").textContent = "₹" + amount;
 }
 
-/* ── Panel open/close ── */
+/* ════════════════════════════════════════
+   STEP NAVIGATION
+════════════════════════════════════════ */
+function goToStep2(){
+  document.getElementById("payStep1").style.display = "none";
+  document.getElementById("payStep2").style.display = "block";
+  document.getElementById("payUtrInput").focus();
+}
+
+function goToStep1(){
+  document.getElementById("payStep2").style.display = "none";
+  document.getElementById("payStep1").style.display = "block";
+  stopPolling();
+}
+
+/* ════════════════════════════════════════
+   PANEL OPEN / CLOSE
+════════════════════════════════════════ */
 function togglePaymentPanel(){
-  const panel = document.getElementById("paymentPanel");
-  const backdrop = document.getElementById("backdrop");
+  const panel  = document.getElementById("paymentPanel");
   const isOpen = panel.classList.contains("show");
   closeAllPanels();
   if(!isOpen){
     panel.classList.add("show");
-    backdrop.classList.add("show");
-    // Refresh access state when opening
+    document.getElementById("backdrop").classList.add("show");
     if(currentUser) checkUserAccess(currentUser.email);
   }
 }
 
-/* ── Register user in sheet on first login ── */
+/* ════════════════════════════════════════
+   REGISTER USER (on login)
+════════════════════════════════════════ */
 function registerUserInSheet(user){
   fetch(PAYMENT_API_URL, {
-    method: "POST",
-    mode: "no-cors",
+    method:  "POST",
+    mode:    "no-cors",
     headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify({ action: "register", email: user.email, name: user.name })
+    body:    JSON.stringify({ action: "register", email: user.email, name: user.name })
   }).catch(err => console.warn("register error:", err));
 }
 
-/* ── Check access from sheet ── */
+/* ════════════════════════════════════════
+   CHECK ACCESS
+════════════════════════════════════════ */
 async function checkUserAccess(email){
   try {
-    const res = await fetch(PAYMENT_API_URL, {
-      method: "POST",
+    const res  = await fetch(PAYMENT_API_URL, {
+      method:  "POST",
       headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ action: "checkAccess", email })
+      body:    JSON.stringify({ action: "checkAccess", email })
     });
     const json = await res.json();
-    _userAccessStatus = json.status; // "active" | "inactive" | "not_found"
+    const wasInactive = _userAccessStatus !== "active";
+    _userAccessStatus = json.status;
     updateProUI(json.status);
+
+    // If polling and now active → celebrate + stop
+    if(wasInactive && json.status === "active" && _pollInterval){
+      onProUnlocked();
+    }
+    return json.status;
   } catch(e){
     console.warn("checkAccess error:", e);
+    return null;
   }
 }
 
-/* ── Update UI based on access status ── */
+/* ════════════════════════════════════════
+   UPDATE PRO UI
+════════════════════════════════════════ */
 function updateProUI(status){
-  const badge       = document.getElementById("proBadge");
-  const statusDiv   = document.getElementById("userAccessStatus");
-  const statusDot   = document.getElementById("statusDot");
-  const statusText  = document.getElementById("statusText");
-  const upgradeLabel= document.getElementById("upgradeBtnLabel");
-  const activeCard  = document.getElementById("proActiveCard");
-  const upgradeForm = document.getElementById("proUpgradeForm");
+  const badge        = document.getElementById("proBadge");
+  const statusDiv    = document.getElementById("userAccessStatus");
+  const statusDot    = document.getElementById("statusDot");
+  const statusText   = document.getElementById("statusText");
+  const upgradeLabel = document.getElementById("upgradeBtnLabel");
+  const activeCard   = document.getElementById("proActiveCard");
+  const upgradeForm  = document.getElementById("proUpgradeForm");
 
-  statusDiv.style.display = "flex";
-  statusDiv.style.alignItems = "center";
-  statusDiv.style.gap = "5px";
+  statusDiv.style.cssText = "display:flex;align-items:center;gap:5px;";
 
   if(status === "active"){
-    badge.style.display = "inline-flex";
-    statusDot.className = "status-dot active";
-    statusText.textContent = "Pro Active";
-    upgradeLabel.textContent = "✨ Pro Active";
-    activeCard.style.display = "block";
+    badge.style.display       = "inline-flex";
+    statusDot.className       = "status-dot active";
+    statusText.textContent    = "Pro Active";
+    upgradeLabel.textContent  = "✨ Pro Active";
+    activeCard.style.display  = "block";
     upgradeForm.style.display = "none";
   } else {
-    badge.style.display = "none";
-    statusDot.className = "status-dot inactive";
-    statusText.textContent = status === "not_found" ? "Not registered" : "Free plan";
-    upgradeLabel.textContent = "⭐ Upgrade to Pro";
-    activeCard.style.display = "none";
+    badge.style.display       = "none";
+    statusDot.className       = "status-dot inactive";
+    statusText.textContent    = status === "not_found" ? "Not registered" : "Free plan";
+    upgradeLabel.textContent  = "⭐ Upgrade to Pro";
+    activeCard.style.display  = "none";
     upgradeForm.style.display = "block";
   }
+  updateStats(); // refresh limit indicators
 }
 
-/* ── Submit payment ── */
+/* ════════════════════════════════════════
+   SUBMIT UTR
+════════════════════════════════════════ */
 async function submitPayment(){
   if(!currentUser){
-    showPayStatus("Please sign in before upgrading.", "error");
-    return;
+    showPayStatus("Please sign in before upgrading.", "error"); return;
   }
   const utr = (document.getElementById("payUtrInput").value || "").trim();
   if(utr.length < 6){
-    showPayStatus("Please enter a valid UTR / Transaction ID (min 6 chars).", "error");
-    return;
+    showPayStatus("Please enter a valid UTR / Transaction ID (min 6 chars).", "error"); return;
   }
 
   const btn = document.getElementById("paySubmitBtn");
@@ -2912,48 +2998,111 @@ async function submitPayment(){
   showPayStatus("", "");
 
   try {
-    const res = await fetch(PAYMENT_API_URL, {
-      method: "POST",
+    const res  = await fetch(PAYMENT_API_URL, {
+      method:  "POST",
       headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({
+      body:    JSON.stringify({
         action: "submitPayment",
-        email: currentUser.email,
+        email:  currentUser.email,
         amount: PAY_PLANS[_selectedPayPlan].price,
-        plan: _selectedPayPlan,
+        plan:   _selectedPayPlan,
         utr
       })
     });
     const json = await res.json();
 
     if(json.status === "submitted"){
-      showPayStatus("✅ Payment submitted! Access unlocks after admin verification.", "success");
-      btn.innerHTML = '<i class="fa fa-check"></i> Submitted';
+      btn.innerHTML = '<i class="fa fa-check"></i> Submitted — Awaiting Verification';
+      showPayStatus("", "");
+      showPollingBox();
+      startPolling(currentUser.email);
     } else if(json.status === "invalid_utr"){
-      showPayStatus("❌ Invalid UTR. Please enter at least 6 characters.", "error");
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fa fa-paper-plane"></i> I\'ve Paid — Submit UTR';
+      showPayStatus("❌ Invalid UTR. Must be at least 6 characters.", "error");
+      btn.disabled  = false;
+      btn.innerHTML = '<i class="fa fa-paper-plane"></i> Submit &amp; Activate';
     } else {
       throw new Error(json.status);
     }
   } catch(e){
     showPayStatus("❌ Submission failed. Please try again.", "error");
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fa fa-paper-plane"></i> I\'ve Paid — Submit UTR';
+    btn.disabled  = false;
+    btn.innerHTML = '<i class="fa fa-paper-plane"></i> Submit &amp; Activate';
   }
 }
 
-function showPayStatus(msg, type){
-  const el = document.getElementById("payStatus");
-  el.textContent = msg;
-  el.className = "pay-status" + (type ? " " + type : "");
+/* ════════════════════════════════════════
+   POLLING — check every 10 s, stop after 30 min
+════════════════════════════════════════ */
+function startPolling(email){
+  stopPolling();
+  _pollCount = 0;
+  _pollInterval = setInterval(async () => {
+    _pollCount++;
+    const status = await checkUserAccess(email);
+
+    // Stop after 30 min (180 polls × 10 s)
+    if(_pollCount >= 180){
+      stopPolling();
+      document.getElementById("pollingTitle").textContent    = "Verification is taking longer than usual.";
+      document.getElementById("pollingSubtitle").textContent = "Please contact support or try again later.";
+      document.getElementById("pollingIcon").textContent     = "⚠️";
+    }
+
+    if(status === "active") stopPolling(); // onProUnlocked() was already called inside checkUserAccess
+  }, 10000); // poll every 10 seconds
 }
 
-/* ── Also check on page load if already logged in ── */
+function stopPolling(){
+  if(_pollInterval){ clearInterval(_pollInterval); _pollInterval = null; }
+}
+
+/* ════════════════════════════════════════
+   SHOW POLLING BOX
+════════════════════════════════════════ */
+function showPollingBox(){
+  const box = document.getElementById("pollingBox");
+  box.style.display = "block";
+  document.getElementById("pollingIcon").textContent     = "⏳";
+  document.getElementById("pollingTitle").textContent    = "Waiting for admin verification…";
+  document.getElementById("pollingSubtitle").textContent = "We're checking every 10 seconds. Usually takes a few minutes.";
+}
+
+/* ════════════════════════════════════════
+   PRO UNLOCKED CELEBRATION
+════════════════════════════════════════ */
+function onProUnlocked(){
+  stopPolling();
+
+  // Update polling box to success
+  const box = document.getElementById("pollingBox");
+  box.style.background    = "#dcfce7";
+  box.style.borderColor   = "#86efac";
+  document.getElementById("pollingIcon").textContent     = "🎉";
+  document.getElementById("pollingTitle").textContent    = "Payment verified! Pro is now active.";
+  document.getElementById("pollingSubtitle").textContent = "All limits have been unlocked. Enjoy Pro!";
+  document.getElementById("pollingTitle").style.color    = "#16a34a";
+  box.classList.add("unlock-celebrate");
+
+  // After 2.5 s switch panel to active state
+  setTimeout(() => {
+    updateProUI("active");
+    updateStats();
+  }, 2500);
+}
+
+/* ════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════ */
+function showPayStatus(msg, type){
+  const el     = document.getElementById("payStatus");
+  el.textContent = msg;
+  el.className   = "pay-status" + (type ? " " + type : "");
+}
+
+/* ── Check access on page load if already logged in ── */
 window.addEventListener("load", function(){
   setTimeout(() => {
-    if(currentUser && currentUser.email){
-      checkUserAccess(currentUser.email);
-    }
+    if(currentUser && currentUser.email) checkUserAccess(currentUser.email);
   }, 1200);
 });
 </script>
