@@ -1211,287 +1211,6 @@ body.dark .tpl-preview { background: #1a2035; }
 }
 .qa-card.template-qa i { margin-bottom: 0; font-size: 16px; }
 .qa-card.template-qa span { font-size: 13px; color: var(--accent); }
-
-/* ============ PRO BADGE ============ */
-.pro-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: white;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 20px;
-  letter-spacing: 0.04em;
-  box-shadow: 0 1px 4px rgba(245,158,11,0.4);
-}
-
-.status-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.status-dot.active { background: #10b981; box-shadow: 0 0 0 2px rgba(16,185,129,0.25); }
-.status-dot.inactive { background: #94a3b8; }
-
-/* ============ PAYMENT PANEL ============ */
-.plan-toggle {
-  display: flex;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  margin: 14px 0 10px;
-}
-.plan-toggle button {
-  flex: 1;
-  padding: 9px 6px;
-  border: none;
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 13px;
-  font-family: inherit;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-.plan-toggle button.active {
-  background: var(--accent);
-  color: white;
-}
-.plan-price {
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--accent);
-  text-align: center;
-  margin: 8px 0 14px;
-  font-family: 'DM Mono', monospace;
-}
-.qr-wrap {
-  text-align: center;
-  margin: 10px 0;
-}
-.qr-wrap img {
-  width: 190px;
-  border-radius: 10px;
-  border: 2px solid var(--border);
-}
-.utr-input {
-  width: 100%;
-  padding: 9px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 13px;
-  font-family: inherit;
-  outline: none;
-  margin-bottom: 10px;
-  transition: border-color var(--transition);
-  box-sizing: border-box;
-}
-.utr-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-.pay-btn {
-  width: 100%;
-  padding: 11px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: var(--accent);
-  color: white;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background var(--transition);
-  margin-bottom: 8px;
-}
-.pay-btn:hover { background: var(--accent-hover); }
-.pay-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-.pay-status {
-  font-size: 13px;
-  text-align: center;
-  min-height: 20px;
-  margin-top: 4px;
-}
-.pay-status.success { color: var(--success); }
-.pay-status.error { color: var(--danger); }
-
-.pro-features-list {
-  list-style: none;
-  padding: 0; margin: 0 0 14px;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-.pro-features-list li {
-  padding: 5px 0;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.pro-features-list li:last-child { border-bottom: none; }
-.pro-features-list li i { color: var(--success); font-size: 11px; width: 14px; }
-
-.access-card {
-  background: var(--accent-light);
-  border: 1px solid var(--accent-border);
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
-  margin-bottom: 16px;
-  text-align: center;
-}
-.access-card .plan-name {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--accent);
-  margin-bottom: 4px;
-}
-.access-card .expiry-text {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-/* ============ FREE LIMIT MODAL ============ */
-#limitModal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.55);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 99998;
-  backdrop-filter: blur(4px);
-  padding: 20px;
-}
-#limitModal.open { display: flex; }
-
-#limitModalBox {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  width: 400px;
-  max-width: 94vw;
-  box-shadow: var(--shadow-lg);
-  overflow: hidden;
-  animation: fadeInUp 0.25s ease;
-}
-
-.limit-modal-top {
-  background: linear-gradient(135deg, #1e3a5f, #2563eb);
-  padding: 28px 28px 22px;
-  text-align: center;
-  color: white;
-}
-.limit-modal-top .limit-icon {
-  font-size: 36px;
-  margin-bottom: 10px;
-  display: block;
-}
-.limit-modal-top h3 {
-  margin: 0 0 6px;
-  font-size: 18px;
-  font-weight: 700;
-}
-.limit-modal-top p {
-  margin: 0;
-  font-size: 13px;
-  opacity: 0.85;
-  line-height: 1.5;
-}
-
-.limit-modal-body {
-  padding: 20px 24px 24px;
-}
-
-.limit-compare {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-.limit-col {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
-}
-.limit-col.pro-col {
-  border-color: var(--accent-border);
-  background: var(--accent-light);
-}
-.limit-col-title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-subtle);
-  margin-bottom: 8px;
-}
-.limit-col.pro-col .limit-col-title { color: var(--accent); }
-.limit-col-item {
-  font-size: 12.5px;
-  color: var(--text-muted);
-  padding: 3px 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.limit-col-item i { font-size: 10px; width: 12px; }
-.limit-col-item.crossed { text-decoration: line-through; opacity: 0.5; }
-.limit-col.pro-col .limit-col-item { color: var(--accent); }
-.limit-col.pro-col .limit-col-item i { color: var(--success); }
-
-.limit-upgrade-btn {
-  width: 100%;
-  padding: 12px;
-  background: var(--accent);
-  color: white;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 14px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background var(--transition);
-  margin-bottom: 8px;
-}
-.limit-upgrade-btn:hover { background: var(--accent-hover); }
-
-.limit-dismiss-btn {
-  width: 100%;
-  padding: 10px;
-  background: transparent;
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-.limit-dismiss-btn:hover { background: var(--surface-hover); color: var(--text); }
-
-/* ── Polling dots ── */
-@keyframes pollPulse {
-  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
-  40%            { opacity: 1;   transform: scale(1.2); }
-}
-.poll-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  display: inline-block;
-  animation: pollPulse 1.4s ease-in-out infinite;
-}
-
-/* ── Unlock celebration ── */
-@keyframes popIn {
-  0%   { transform: scale(0.5); opacity: 0; }
-  70%  { transform: scale(1.1); }
-  100% { transform: scale(1);   opacity: 1; }
-}
-.unlock-celebrate {
-  animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
-}
 </style>
 </head>
 <body>
@@ -1549,11 +1268,6 @@ body.dark .tpl-preview { background: #1a2035; }
     <button class="sidebar-btn" onclick="toggleGuidePanel()">
       <span class="btn-icon"><i class="fa fa-book-open"></i></span> User Guide
     </button>
-    <div class="sidebar-divider"></div>
-    <button class="sidebar-btn" id="upgradeBtn" onclick="togglePaymentPanel()" style="color:#d97706;font-weight:600;">
-      <span class="btn-icon"><i class="fa fa-crown" style="color:#f59e0b;"></i></span>
-      <span id="upgradeBtnLabel">⭐ Upgrade to Pro</span>
-    </button>
   </div>
 
   <!-- Google Sign In / User -->
@@ -1561,16 +1275,7 @@ body.dark .tpl-preview { background: #1a2035; }
     <div id="gSignInDiv"></div>
     <div id="userInfo">
       <img id="userPic" src="" alt="User">
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span id="userName"></span>
-          <span id="proBadge" style="display:none;" class="pro-badge"><i class="fa fa-crown" style="font-size:8px;"></i> PRO</span>
-        </div>
-        <div id="userAccessStatus" style="font-size:11px;color:var(--text-subtle);margin-top:1px;display:none;">
-          <span class="status-dot inactive" id="statusDot"></span>
-          <span id="statusText">Checking…</span>
-        </div>
-      </div>
+      <span id="userName"></span>
       <button class="sign-out-btn" onclick="signOut()">Sign out</button>
     </div>
   </div>
@@ -1604,26 +1309,26 @@ body.dark .tpl-preview { background: #1a2035; }
   <div class="main-content">
     <!-- Stats -->
     <div class="stats-row" id="statsRow">
-      <div class="stat-card" id="statCardProjects">
+      <div class="stat-card">
         <div class="stat-label">Projects</div>
         <div class="stat-value" id="statProjects">0</div>
-        <div class="stat-sub" id="statSubProjects">Active workspaces</div>
+        <div class="stat-sub">Active workspaces</div>
       </div>
-      <div class="stat-card" id="statCardBoards">
+      <div class="stat-card">
         <div class="stat-label">Boards</div>
         <div class="stat-value" id="statBoards">0</div>
-        <div class="stat-sub" id="statSubBoards">Total whiteboards</div>
+        <div class="stat-sub">Total whiteboards</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Trash</div>
         <div class="stat-value" id="statTrash">0</div>
         <div class="stat-sub">Items in bin</div>
       </div>
-      <div class="stat-card" id="statCardFolders">
-        <div class="stat-label">Folders</div>
-        <div class="stat-value" id="statFolders">0</div>
-        <div class="stat-sub" id="statSubFolders">Total folders</div>
-      </div>
+      <div class="stat-card">
+      <div class="stat-label">Folders</div>
+      <div class="stat-value" id="statFolders">0</div>
+      <div class="stat-sub">Total folders</div>
+   </div>
     </div>
 
     <!-- Welcome -->
@@ -1930,145 +1635,6 @@ body.dark .tpl-preview { background: #1a2035; }
   </div>
 </div>
 
-<!-- FREE LIMIT MODAL -->
-<div id="limitModal" onclick="if(event.target===this) closeLimitModal()">
-  <div id="limitModalBox">
-    <div class="limit-modal-top">
-      <span class="limit-icon">🔒</span>
-      <h3 id="limitModalTitle">Free Plan Limit Reached</h3>
-      <p id="limitModalDesc">You've reached the free plan limit. Upgrade to Pro for unlimited access.</p>
-    </div>
-    <div class="limit-modal-body">
-      <div class="limit-compare">
-        <div class="limit-col">
-          <div class="limit-col-title">Free Plan</div>
-          <div class="limit-col-item"><i class="fa fa-times" style="color:var(--danger)"></i> 1 Project</div>
-          <div class="limit-col-item"><i class="fa fa-times" style="color:var(--danger)"></i> 3 Folders</div>
-          <div class="limit-col-item"><i class="fa fa-times" style="color:var(--danger)"></i> 5 Boards</div>
-          <div class="limit-col-item crossed"><i class="fa fa-times" style="color:var(--danger)"></i> PDF / PNG Export</div>
-          <div class="limit-col-item crossed"><i class="fa fa-times" style="color:var(--danger)"></i> PPT &amp; Video</div>
-        </div>
-        <div class="limit-col pro-col">
-          <div class="limit-col-title">⭐ Pro Plan</div>
-          <div class="limit-col-item"><i class="fa fa-check"></i> Unlimited Projects</div>
-          <div class="limit-col-item"><i class="fa fa-check"></i> Unlimited Folders</div>
-          <div class="limit-col-item"><i class="fa fa-check"></i> Unlimited Boards</div>
-          <div class="limit-col-item"><i class="fa fa-check"></i> PDF / PNG Export</div>
-          <div class="limit-col-item"><i class="fa fa-check"></i> PPT &amp; Video</div>
-        </div>
-      </div>
-      <button class="limit-upgrade-btn" onclick="closeLimitModal(); togglePaymentPanel();">
-        <i class="fa fa-crown"></i> Upgrade to Pro — from ₹199/month
-      </button>
-      <button class="limit-dismiss-btn" onclick="closeLimitModal()">
-        Maybe later
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- PAYMENT PANEL -->
-<div id="paymentPanel" class="side-panel" style="width:360px;right:-400px;">
-  <div class="panel-header">
-    <div class="panel-header-icon" style="background:linear-gradient(135deg,#fef3c7,#fde68a);"><i class="fa fa-crown" style="color:#d97706;"></i></div>
-    <h2>Upgrade to Pro</h2>
-    <button class="panel-close" onclick="togglePaymentPanel()">×</button>
-  </div>
-  <div class="panel-body" id="paymentPanelBody">
-
-    <!-- Active Pro State (hidden by default) -->
-    <div id="proActiveCard" style="display:none;">
-      <div class="access-card">
-        <div style="font-size:36px;margin-bottom:6px;">🎉</div>
-        <div class="plan-name">You're on Pro!</div>
-        <div class="expiry-text" id="proExpiryText">Access active</div>
-      </div>
-      <ul class="pro-features-list">
-        <li><i class="fa fa-check"></i> Unlimited Boards &amp; Folders</li>
-        <li><i class="fa fa-check"></i> Unlimited Images &amp; Files</li>
-        <li><i class="fa fa-check"></i> All Graphs &amp; Shapes</li>
-        <li><i class="fa fa-check"></i> Unlimited PDF / PNG Export</li>
-        <li><i class="fa fa-check"></i> PPT &amp; Video Export</li>
-        <li><i class="fa fa-check"></i> 20 Version History</li>
-      </ul>
-      <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:10px;background:var(--surface);border-radius:var(--radius-sm);border:1px solid var(--border);">
-        <i class="fa fa-headset"></i> Need help? Contact us via the Contact panel.
-      </div>
-    </div>
-
-    <!-- Upgrade Form -->
-    <div id="proUpgradeForm">
-
-      <!-- STEP 1: Choose plan + QR -->
-      <div id="payStep1">
-        <div class="panel-section-label">Step 1 — Choose your plan</div>
-        <div class="plan-toggle">
-          <button type="button" id="planMonthlyBtn" class="active" onclick="selectPayPlan('monthly')">
-            Monthly &nbsp;<strong>₹199</strong>
-          </button>
-          <button type="button" id="planYearlyBtn" onclick="selectPayPlan('yearly')">
-            Yearly &nbsp;<strong>₹1999</strong>&nbsp;<span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:1px 5px;border-radius:8px;">Save 16%</span>
-          </button>
-        </div>
-
-        <div class="panel-section-label" style="margin-top:4px;">Step 2 — Scan &amp; Pay via UPI</div>
-        <div class="qr-wrap" id="qrWrap">
-          <a id="payUpiLink" target="_blank" title="Tap to open in GPay / PhonePe / any UPI app">
-            <img id="payQrImg" src="" alt="UPI QR Code">
-          </a>
-          <div style="font-size:11.5px;color:var(--text-muted);margin-top:8px;text-align:center;">
-            <i class="fa fa-mobile-alt"></i> Scan with GPay, PhonePe, Paytm or any UPI app<br>
-            <span style="font-size:11px;color:var(--text-subtle);">Or tap the QR to open directly in your UPI app</span>
-          </div>
-          <div style="margin-top:10px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;color:var(--text-muted);text-align:center;">
-            <i class="fa fa-user-circle" style="color:var(--accent)"></i>
-            &nbsp;Pay to: <strong style="color:var(--text);">Newtonian Academy</strong><br>
-            <span id="payAmountLabel" style="font-size:13px;font-weight:700;color:var(--accent);">₹199</span>
-          </div>
-        </div>
-
-        <button class="pay-btn" style="margin-top:14px;" onclick="goToStep2()">
-          <i class="fa fa-check-circle"></i> I've Paid — Enter Transaction ID
-        </button>
-      </div>
-
-      <!-- STEP 2: Enter UTR + polling -->
-      <div id="payStep2" style="display:none;">
-        <button onclick="goToStep1()" style="background:none;border:none;color:var(--accent);font-size:12.5px;font-family:inherit;cursor:pointer;padding:0 0 12px;display:flex;align-items:center;gap:5px;">
-          <i class="fa fa-arrow-left"></i> Back to QR
-        </button>
-
-        <div class="panel-section-label">Step 3 — Enter your UTR / Transaction ID</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.55;">
-          Find the <strong>12-digit UTR</strong> or transaction reference in your GPay / PhonePe transaction history after payment.
-        </div>
-        <input type="text" class="utr-input" id="payUtrInput"
-          placeholder="e.g. 424212345678"
-          maxlength="40"
-          oninput="document.getElementById('paySubmitBtn').disabled = this.value.trim().length < 6">
-
-        <button class="pay-btn" id="paySubmitBtn" onclick="submitPayment()" disabled>
-          <i class="fa fa-paper-plane"></i> Submit &amp; Activate
-        </button>
-        <div class="pay-status" id="payStatus"></div>
-
-        <!-- Polling state (hidden until UTR submitted) -->
-        <div id="pollingBox" style="display:none;margin-top:14px;padding:14px;background:var(--accent-light);border:1px solid var(--accent-border);border-radius:var(--radius-md);text-align:center;">
-          <div id="pollingIcon" style="font-size:26px;margin-bottom:6px;">⏳</div>
-          <div style="font-size:13px;font-weight:600;color:var(--accent);" id="pollingTitle">Waiting for admin verification…</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px;" id="pollingSubtitle">We're checking every 10 seconds. This usually takes a few minutes.</div>
-          <div style="margin-top:10px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--text-subtle);">
-            <span class="poll-dot"></span>
-            <span class="poll-dot" style="animation-delay:0.3s"></span>
-            <span class="poll-dot" style="animation-delay:0.6s"></span>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
 <!-- SECURITY PANEL (original structure preserved) -->
 <div id="securityPanel" style="
   position:fixed;
@@ -2182,11 +1748,6 @@ function loadUserData() {
   save();
   disableButtons(false);
   render();
-  // Check Pro access whenever user data loads (login or page reload)
-  if(currentUser && currentUser.email){
-    registerUserInSheet(currentUser);
-    checkUserAccess(currentUser.email);
-  }
 }
 
 function save(){
@@ -2202,43 +1763,8 @@ saveCloud();
 // ========== CORE FEATURES ==========
 function generateID(){return "id_"+Date.now()+"_"+Math.floor(Math.random()*1000);}
 
-/* ── Free plan limits ── */
-const FREE_LIMITS = { projects: 1, folders: 3, boards: 5 };
-
-function isProUser(){ return _userAccessStatus === "active"; }
-
-function showLimitModal(type){
-  const messages = {
-    project: {
-      title: "Project Limit Reached (1/1)",
-      desc:  "Free plan allows 1 project. Upgrade to Pro for unlimited projects, folders, and boards."
-    },
-    folder: {
-      title: "Folder Limit Reached (3/3)",
-      desc:  "Free plan allows 3 folders. Upgrade to Pro for unlimited folders and much more."
-    },
-    board: {
-      title: "Board Limit Reached (5/5)",
-      desc:  "Free plan allows 5 boards. Upgrade to Pro for unlimited boards, exports, and more."
-    }
-  };
-  const m = messages[type];
-  document.getElementById("limitModalTitle").textContent = m.title;
-  document.getElementById("limitModalDesc").textContent  = m.desc;
-  document.getElementById("limitModal").classList.add("open");
-}
-
-function closeLimitModal(){
-  document.getElementById("limitModal").classList.remove("open");
-}
-
 function createFolder(parentID=null){
   if(!currentUser){alert("Login required"); return;}
-
-  if(!isProUser() && data.folders.length >= FREE_LIMITS.folders){
-    showLimitModal("folder");
-    return;
-  }
 
   let parentName = "";
   if(parentID){
@@ -2256,11 +1782,6 @@ function createFolder(parentID=null){
 
 function createBoard(parentID=null){
   if(!currentUser){alert("Login required"); return;}
-
-  if(!isProUser() && data.boards.length >= FREE_LIMITS.boards){
-    showLimitModal("board");
-    return;
-  }
 
   let parentName = "";
   if(parentID){
@@ -2495,50 +2016,14 @@ function renderTrash() {
   });
 }
 
-/* ========== PANEL MANAGEMENT ========== */
-const ALL_PANELS = ["trashPanel","formPanel","userGuidePanel","contactPanel","paymentPanel"];
-
-function closeAllPanels(){
-  ALL_PANELS.forEach(id => {
-    const el = document.getElementById(id);
-    if(el) el.classList.remove("show");
-  });
-  document.getElementById("backdrop").classList.remove("show");
-}
-
-function openPanel(id, onOpen){
-  closeAllPanels();
-  document.getElementById(id).classList.add("show");
-  document.getElementById("backdrop").classList.add("show");
-  if(onOpen) onOpen();
-}
-
-function toggleTrash(){
-  const panel = document.getElementById("trashPanel");
-  if(panel.classList.contains("show")){ closeAllPanels(); return; }
-  openPanel("trashPanel", renderTrash);
-}
 function toggleFormPanel(){
-  const panel = document.getElementById("formPanel");
-  if(panel.classList.contains("show")){ closeAllPanels(); return; }
-  openPanel("formPanel");
+  document.getElementById("formPanel").classList.toggle("show");
 }
 function toggleGuidePanel(){
-  const panel = document.getElementById("userGuidePanel");
-  if(panel.classList.contains("show")){ closeAllPanels(); return; }
-  openPanel("userGuidePanel");
+  document.getElementById("userGuidePanel").classList.toggle("show");
 }
 function toggleContactPanel(){
-  const panel = document.getElementById("contactPanel");
-  if(panel.classList.contains("show")){ closeAllPanels(); return; }
-  openPanel("contactPanel");
-}
-function togglePaymentPanel(){
-  const panel = document.getElementById("paymentPanel");
-  if(panel.classList.contains("show")){ closeAllPanels(); return; }
-  openPanel("paymentPanel", () => {
-    if(currentUser) checkUserAccess(currentUser.email);
-  });
+  document.getElementById("contactPanel").classList.toggle("show");
 }
 </script>
 <script>
@@ -2636,11 +2121,6 @@ panel.style.display="flex";
 <script>
 function createProject(parentID = null) {
   if (!currentUser) { alert("Login required"); return; }
-
-  if(!isProUser() && data.projects.length >= FREE_LIMITS.projects){
-    showLimitModal("project");
-    return;
-  }
 
   let name = prompt("Project Name:", "Untitled Project");
   if (!name) return;
@@ -2811,300 +2291,19 @@ async function loadCloud() {
 </script>
 <script>
 function updateStats(){
-  const pro = isProUser();
 
-  const pCount = data.projects.length;
-  const bCount = data.boards.length;
-  const fCount = data.folders.length;
+  document.getElementById("statProjects").textContent = data.projects.length;
 
-  document.getElementById("statProjects").textContent = pCount;
-  document.getElementById("statBoards").textContent   = bCount;
-  document.getElementById("statTrash").textContent    = data.trash.length;
+  document.getElementById("statBoards").textContent = data.boards.length;
+
+  document.getElementById("statTrash").textContent = data.trash.length;
 
   const folderStat = document.getElementById("statFolders");
-  if(folderStat) folderStat.textContent = fCount;
-
-  // Show limit sub-labels for free users
-  const subP = document.getElementById("statSubProjects");
-  const subB = document.getElementById("statSubBoards");
-  const subF = document.getElementById("statSubFolders");
-
-  if(subP) subP.textContent = pro ? "Unlimited"   : `${pCount} / ${FREE_LIMITS.projects} free`;
-  if(subB) subB.textContent = pro ? "Unlimited"   : `${bCount} / ${FREE_LIMITS.boards} free`;
-  if(subF) subF.textContent = pro ? "Unlimited"   : `${fCount} / ${FREE_LIMITS.folders} free`;
-
-  // Colour stat cards red when at limit
-  const cardP = document.getElementById("statCardProjects");
-  const cardB = document.getElementById("statCardBoards");
-  const cardFo = document.getElementById("statCardFolders");
-  if(cardP)  cardP.style.borderColor  = (!pro && pCount >= FREE_LIMITS.projects)  ? "var(--danger)" : "";
-  if(cardB)  cardB.style.borderColor  = (!pro && bCount >= FREE_LIMITS.boards)    ? "var(--danger)" : "";
-  if(cardFo) cardFo.style.borderColor = (!pro && fCount >= FREE_LIMITS.folders)   ? "var(--danger)" : "";
-}
-</script>
-<script>
-/* ================================================================
-   PAYMENT + PRO ACCESS SYSTEM
-   Flow: Plan select → QR scan → UTR submit → auto-poll → unlock
-================================================================ */
-
-const PAYMENT_API_URL =
-  "https://script.google.com/macros/s/AKfycbxnQ6G6U40leGl1dRQhiXi0K9cavaWRpbGnCSbLCK-4khJOrDM85ohD6id-o58nJVCR/exec";
-
-let _selectedPayPlan  = "monthly";
-let _userAccessStatus = "unknown"; // "active" | "inactive" | "not_found" | "unknown"
-let _pollInterval     = null;      // setInterval handle for access polling
-let _pollCount        = 0;         // how many polls done so far
-
-const PAY_PLANS = {
-  monthly: { price: 199,  label: "₹199 / month" },
-  yearly:  { price: 1999, label: "₹1999 / year"  }
-};
-
-/* ── Init QR on load ── */
-window.addEventListener("load", function(){ selectPayPlan("monthly"); });
-
-/* ════════════════════════════════════════
-   PLAN TOGGLE
-════════════════════════════════════════ */
-function selectPayPlan(type){
-  _selectedPayPlan = type;
-  document.getElementById("planMonthlyBtn").classList.toggle("active", type === "monthly");
-  document.getElementById("planYearlyBtn").classList.toggle("active",  type === "yearly");
-
-  const amount = PAY_PLANS[type].price;
-  const upi    = `upi://pay?pa=banerjeearnab.live@oksbi&pn=Newtonian Academy&am=${amount}&cu=INR`;
-
-  document.getElementById("payUpiLink").href = upi;
-  document.getElementById("payQrImg").src    =
-    `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upi)}`;
-  document.getElementById("payAmountLabel").textContent = "₹" + amount;
-}
-
-/* ════════════════════════════════════════
-   STEP NAVIGATION
-════════════════════════════════════════ */
-function goToStep2(){
-  document.getElementById("payStep1").style.display = "none";
-  document.getElementById("payStep2").style.display = "block";
-  document.getElementById("payUtrInput").focus();
-}
-
-function goToStep1(){
-  document.getElementById("payStep2").style.display = "none";
-  document.getElementById("payStep1").style.display = "block";
-  stopPolling();
-}
-
-/* ════════════════════════════════════════
-   PANEL OPEN / CLOSE
-════════════════════════════════════════ */
-function togglePaymentPanel(){
-  const panel  = document.getElementById("paymentPanel");
-  const isOpen = panel.classList.contains("show");
-  closeAllPanels();
-  if(!isOpen){
-    panel.classList.add("show");
-    document.getElementById("backdrop").classList.add("show");
-    if(currentUser) checkUserAccess(currentUser.email);
-  }
-}
-
-/* ════════════════════════════════════════
-   REGISTER USER (on login)
-════════════════════════════════════════ */
-function registerUserInSheet(user){
-  fetch(PAYMENT_API_URL, {
-    method:  "POST",
-    mode:    "no-cors",
-    headers: { "Content-Type": "text/plain" },
-    body:    JSON.stringify({ action: "register", email: user.email, name: user.name })
-  }).catch(err => console.warn("register error:", err));
-}
-
-/* ════════════════════════════════════════
-   CHECK ACCESS
-════════════════════════════════════════ */
-async function checkUserAccess(email){
-  try {
-    const res  = await fetch(PAYMENT_API_URL, {
-      method:  "POST",
-      headers: { "Content-Type": "text/plain" },
-      body:    JSON.stringify({ action: "checkAccess", email })
-    });
-    const json = await res.json();
-    const wasInactive = _userAccessStatus !== "active";
-    _userAccessStatus = json.status;
-    updateProUI(json.status);
-
-    // If polling and now active → celebrate + stop
-    if(wasInactive && json.status === "active" && _pollInterval){
-      onProUnlocked();
-    }
-    return json.status;
-  } catch(e){
-    console.warn("checkAccess error:", e);
-    return null;
-  }
-}
-
-/* ════════════════════════════════════════
-   UPDATE PRO UI
-════════════════════════════════════════ */
-function updateProUI(status){
-  const badge        = document.getElementById("proBadge");
-  const statusDiv    = document.getElementById("userAccessStatus");
-  const statusDot    = document.getElementById("statusDot");
-  const statusText   = document.getElementById("statusText");
-  const upgradeLabel = document.getElementById("upgradeBtnLabel");
-  const activeCard   = document.getElementById("proActiveCard");
-  const upgradeForm  = document.getElementById("proUpgradeForm");
-
-  statusDiv.style.cssText = "display:flex;align-items:center;gap:5px;";
-
-  if(status === "active"){
-    badge.style.display       = "inline-flex";
-    statusDot.className       = "status-dot active";
-    statusText.textContent    = "Pro Active";
-    upgradeLabel.textContent  = "✨ Pro Active";
-    activeCard.style.display  = "block";
-    upgradeForm.style.display = "none";
-  } else {
-    badge.style.display       = "none";
-    statusDot.className       = "status-dot inactive";
-    statusText.textContent    = status === "not_found" ? "Not registered" : "Free plan";
-    upgradeLabel.textContent  = "⭐ Upgrade to Pro";
-    activeCard.style.display  = "none";
-    upgradeForm.style.display = "block";
-  }
-  updateStats(); // refresh limit indicators
-}
-
-/* ════════════════════════════════════════
-   SUBMIT UTR
-════════════════════════════════════════ */
-async function submitPayment(){
-  if(!currentUser){
-    showPayStatus("Please sign in before upgrading.", "error"); return;
-  }
-  const utr = (document.getElementById("payUtrInput").value || "").trim();
-  if(utr.length < 6){
-    showPayStatus("Please enter a valid UTR / Transaction ID (min 6 chars).", "error"); return;
+  if(folderStat){
+    folderStat.textContent = data.folders.length;
   }
 
-  const btn = document.getElementById("paySubmitBtn");
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Submitting…';
-  showPayStatus("", "");
-
-  try {
-    const res  = await fetch(PAYMENT_API_URL, {
-      method:  "POST",
-      headers: { "Content-Type": "text/plain" },
-      body:    JSON.stringify({
-        action: "submitPayment",
-        email:  currentUser.email,
-        amount: PAY_PLANS[_selectedPayPlan].price,
-        plan:   _selectedPayPlan,
-        utr
-      })
-    });
-    const json = await res.json();
-
-    if(json.status === "submitted"){
-      btn.innerHTML = '<i class="fa fa-check"></i> Submitted — Awaiting Verification';
-      showPayStatus("", "");
-      showPollingBox();
-      startPolling(currentUser.email);
-    } else if(json.status === "invalid_utr"){
-      showPayStatus("❌ Invalid UTR. Must be at least 6 characters.", "error");
-      btn.disabled  = false;
-      btn.innerHTML = '<i class="fa fa-paper-plane"></i> Submit &amp; Activate';
-    } else {
-      throw new Error(json.status);
-    }
-  } catch(e){
-    showPayStatus("❌ Submission failed. Please try again.", "error");
-    btn.disabled  = false;
-    btn.innerHTML = '<i class="fa fa-paper-plane"></i> Submit &amp; Activate';
-  }
 }
-
-/* ════════════════════════════════════════
-   POLLING — check every 10 s, stop after 30 min
-════════════════════════════════════════ */
-function startPolling(email){
-  stopPolling();
-  _pollCount = 0;
-  _pollInterval = setInterval(async () => {
-    _pollCount++;
-    const status = await checkUserAccess(email);
-
-    // Stop after 30 min (180 polls × 10 s)
-    if(_pollCount >= 180){
-      stopPolling();
-      document.getElementById("pollingTitle").textContent    = "Verification is taking longer than usual.";
-      document.getElementById("pollingSubtitle").textContent = "Please contact support or try again later.";
-      document.getElementById("pollingIcon").textContent     = "⚠️";
-    }
-
-    if(status === "active") stopPolling(); // onProUnlocked() was already called inside checkUserAccess
-  }, 10000); // poll every 10 seconds
-}
-
-function stopPolling(){
-  if(_pollInterval){ clearInterval(_pollInterval); _pollInterval = null; }
-}
-
-/* ════════════════════════════════════════
-   SHOW POLLING BOX
-════════════════════════════════════════ */
-function showPollingBox(){
-  const box = document.getElementById("pollingBox");
-  box.style.display = "block";
-  document.getElementById("pollingIcon").textContent     = "⏳";
-  document.getElementById("pollingTitle").textContent    = "Waiting for admin verification…";
-  document.getElementById("pollingSubtitle").textContent = "We're checking every 10 seconds. Usually takes a few minutes.";
-}
-
-/* ════════════════════════════════════════
-   PRO UNLOCKED CELEBRATION
-════════════════════════════════════════ */
-function onProUnlocked(){
-  stopPolling();
-
-  // Update polling box to success
-  const box = document.getElementById("pollingBox");
-  box.style.background    = "#dcfce7";
-  box.style.borderColor   = "#86efac";
-  document.getElementById("pollingIcon").textContent     = "🎉";
-  document.getElementById("pollingTitle").textContent    = "Payment verified! Pro is now active.";
-  document.getElementById("pollingSubtitle").textContent = "All limits have been unlocked. Enjoy Pro!";
-  document.getElementById("pollingTitle").style.color    = "#16a34a";
-  box.classList.add("unlock-celebrate");
-
-  // After 2.5 s switch panel to active state
-  setTimeout(() => {
-    updateProUI("active");
-    updateStats();
-  }, 2500);
-}
-
-/* ════════════════════════════════════════
-   HELPERS
-════════════════════════════════════════ */
-function showPayStatus(msg, type){
-  const el     = document.getElementById("payStatus");
-  el.textContent = msg;
-  el.className   = "pay-status" + (type ? " " + type : "");
-}
-
-/* ── Check access on page load if already logged in ── */
-window.addEventListener("load", function(){
-  setTimeout(() => {
-    if(currentUser && currentUser.email) checkUserAccess(currentUser.email);
-  }, 1200);
-});
 </script>
 <!-- ===== FIRST-TIME WELCOME MODAL ===== -->
 <div id="welcomeOverlay" style="
@@ -3917,12 +3116,6 @@ function updatePreviewPanel(tpl) {
 /* ── Create board from template ── */
 function createBoardFromTemplate() {
   if (!currentUser) { alert("Login required"); return; }
-
-  if(!isProUser() && data.boards.length >= FREE_LIMITS.boards){
-    showLimitModal("board");
-    return;
-  }
-
   if (!_selectedTemplate) {
     // Shake the grid to indicate selection needed
     const grid = document.getElementById("tplGrid");
