@@ -1970,6 +1970,11 @@ function loadUserData() {
   save();
   disableButtons(false);
   render();
+  // Check Pro access whenever user data loads (login or page reload)
+  if(currentUser && currentUser.email){
+    registerUserInSheet(currentUser);
+    checkUserAccess(currentUser.email);
+  }
 }
 
 function save(){
@@ -2238,27 +2243,52 @@ function renderTrash() {
   });
 }
 
-function toggleFormPanel(){
-  document.getElementById("formPanel").classList.toggle("show");
-}
-function toggleGuidePanel(){
-  document.getElementById("userGuidePanel").classList.toggle("show");
-}
-function toggleContactPanel(){
-  document.getElementById("contactPanel").classList.toggle("show");
-}
-</script>
-<script>
-// Close all side panels including payment panel
-const _origCloseAllPanels = window.closeAllPanels;
-window.closeAllPanels = function(){
-  ["trashPanel","formPanel","userGuidePanel","contactPanel","paymentPanel"].forEach(id => {
+/* ========== PANEL MANAGEMENT ========== */
+const ALL_PANELS = ["trashPanel","formPanel","userGuidePanel","contactPanel","paymentPanel"];
+
+function closeAllPanels(){
+  ALL_PANELS.forEach(id => {
     const el = document.getElementById(id);
     if(el) el.classList.remove("show");
   });
-  const bd = document.getElementById("backdrop");
-  if(bd) bd.classList.remove("show");
-};
+  document.getElementById("backdrop").classList.remove("show");
+}
+
+function openPanel(id, onOpen){
+  closeAllPanels();
+  document.getElementById(id).classList.add("show");
+  document.getElementById("backdrop").classList.add("show");
+  if(onOpen) onOpen();
+}
+
+function toggleTrash(){
+  const panel = document.getElementById("trashPanel");
+  if(panel.classList.contains("show")){ closeAllPanels(); return; }
+  openPanel("trashPanel", renderTrash);
+}
+function toggleFormPanel(){
+  const panel = document.getElementById("formPanel");
+  if(panel.classList.contains("show")){ closeAllPanels(); return; }
+  openPanel("formPanel");
+}
+function toggleGuidePanel(){
+  const panel = document.getElementById("userGuidePanel");
+  if(panel.classList.contains("show")){ closeAllPanels(); return; }
+  openPanel("userGuidePanel");
+}
+function toggleContactPanel(){
+  const panel = document.getElementById("contactPanel");
+  if(panel.classList.contains("show")){ closeAllPanels(); return; }
+  openPanel("contactPanel");
+}
+function togglePaymentPanel(){
+  const panel = document.getElementById("paymentPanel");
+  if(panel.classList.contains("show")){ closeAllPanels(); return; }
+  openPanel("paymentPanel", () => {
+    if(currentUser) checkUserAccess(currentUser.email);
+  });
+}
+</script>
 <script>
 if (location.pathname.endsWith(".html")) {
   const cleanURL = location.pathname.replace(".html", "");
@@ -2546,7 +2576,7 @@ function updateStats(){
 ================================================================ */
 
 const PAYMENT_API_URL =
-  "https://script.google.com/macros/s/AKfycbzCFwbgeUYQLLceYOOtabpS4ckH36MD1BsxsbfZ_jroLpx3F8MEWiEAeN-Qev4k0wY/exec";
+  "https://script.google.com/macros/s/AKfycbzgkP9IwqFAJNB22yJlUavGLAkmHWrEgnvy0E0pTxIx0k8WqkRSw_2NGV_95m7x1kVI/exec";
 
 let _selectedPayPlan = "monthly";
 let _userAccessStatus = "unknown"; // "active" | "inactive" | "not_found" | "unknown"
@@ -2700,19 +2730,6 @@ function showPayStatus(msg, type){
   el.className = "pay-status" + (type ? " " + type : "");
 }
 
-/* ── Hook into existing login flow ── */
-const _origHandleCredential = handleCredentialResponse;
-handleCredentialResponse = function(response){
-  _origHandleCredential(response);
-  // After login: register & check access
-  setTimeout(() => {
-    if(currentUser){
-      registerUserInSheet(currentUser);
-      checkUserAccess(currentUser.email);
-    }
-  }, 800);
-};
-
 /* ── Also check on page load if already logged in ── */
 window.addEventListener("load", function(){
   setTimeout(() => {
@@ -2721,6 +2738,7 @@ window.addEventListener("load", function(){
     }
   }, 1200);
 });
+</script>
 <!-- ===== FIRST-TIME WELCOME MODAL ===== -->
 <div id="welcomeOverlay" style="
   position:fixed;inset:0;background:rgba(0,0,0,0.55);
