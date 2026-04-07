@@ -1211,6 +1211,145 @@ body.dark .tpl-preview { background: #1a2035; }
 }
 .qa-card.template-qa i { margin-bottom: 0; font-size: 16px; }
 .qa-card.template-qa span { font-size: 13px; color: var(--accent); }
+
+/* ============ PRO BADGE ============ */
+.pro-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  letter-spacing: 0.04em;
+  box-shadow: 0 1px 4px rgba(245,158,11,0.4);
+}
+
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot.active { background: #10b981; box-shadow: 0 0 0 2px rgba(16,185,129,0.25); }
+.status-dot.inactive { background: #94a3b8; }
+
+/* ============ PAYMENT PANEL ============ */
+.plan-toggle {
+  display: flex;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  margin: 14px 0 10px;
+}
+.plan-toggle button {
+  flex: 1;
+  padding: 9px 6px;
+  border: none;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.plan-toggle button.active {
+  background: var(--accent);
+  color: white;
+}
+.plan-price {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--accent);
+  text-align: center;
+  margin: 8px 0 14px;
+  font-family: 'DM Mono', monospace;
+}
+.qr-wrap {
+  text-align: center;
+  margin: 10px 0;
+}
+.qr-wrap img {
+  width: 190px;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+}
+.utr-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  margin-bottom: 10px;
+  transition: border-color var(--transition);
+  box-sizing: border-box;
+}
+.utr-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+.pay-btn {
+  width: 100%;
+  padding: 11px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--transition);
+  margin-bottom: 8px;
+}
+.pay-btn:hover { background: var(--accent-hover); }
+.pay-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.pay-status {
+  font-size: 13px;
+  text-align: center;
+  min-height: 20px;
+  margin-top: 4px;
+}
+.pay-status.success { color: var(--success); }
+.pay-status.error { color: var(--danger); }
+
+.pro-features-list {
+  list-style: none;
+  padding: 0; margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.pro-features-list li {
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pro-features-list li:last-child { border-bottom: none; }
+.pro-features-list li i { color: var(--success); font-size: 11px; width: 14px; }
+
+.access-card {
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.access-card .plan-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.access-card .expiry-text {
+  font-size: 12px;
+  color: var(--text-muted);
+}
 </style>
 </head>
 <body>
@@ -1268,6 +1407,11 @@ body.dark .tpl-preview { background: #1a2035; }
     <button class="sidebar-btn" onclick="toggleGuidePanel()">
       <span class="btn-icon"><i class="fa fa-book-open"></i></span> User Guide
     </button>
+    <div class="sidebar-divider"></div>
+    <button class="sidebar-btn" id="upgradeBtn" onclick="togglePaymentPanel()" style="color:#d97706;font-weight:600;">
+      <span class="btn-icon"><i class="fa fa-crown" style="color:#f59e0b;"></i></span>
+      <span id="upgradeBtnLabel">⭐ Upgrade to Pro</span>
+    </button>
   </div>
 
   <!-- Google Sign In / User -->
@@ -1275,7 +1419,16 @@ body.dark .tpl-preview { background: #1a2035; }
     <div id="gSignInDiv"></div>
     <div id="userInfo">
       <img id="userPic" src="" alt="User">
-      <span id="userName"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span id="userName"></span>
+          <span id="proBadge" style="display:none;" class="pro-badge"><i class="fa fa-crown" style="font-size:8px;"></i> PRO</span>
+        </div>
+        <div id="userAccessStatus" style="font-size:11px;color:var(--text-subtle);margin-top:1px;display:none;">
+          <span class="status-dot inactive" id="statusDot"></span>
+          <span id="statusText">Checking…</span>
+        </div>
+      </div>
       <button class="sign-out-btn" onclick="signOut()">Sign out</button>
     </div>
   </div>
@@ -1632,6 +1785,75 @@ body.dark .tpl-preview { background: #1a2035; }
         <i class="fa fa-arrow-right"></i> Open Board
       </button>
     </div>
+  </div>
+</div>
+
+<!-- PAYMENT PANEL -->
+<div id="paymentPanel" class="side-panel" style="width:360px;right:-400px;">
+  <div class="panel-header">
+    <div class="panel-header-icon" style="background:linear-gradient(135deg,#fef3c7,#fde68a);"><i class="fa fa-crown" style="color:#d97706;"></i></div>
+    <h2>Upgrade to Pro</h2>
+    <button class="panel-close" onclick="togglePaymentPanel()">×</button>
+  </div>
+  <div class="panel-body" id="paymentPanelBody">
+
+    <!-- Active Pro State (hidden by default) -->
+    <div id="proActiveCard" style="display:none;">
+      <div class="access-card">
+        <div style="font-size:28px;margin-bottom:6px;">🎉</div>
+        <div class="plan-name">You're on Pro!</div>
+        <div class="expiry-text" id="proExpiryText">Access active</div>
+      </div>
+      <ul class="pro-features-list">
+        <li><i class="fa fa-check"></i> Unlimited Boards &amp; Folders</li>
+        <li><i class="fa fa-check"></i> Unlimited Images &amp; Files</li>
+        <li><i class="fa fa-check"></i> All Graphs &amp; Shapes</li>
+        <li><i class="fa fa-check"></i> Unlimited PDF / PNG Export</li>
+        <li><i class="fa fa-check"></i> PPT &amp; Video Export</li>
+        <li><i class="fa fa-check"></i> 20 Version History</li>
+      </ul>
+      <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:10px;background:var(--surface);border-radius:var(--radius-sm);border:1px solid var(--border);">
+        <i class="fa fa-headset"></i> Need help? Contact us via the Contact panel.
+      </div>
+    </div>
+
+    <!-- Upgrade Form (shown by default) -->
+    <div id="proUpgradeForm">
+      <div class="panel-section-label">Choose Plan</div>
+      <div class="plan-toggle">
+        <button type="button" id="planMonthlyBtn" class="active" onclick="selectPayPlan('monthly')">Monthly</button>
+        <button type="button" id="planYearlyBtn" onclick="selectPayPlan('yearly')">Yearly <span style="font-size:10px;opacity:0.8;">save 16%</span></button>
+      </div>
+      <div class="plan-price" id="payPlanPrice">₹199 / month</div>
+
+      <div class="panel-section-label">What you get</div>
+      <ul class="pro-features-list">
+        <li><i class="fa fa-check"></i> Unlimited Boards &amp; Folders</li>
+        <li><i class="fa fa-check"></i> Unlimited Images &amp; Files</li>
+        <li><i class="fa fa-check"></i> All Graphs &amp; Shapes</li>
+        <li><i class="fa fa-check"></i> Unlimited PDF / PNG Export</li>
+        <li><i class="fa fa-check"></i> PPT &amp; Video Export</li>
+        <li><i class="fa fa-check"></i> 20 Version History</li>
+      </ul>
+
+      <div class="panel-section-label">Pay via UPI / GPay</div>
+      <div class="qr-wrap">
+        <a id="payUpiLink" target="_blank">
+          <img id="payQrImg" src="" alt="UPI QR Code">
+        </a>
+      </div>
+
+      <div class="panel-section-label" style="margin-top:14px;">Enter UTR / Transaction ID</div>
+      <input type="text" class="utr-input" id="payUtrInput" placeholder="e.g. 424212345678 (min 6 chars)" maxlength="40">
+      <button class="pay-btn" id="paySubmitBtn" onclick="submitPayment()">
+        <i class="fa fa-paper-plane"></i> I've Paid — Submit UTR
+      </button>
+      <div class="pay-status" id="payStatus"></div>
+      <div style="font-size:11.5px;color:var(--text-subtle);text-align:center;margin-top:8px;">
+        <i class="fa fa-clock"></i> Access unlocks after manual verification (usually within a few hours)
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -2027,6 +2249,17 @@ function toggleContactPanel(){
 }
 </script>
 <script>
+// Close all side panels including payment panel
+const _origCloseAllPanels = window.closeAllPanels;
+window.closeAllPanels = function(){
+  ["trashPanel","formPanel","userGuidePanel","contactPanel","paymentPanel"].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.classList.remove("show");
+  });
+  const bd = document.getElementById("backdrop");
+  if(bd) bd.classList.remove("show");
+};
+<script>
 if (location.pathname.endsWith(".html")) {
   const cleanURL = location.pathname.replace(".html", "");
   window.history.replaceState({}, "", cleanURL);
@@ -2305,6 +2538,189 @@ function updateStats(){
 
 }
 </script>
+<script>
+/* ================================================================
+   PAYMENT + PRO ACCESS SYSTEM
+   Integrates with Google Apps Script backend (backend.gs)
+   API actions: register, checkAccess, submitPayment
+================================================================ */
+
+const PAYMENT_API_URL =
+  "https://script.google.com/macros/s/AKfycbzCFwbgeUYQLLceYOOtabpS4ckH36MD1BsxsbfZ_jroLpx3F8MEWiEAeN-Qev4k0wY/exec";
+
+let _selectedPayPlan = "monthly";
+let _userAccessStatus = "unknown"; // "active" | "inactive" | "not_found" | "unknown"
+
+const PAY_PLANS = {
+  monthly: { price: 199, label: "₹199 / month" },
+  yearly:  { price: 1999, label: "₹1999 / year" }
+};
+
+/* ── Init QR on page load ── */
+window.addEventListener("load", function(){
+  selectPayPlan("monthly");
+});
+
+/* ── Plan toggle ── */
+function selectPayPlan(type){
+  _selectedPayPlan = type;
+  document.getElementById("planMonthlyBtn").classList.toggle("active", type === "monthly");
+  document.getElementById("planYearlyBtn").classList.toggle("active",  type === "yearly");
+  document.getElementById("payPlanPrice").textContent = PAY_PLANS[type].label;
+
+  const amount = PAY_PLANS[type].price;
+  const upi = `upi://pay?pa=banerjeearnab.live@oksbi&pn=Newtonian Academy&am=${amount}&cu=INR`;
+  document.getElementById("payUpiLink").href = upi;
+  document.getElementById("payQrImg").src =
+    `https://api.qrserver.com/v1/create-qr-code/?size=190x190&data=${encodeURIComponent(upi)}`;
+}
+
+/* ── Panel open/close ── */
+function togglePaymentPanel(){
+  const panel = document.getElementById("paymentPanel");
+  const backdrop = document.getElementById("backdrop");
+  const isOpen = panel.classList.contains("show");
+  closeAllPanels();
+  if(!isOpen){
+    panel.classList.add("show");
+    backdrop.classList.add("show");
+    // Refresh access state when opening
+    if(currentUser) checkUserAccess(currentUser.email);
+  }
+}
+
+/* ── Register user in sheet on first login ── */
+function registerUserInSheet(user){
+  fetch(PAYMENT_API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify({ action: "register", email: user.email, name: user.name })
+  }).catch(err => console.warn("register error:", err));
+}
+
+/* ── Check access from sheet ── */
+async function checkUserAccess(email){
+  try {
+    const res = await fetch(PAYMENT_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ action: "checkAccess", email })
+    });
+    const json = await res.json();
+    _userAccessStatus = json.status; // "active" | "inactive" | "not_found"
+    updateProUI(json.status);
+  } catch(e){
+    console.warn("checkAccess error:", e);
+  }
+}
+
+/* ── Update UI based on access status ── */
+function updateProUI(status){
+  const badge       = document.getElementById("proBadge");
+  const statusDiv   = document.getElementById("userAccessStatus");
+  const statusDot   = document.getElementById("statusDot");
+  const statusText  = document.getElementById("statusText");
+  const upgradeLabel= document.getElementById("upgradeBtnLabel");
+  const activeCard  = document.getElementById("proActiveCard");
+  const upgradeForm = document.getElementById("proUpgradeForm");
+
+  statusDiv.style.display = "flex";
+  statusDiv.style.alignItems = "center";
+  statusDiv.style.gap = "5px";
+
+  if(status === "active"){
+    badge.style.display = "inline-flex";
+    statusDot.className = "status-dot active";
+    statusText.textContent = "Pro Active";
+    upgradeLabel.textContent = "✨ Pro Active";
+    activeCard.style.display = "block";
+    upgradeForm.style.display = "none";
+  } else {
+    badge.style.display = "none";
+    statusDot.className = "status-dot inactive";
+    statusText.textContent = status === "not_found" ? "Not registered" : "Free plan";
+    upgradeLabel.textContent = "⭐ Upgrade to Pro";
+    activeCard.style.display = "none";
+    upgradeForm.style.display = "block";
+  }
+}
+
+/* ── Submit payment ── */
+async function submitPayment(){
+  if(!currentUser){
+    showPayStatus("Please sign in before upgrading.", "error");
+    return;
+  }
+  const utr = (document.getElementById("payUtrInput").value || "").trim();
+  if(utr.length < 6){
+    showPayStatus("Please enter a valid UTR / Transaction ID (min 6 chars).", "error");
+    return;
+  }
+
+  const btn = document.getElementById("paySubmitBtn");
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Submitting…';
+  showPayStatus("", "");
+
+  try {
+    const res = await fetch(PAYMENT_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({
+        action: "submitPayment",
+        email: currentUser.email,
+        amount: PAY_PLANS[_selectedPayPlan].price,
+        plan: _selectedPayPlan,
+        utr
+      })
+    });
+    const json = await res.json();
+
+    if(json.status === "submitted"){
+      showPayStatus("✅ Payment submitted! Access unlocks after admin verification.", "success");
+      btn.innerHTML = '<i class="fa fa-check"></i> Submitted';
+    } else if(json.status === "invalid_utr"){
+      showPayStatus("❌ Invalid UTR. Please enter at least 6 characters.", "error");
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-paper-plane"></i> I\'ve Paid — Submit UTR';
+    } else {
+      throw new Error(json.status);
+    }
+  } catch(e){
+    showPayStatus("❌ Submission failed. Please try again.", "error");
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa fa-paper-plane"></i> I\'ve Paid — Submit UTR';
+  }
+}
+
+function showPayStatus(msg, type){
+  const el = document.getElementById("payStatus");
+  el.textContent = msg;
+  el.className = "pay-status" + (type ? " " + type : "");
+}
+
+/* ── Hook into existing login flow ── */
+const _origHandleCredential = handleCredentialResponse;
+handleCredentialResponse = function(response){
+  _origHandleCredential(response);
+  // After login: register & check access
+  setTimeout(() => {
+    if(currentUser){
+      registerUserInSheet(currentUser);
+      checkUserAccess(currentUser.email);
+    }
+  }, 800);
+};
+
+/* ── Also check on page load if already logged in ── */
+window.addEventListener("load", function(){
+  setTimeout(() => {
+    if(currentUser && currentUser.email){
+      checkUserAccess(currentUser.email);
+    }
+  }, 1200);
+});
 <!-- ===== FIRST-TIME WELCOME MODAL ===== -->
 <div id="welcomeOverlay" style="
   position:fixed;inset:0;background:rgba(0,0,0,0.55);
