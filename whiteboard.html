@@ -945,9 +945,73 @@ canvas {
 }
 
 /* =============================================
-   TOOLTIP
+   PRO LIMIT MODAL (whiteboard)
    ============================================= */
-[title] { position: relative; }
+#wbLimitOverlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: none; align-items: center; justify-content: center;
+  z-index: 999990; backdrop-filter: blur(6px);
+  padding: 16px;
+}
+#wbLimitOverlay.open { display: flex; }
+#wbLimitBox {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-lg);
+  width: 420px; max-width: 96vw;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: dropIn 0.22s var(--ease);
+}
+.wblimit-header {
+  background: linear-gradient(135deg,#1e1b4b,#4f46e5);
+  padding: 24px 24px 18px;
+  text-align: center; color: white;
+}
+.wblimit-header .wbl-icon { font-size: 34px; margin-bottom: 8px; }
+.wblimit-header h3 { margin: 0 0 5px; font-size: 17px; font-weight: 700; }
+.wblimit-header p  { margin: 0; font-size: 12.5px; opacity: 0.82; line-height: 1.5; }
+.wblimit-body { padding: 20px 22px 22px; }
+.wblimit-compare {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; margin-bottom: 16px;
+}
+.wblimit-col {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  font-size: 12px; color: var(--text-secondary);
+}
+.wblimit-col.pro { border-color: var(--accent); background: rgba(79,125,255,0.08); }
+.wblimit-col-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--text-dim); margin-bottom: 7px;
+}
+.wblimit-col.pro .wblimit-col-title { color: var(--accent); }
+.wblimit-row { padding: 3px 0; display: flex; align-items: center; gap: 6px; }
+.wblimit-row i { font-size: 10px; width: 12px; }
+.wblimit-row.crossed { opacity: 0.4; text-decoration: line-through; }
+.wblimit-col.pro .wblimit-row { color: var(--accent); }
+.wblimit-col.pro .wblimit-row i { color: var(--success); }
+.wbl-upgrade-btn {
+  width: 100%; padding: 12px;
+  background: var(--accent); color: white;
+  border: none; border-radius: var(--radius-sm);
+  font-size: 13.5px; font-weight: 600;
+  font-family: var(--font); cursor: pointer;
+  margin-bottom: 8px;
+  transition: opacity var(--dur) var(--ease);
+}
+.wbl-upgrade-btn:hover { opacity: 0.88; }
+.wbl-dismiss-btn {
+  width: 100%; padding: 9px;
+  background: transparent; color: var(--text-secondary);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 12.5px; font-family: var(--font); cursor: pointer;
+  transition: all var(--dur) var(--ease);
+}
+.wbl-dismiss-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
 
 /* =============================================
    SCROLLBARS (canvas area)
@@ -4475,5 +4539,203 @@ panel.style.display="flex";
   });
 })();
 </script>
+<!-- ================= PRO LIMIT MODAL ================= -->
+<div id="wbLimitOverlay" onclick="if(event.target===this)closeWbLimit()">
+  <div id="wbLimitBox">
+    <div class="wblimit-header">
+      <div class="wbl-icon">🔒</div>
+      <h3 id="wblTitle">Free Plan Limit Reached</h3>
+      <p id="wblDesc">Upgrade to Pro to continue.</p>
+    </div>
+    <div class="wblimit-body">
+      <div class="wblimit-compare">
+        <div class="wblimit-col">
+          <div class="wblimit-col-title">Free Plan</div>
+          <div class="wblimit-row"><i class="fa fa-times" style="color:var(--danger)"></i> 10 Images</div>
+          <div class="wblimit-row"><i class="fa fa-times" style="color:var(--danger)"></i> 5 Exports</div>
+          <div class="wblimit-row"><i class="fa fa-times" style="color:var(--danger)"></i> 5 Recordings</div>
+          <div class="wblimit-row crossed"><i class="fa fa-times" style="color:var(--danger)"></i> PPT Export</div>
+          <div class="wblimit-row crossed"><i class="fa fa-times" style="color:var(--danger)"></i> Unlimited Video</div>
+        </div>
+        <div class="wblimit-col pro">
+          <div class="wblimit-col-title">⭐ Pro Plan</div>
+          <div class="wblimit-row"><i class="fa fa-check"></i> Unlimited Images</div>
+          <div class="wblimit-row"><i class="fa fa-check"></i> Unlimited Exports</div>
+          <div class="wblimit-row"><i class="fa fa-check"></i> Unlimited Recordings</div>
+          <div class="wblimit-row"><i class="fa fa-check"></i> PPT Export</div>
+          <div class="wblimit-row"><i class="fa fa-check"></i> Unlimited Video</div>
+        </div>
+      </div>
+      <button class="wbl-upgrade-btn" onclick="closeWbLimit(); window.open('../dashboard','_self');">
+        <i class="fa fa-crown"></i> Upgrade to Pro — ₹199/month
+      </button>
+      <button class="wbl-dismiss-btn" onclick="closeWbLimit()">Maybe later</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =============================================================
+   WHITEBOARD FREE-PLAN LIMITS
+   Limits per-board, stored in localStorage:
+     Images    : 10 per board
+     Exports   : 5 total (PNG + PDF + PPT combined)
+     Recordings: 5 total
+   Pro check: reads the same PAYMENT_API_URL as dashboard.
+   ============================================================= */
+
+const WB_PAYMENT_API =
+  "https://script.google.com/macros/s/AKfycbxnQ6G6U40leGl1dRQhiXi0K9cavaWRpbGnCSbLCK-4khJOrDM85ohD6id-o58nJVCR/exec";
+
+const WB_FREE_LIMITS = { images: 10, exports: 5, recordings: 5 };
+
+/* Counters stored in localStorage so they persist across reloads */
+const WB_COUNTERS_KEY = "wb_free_counters_" + (new URLSearchParams(location.search).get("board") || "default");
+
+function wbGetCounters() {
+  try { return JSON.parse(localStorage.getItem(WB_COUNTERS_KEY)) || { images:0, exports:0, recordings:0 }; }
+  catch(e) { return { images:0, exports:0, recordings:0 }; }
+}
+function wbSaveCounters(c) {
+  localStorage.setItem(WB_COUNTERS_KEY, JSON.stringify(c));
+}
+
+/* Pro status — fetched once on load if user email is known */
+let wbIsPro = false;
+
+async function wbCheckPro(email) {
+  if(!email) return;
+  try {
+    const res  = await fetch(WB_PAYMENT_API, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ action: "checkAccess", email })
+    });
+    const json = await res.json();
+    wbIsPro = (json.status === "active");
+  } catch(e) { wbIsPro = false; }
+}
+
+/* Hook into Google login on whiteboard */
+const _origWbCredential = window.handleCredentialResponse;
+window.handleCredentialResponse = function(response) {
+  if(_origWbCredential) _origWbCredential(response);
+  try {
+    const base64 = response.credential.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+    const user = JSON.parse(decodeURIComponent(atob(base64).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+    if(user.email) wbCheckPro(user.email);
+  } catch(e) {}
+};
+
+/* Also check cached user from localStorage (if logged in on dashboard) */
+window.addEventListener("load", () => {
+  try {
+    const cached = localStorage.getItem("currentUser");
+    if(cached) {
+      const u = JSON.parse(cached);
+      if(u.email) wbCheckPro(u.email);
+    }
+  } catch(e) {}
+});
+
+/* ── Show limit modal ── */
+function showWbLimit(type) {
+  const msgs = {
+    images:     { title: "Image Limit Reached (10/10)",     desc: "Free plan allows 10 images per board. Upgrade for unlimited images." },
+    exports:    { title: "Export Limit Reached (5/5)",       desc: "Free plan allows 5 exports (PNG/PDF/PPT combined). Upgrade for unlimited exports." },
+    recordings: { title: "Recording Limit Reached (5/5)",    desc: "Free plan allows 5 video recordings. Upgrade for unlimited recordings." },
+  };
+  const m = msgs[type] || { title: "Free Plan Limit Reached", desc: "Upgrade to Pro for unlimited access." };
+  document.getElementById("wblTitle").textContent = m.title;
+  document.getElementById("wblDesc").textContent  = m.desc;
+  document.getElementById("wbLimitOverlay").classList.add("open");
+}
+function closeWbLimit() {
+  document.getElementById("wbLimitOverlay").classList.remove("open");
+}
+
+/* ── Gate check helper ── */
+function wbGate(type) {
+  if(wbIsPro) return true; // Pro: always allow
+  const c = wbGetCounters();
+  if(c[type] < WB_FREE_LIMITS[type]) return true;
+  showWbLimit(type);
+  return false;
+}
+function wbIncrement(type) {
+  const c = wbGetCounters();
+  c[type] = (c[type] || 0) + 1;
+  wbSaveCounters(c);
+}
+
+/* =============================================================
+   PATCH: Image Insert
+   ============================================================= */
+const _origImageInput = document.getElementById("imageInput");
+_origImageInput.addEventListener("change", function(e) {
+  // If file chosen but limit hit, clear input and bail
+  if(!wbIsPro) {
+    const c = wbGetCounters();
+    const totalImages = pages.reduce((sum, p) => sum + (p.images || []).length, 0);
+    if(totalImages >= WB_FREE_LIMITS.images) {
+      showWbLimit("images");
+      _origImageInput.value = "";
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      return;
+    }
+  }
+}, true); // capture phase — fires before the existing handler
+
+/* Also intercept imageBtn click */
+const _origImageBtn = document.getElementById("imageBtn");
+_origImageBtn.addEventListener("click", function(e) {
+  if(wbIsPro) return;
+  const totalImages = pages.reduce((sum, p) => sum + (p.images || []).length, 0);
+  if(totalImages >= WB_FREE_LIMITS.images) {
+    showWbLimit("images");
+    e.stopImmediatePropagation();
+    e.preventDefault();
+  }
+}, true);
+
+/* =============================================================
+   PATCH: PNG Export
+   ============================================================= */
+const _origPngBtn = document.getElementById("pngBtn");
+_origPngBtn.addEventListener("click", function(e) {
+  if(!wbGate("exports")) { e.stopImmediatePropagation(); e.preventDefault(); return; }
+  wbIncrement("exports");
+}, true);
+
+/* =============================================================
+   PATCH: PDF Export
+   ============================================================= */
+const _origPdfBtn = document.getElementById("pdfBtn");
+_origPdfBtn.addEventListener("click", function(e) {
+  if(!wbGate("exports")) { e.stopImmediatePropagation(); e.preventDefault(); return; }
+  wbIncrement("exports");
+}, true);
+
+/* =============================================================
+   PATCH: PPT Export
+   ============================================================= */
+const _origPptBtn = document.getElementById("pptBtn");
+_origPptBtn.addEventListener("click", function(e) {
+  if(!wbGate("exports")) { e.stopImmediatePropagation(); e.preventDefault(); return; }
+  wbIncrement("exports");
+}, true);
+
+/* =============================================================
+   PATCH: Video Recording Start
+   ============================================================= */
+const _origStartRecordBtn = document.getElementById("startRecordBtn");
+_origStartRecordBtn.addEventListener("click", function(e) {
+  if(!wbGate("recordings")) { e.stopImmediatePropagation(); e.preventDefault(); return; }
+  wbIncrement("recordings");
+}, true);
+
+</script>
+
 </body>
 </html>
