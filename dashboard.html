@@ -1350,6 +1350,125 @@ body.dark .tpl-preview { background: #1a2035; }
   font-size: 12px;
   color: var(--text-muted);
 }
+
+/* ============ FREE LIMIT MODAL ============ */
+#limitModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 99998;
+  backdrop-filter: blur(4px);
+  padding: 20px;
+}
+#limitModal.open { display: flex; }
+
+#limitModalBox {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  width: 400px;
+  max-width: 94vw;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: fadeInUp 0.25s ease;
+}
+
+.limit-modal-top {
+  background: linear-gradient(135deg, #1e3a5f, #2563eb);
+  padding: 28px 28px 22px;
+  text-align: center;
+  color: white;
+}
+.limit-modal-top .limit-icon {
+  font-size: 36px;
+  margin-bottom: 10px;
+  display: block;
+}
+.limit-modal-top h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+}
+.limit-modal-top p {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.85;
+  line-height: 1.5;
+}
+
+.limit-modal-body {
+  padding: 20px 24px 24px;
+}
+
+.limit-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.limit-col {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+.limit-col.pro-col {
+  border-color: var(--accent-border);
+  background: var(--accent-light);
+}
+.limit-col-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-subtle);
+  margin-bottom: 8px;
+}
+.limit-col.pro-col .limit-col-title { color: var(--accent); }
+.limit-col-item {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  padding: 3px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.limit-col-item i { font-size: 10px; width: 12px; }
+.limit-col-item.crossed { text-decoration: line-through; opacity: 0.5; }
+.limit-col.pro-col .limit-col-item { color: var(--accent); }
+.limit-col.pro-col .limit-col-item i { color: var(--success); }
+
+.limit-upgrade-btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--transition);
+  margin-bottom: 8px;
+}
+.limit-upgrade-btn:hover { background: var(--accent-hover); }
+
+.limit-dismiss-btn {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.limit-dismiss-btn:hover { background: var(--surface-hover); color: var(--text); }
 </style>
 </head>
 <body>
@@ -1462,26 +1581,26 @@ body.dark .tpl-preview { background: #1a2035; }
   <div class="main-content">
     <!-- Stats -->
     <div class="stats-row" id="statsRow">
-      <div class="stat-card">
+      <div class="stat-card" id="statCardProjects">
         <div class="stat-label">Projects</div>
         <div class="stat-value" id="statProjects">0</div>
-        <div class="stat-sub">Active workspaces</div>
+        <div class="stat-sub" id="statSubProjects">Active workspaces</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" id="statCardBoards">
         <div class="stat-label">Boards</div>
         <div class="stat-value" id="statBoards">0</div>
-        <div class="stat-sub">Total whiteboards</div>
+        <div class="stat-sub" id="statSubBoards">Total whiteboards</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Trash</div>
         <div class="stat-value" id="statTrash">0</div>
         <div class="stat-sub">Items in bin</div>
       </div>
-      <div class="stat-card">
-      <div class="stat-label">Folders</div>
-      <div class="stat-value" id="statFolders">0</div>
-      <div class="stat-sub">Total folders</div>
-   </div>
+      <div class="stat-card" id="statCardFolders">
+        <div class="stat-label">Folders</div>
+        <div class="stat-value" id="statFolders">0</div>
+        <div class="stat-sub" id="statSubFolders">Total folders</div>
+      </div>
     </div>
 
     <!-- Welcome -->
@@ -1788,6 +1907,43 @@ body.dark .tpl-preview { background: #1a2035; }
   </div>
 </div>
 
+<!-- FREE LIMIT MODAL -->
+<div id="limitModal" onclick="if(event.target===this) closeLimitModal()">
+  <div id="limitModalBox">
+    <div class="limit-modal-top">
+      <span class="limit-icon">🔒</span>
+      <h3 id="limitModalTitle">Free Plan Limit Reached</h3>
+      <p id="limitModalDesc">You've reached the free plan limit. Upgrade to Pro for unlimited access.</p>
+    </div>
+    <div class="limit-modal-body">
+      <div class="limit-compare">
+        <div class="limit-col">
+          <div class="limit-col-title">Free Plan</div>
+          <div class="limit-col-item"><i class="fa fa-times" style="color:var(--danger)"></i> 1 Project</div>
+          <div class="limit-col-item"><i class="fa fa-times" style="color:var(--danger)"></i> 3 Folders</div>
+          <div class="limit-col-item"><i class="fa fa-times" style="color:var(--danger)"></i> 5 Boards</div>
+          <div class="limit-col-item crossed"><i class="fa fa-times" style="color:var(--danger)"></i> PDF / PNG Export</div>
+          <div class="limit-col-item crossed"><i class="fa fa-times" style="color:var(--danger)"></i> PPT &amp; Video</div>
+        </div>
+        <div class="limit-col pro-col">
+          <div class="limit-col-title">⭐ Pro Plan</div>
+          <div class="limit-col-item"><i class="fa fa-check"></i> Unlimited Projects</div>
+          <div class="limit-col-item"><i class="fa fa-check"></i> Unlimited Folders</div>
+          <div class="limit-col-item"><i class="fa fa-check"></i> Unlimited Boards</div>
+          <div class="limit-col-item"><i class="fa fa-check"></i> PDF / PNG Export</div>
+          <div class="limit-col-item"><i class="fa fa-check"></i> PPT &amp; Video</div>
+        </div>
+      </div>
+      <button class="limit-upgrade-btn" onclick="closeLimitModal(); togglePaymentPanel();">
+        <i class="fa fa-crown"></i> Upgrade to Pro — from ₹199/month
+      </button>
+      <button class="limit-dismiss-btn" onclick="closeLimitModal()">
+        Maybe later
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- PAYMENT PANEL -->
 <div id="paymentPanel" class="side-panel" style="width:360px;right:-400px;">
   <div class="panel-header">
@@ -1990,8 +2146,43 @@ saveCloud();
 // ========== CORE FEATURES ==========
 function generateID(){return "id_"+Date.now()+"_"+Math.floor(Math.random()*1000);}
 
+/* ── Free plan limits ── */
+const FREE_LIMITS = { projects: 1, folders: 3, boards: 5 };
+
+function isProUser(){ return _userAccessStatus === "active"; }
+
+function showLimitModal(type){
+  const messages = {
+    project: {
+      title: "Project Limit Reached (1/1)",
+      desc:  "Free plan allows 1 project. Upgrade to Pro for unlimited projects, folders, and boards."
+    },
+    folder: {
+      title: "Folder Limit Reached (3/3)",
+      desc:  "Free plan allows 3 folders. Upgrade to Pro for unlimited folders and much more."
+    },
+    board: {
+      title: "Board Limit Reached (5/5)",
+      desc:  "Free plan allows 5 boards. Upgrade to Pro for unlimited boards, exports, and more."
+    }
+  };
+  const m = messages[type];
+  document.getElementById("limitModalTitle").textContent = m.title;
+  document.getElementById("limitModalDesc").textContent  = m.desc;
+  document.getElementById("limitModal").classList.add("open");
+}
+
+function closeLimitModal(){
+  document.getElementById("limitModal").classList.remove("open");
+}
+
 function createFolder(parentID=null){
   if(!currentUser){alert("Login required"); return;}
+
+  if(!isProUser() && data.folders.length >= FREE_LIMITS.folders){
+    showLimitModal("folder");
+    return;
+  }
 
   let parentName = "";
   if(parentID){
@@ -2009,6 +2200,11 @@ function createFolder(parentID=null){
 
 function createBoard(parentID=null){
   if(!currentUser){alert("Login required"); return;}
+
+  if(!isProUser() && data.boards.length >= FREE_LIMITS.boards){
+    showLimitModal("board");
+    return;
+  }
 
   let parentName = "";
   if(parentID){
@@ -2385,6 +2581,11 @@ panel.style.display="flex";
 function createProject(parentID = null) {
   if (!currentUser) { alert("Login required"); return; }
 
+  if(!isProUser() && data.projects.length >= FREE_LIMITS.projects){
+    showLimitModal("project");
+    return;
+  }
+
   let name = prompt("Project Name:", "Untitled Project");
   if (!name) return;
 
@@ -2554,18 +2755,35 @@ async function loadCloud() {
 </script>
 <script>
 function updateStats(){
+  const pro = isProUser();
 
-  document.getElementById("statProjects").textContent = data.projects.length;
+  const pCount = data.projects.length;
+  const bCount = data.boards.length;
+  const fCount = data.folders.length;
 
-  document.getElementById("statBoards").textContent = data.boards.length;
-
-  document.getElementById("statTrash").textContent = data.trash.length;
+  document.getElementById("statProjects").textContent = pCount;
+  document.getElementById("statBoards").textContent   = bCount;
+  document.getElementById("statTrash").textContent    = data.trash.length;
 
   const folderStat = document.getElementById("statFolders");
-  if(folderStat){
-    folderStat.textContent = data.folders.length;
-  }
+  if(folderStat) folderStat.textContent = fCount;
 
+  // Show limit sub-labels for free users
+  const subP = document.getElementById("statSubProjects");
+  const subB = document.getElementById("statSubBoards");
+  const subF = document.getElementById("statSubFolders");
+
+  if(subP) subP.textContent = pro ? "Unlimited"   : `${pCount} / ${FREE_LIMITS.projects} free`;
+  if(subB) subB.textContent = pro ? "Unlimited"   : `${bCount} / ${FREE_LIMITS.boards} free`;
+  if(subF) subF.textContent = pro ? "Unlimited"   : `${fCount} / ${FREE_LIMITS.folders} free`;
+
+  // Colour stat cards red when at limit
+  const cardP = document.getElementById("statCardProjects");
+  const cardB = document.getElementById("statCardBoards");
+  const cardFo = document.getElementById("statCardFolders");
+  if(cardP)  cardP.style.borderColor  = (!pro && pCount >= FREE_LIMITS.projects)  ? "var(--danger)" : "";
+  if(cardB)  cardB.style.borderColor  = (!pro && bCount >= FREE_LIMITS.boards)    ? "var(--danger)" : "";
+  if(cardFo) cardFo.style.borderColor = (!pro && fCount >= FREE_LIMITS.folders)   ? "var(--danger)" : "";
 }
 </script>
 <script>
@@ -3550,6 +3768,12 @@ function updatePreviewPanel(tpl) {
 /* ── Create board from template ── */
 function createBoardFromTemplate() {
   if (!currentUser) { alert("Login required"); return; }
+
+  if(!isProUser() && data.boards.length >= FREE_LIMITS.boards){
+    showLimitModal("board");
+    return;
+  }
+
   if (!_selectedTemplate) {
     // Shake the grid to indicate selection needed
     const grid = document.getElementById("tplGrid");
