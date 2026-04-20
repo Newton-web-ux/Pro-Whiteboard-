@@ -98,6 +98,270 @@
   --mono: 'JetBrains Mono', monospace;
 }
 
+/* =============================================
+   PRO UPGRADE BANNER — COUNTDOWN
+   ============================================= */
+#proBanner {
+  position: fixed;
+  bottom: 30px; /* above status bar */
+  left: 50%;
+  transform: translateX(-50%) translateY(120px);
+  z-index: 9990;
+  width: 580px;
+  max-width: calc(100vw - 32px);
+  background: linear-gradient(135deg, #0e0c1a 0%, #12101f 100%);
+  border: 1px solid rgba(139,92,246,0.4);
+  border-radius: 18px;
+  box-shadow:
+    0 0 0 1px rgba(99,102,241,0.12),
+    0 8px 40px rgba(0,0,0,0.7),
+    0 0 60px rgba(99,102,241,0.12);
+  overflow: hidden;
+  transition: transform 0.5s cubic-bezier(.22,1,.36,1), opacity 0.4s ease;
+  opacity: 0;
+}
+#proBanner.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+#proBanner::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899, #8b5cf6, #6366f1);
+  background-size: 200% 100%;
+  animation: shimmerBar 3s linear infinite;
+}
+@keyframes shimmerBar {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+
+#proBannerClose {
+  position: absolute;
+  top: 10px; right: 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.45);
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s ease;
+  z-index: 2;
+}
+#proBannerClose:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+.pbn-inner {
+  padding: 18px 20px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.pbn-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.pbn-urgency {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.pbn-fire {
+  font-size: 15px;
+  animation: firePulse 0.8s ease-in-out infinite alternate;
+}
+@keyframes firePulse {
+  from { transform: scale(1) rotate(-5deg); }
+  to   { transform: scale(1.2) rotate(5deg); }
+}
+
+.pbn-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #f59e0b;
+  background: rgba(245,158,11,0.12);
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 100px;
+  padding: 2px 9px;
+}
+
+.pbn-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #eef0f7;
+  letter-spacing: -0.02em;
+  margin-bottom: 3px;
+  line-height: 1.3;
+}
+.pbn-title span {
+  background: linear-gradient(135deg, #a78bfa, #ec4899);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.pbn-sub {
+  font-size: 11.5px;
+  color: #8892a8;
+  line-height: 1.4;
+}
+
+/* Countdown digits */
+.pbn-countdown {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+}
+.pbn-digit-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.pbn-digit {
+  background: rgba(99,102,241,0.15);
+  border: 1px solid rgba(99,102,241,0.3);
+  border-radius: 7px;
+  width: 38px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: #a78bfa;
+  letter-spacing: 0.02em;
+  transition: transform 0.15s ease;
+}
+.pbn-digit.tick { transform: scale(1.08); }
+.pbn-digit-label {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #3d4560;
+  font-weight: 600;
+}
+.pbn-colon {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(167,139,250,0.4);
+  margin-bottom: 14px;
+  line-height: 1;
+}
+
+/* Right side: pricing */
+.pbn-right {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.pbn-plan {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  min-width: 152px;
+  position: relative;
+  overflow: hidden;
+}
+.pbn-plan:hover {
+  border-color: rgba(139,92,246,0.5);
+  background: rgba(99,102,241,0.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(99,102,241,0.2);
+}
+.pbn-plan.yearly {
+  border-color: rgba(139,92,246,0.35);
+  background: rgba(99,102,241,0.06);
+}
+.pbn-plan.yearly::after {
+  content: 'BEST VALUE';
+  position: absolute;
+  top: 6px; right: 8px;
+  font-size: 7.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #10d9a0;
+  background: rgba(16,217,160,0.12);
+  border: 1px solid rgba(16,217,160,0.25);
+  border-radius: 100px;
+  padding: 1px 5px;
+}
+
+.pbn-plan-name {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8892a8;
+  margin-bottom: 3px;
+}
+.pbn-plan-price {
+  font-size: 18px;
+  font-weight: 800;
+  color: #eef0f7;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.pbn-plan-price sub {
+  font-size: 10px;
+  font-weight: 500;
+  color: #8892a8;
+  vertical-align: baseline;
+  letter-spacing: 0;
+}
+.pbn-plan-saving {
+  font-size: 10px;
+  color: #10d9a0;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.pbn-cta {
+  display: block;
+  width: 100%;
+  padding: 9px 0;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.18s ease;
+  box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+  margin-top: 3px;
+}
+.pbn-cta:hover {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  box-shadow: 0 6px 24px rgba(99,102,241,0.5);
+  transform: translateY(-1px);
+}
+.pbn-cta i { margin-right: 5px; }
+
+/* Expired state */
+#proBanner.expired .pbn-digit { color: #f43f5e; border-color: rgba(244,63,94,0.3); background: rgba(244,63,94,0.08); }
+#proBanner.expired .pbn-tag { color: #f43f5e; background: rgba(244,63,94,0.1); border-color: rgba(244,63,94,0.3); }
+
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -4740,6 +5004,131 @@ panel.style.display="flex";
   });
 })();
 </script>
+<!-- ================= PRO UPGRADE BANNER (countdown) ================= -->
+<div id="proBanner">
+  <button id="proBannerClose" onclick="dismissProBanner()" title="Dismiss"><i class="fa fa-times"></i></button>
+  <div class="pbn-inner">
+    <div class="pbn-left">
+      <div class="pbn-urgency">
+        <span class="pbn-fire">🔥</span>
+        <span class="pbn-tag" id="pbnTag">Limited-Time Offer</span>
+      </div>
+      <div class="pbn-title">Unlock <span>Pro</span> before this deal vanishes</div>
+      <div class="pbn-sub">Get unlimited images, exports, recordings &amp; PPT export — forever yours.</div>
+      <div class="pbn-countdown">
+        <div class="pbn-digit-block">
+          <div class="pbn-digit" id="cdH">01</div>
+          <div class="pbn-digit-label">hrs</div>
+        </div>
+        <div class="pbn-colon">:</div>
+        <div class="pbn-digit-block">
+          <div class="pbn-digit" id="cdM">00</div>
+          <div class="pbn-digit-label">min</div>
+        </div>
+        <div class="pbn-colon">:</div>
+        <div class="pbn-digit-block">
+          <div class="pbn-digit" id="cdS">00</div>
+          <div class="pbn-digit-label">sec</div>
+        </div>
+      </div>
+    </div>
+    <div class="pbn-right">
+      <div class="pbn-plan monthly" onclick="window.open('../dashboard','_self')">
+        <div class="pbn-plan-name">Monthly</div>
+        <div class="pbn-plan-price">₹199<sub>/mo</sub></div>
+      </div>
+      <div class="pbn-plan yearly" onclick="window.open('../dashboard','_self')">
+        <div class="pbn-plan-name">Yearly</div>
+        <div class="pbn-plan-price">₹999<sub>/yr</sub></div>
+        <div class="pbn-plan-saving">Save 58% — Best Deal!</div>
+      </div>
+      <button class="pbn-cta" onclick="window.open('../dashboard','_self')">
+        <i class="fa fa-crown"></i>Upgrade to Pro Now
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── PRO UPGRADE BANNER COUNTDOWN ── */
+(function() {
+  const BANNER_KEY   = "proBannerDismissedUntil";
+  const EXPIRE_KEY   = "proBannerExpiry";
+  const ONE_HOUR_MS  = 60 * 60 * 1000;
+
+  function getBannerExpiry() {
+    let exp = parseInt(localStorage.getItem(EXPIRE_KEY) || "0", 10);
+    if (!exp || exp < Date.now()) {
+      exp = Date.now() + ONE_HOUR_MS;
+      localStorage.setItem(EXPIRE_KEY, exp.toString());
+    }
+    return exp;
+  }
+
+  function isDismissed() {
+    const until = parseInt(localStorage.getItem(BANNER_KEY) || "0", 10);
+    return Date.now() < until;
+  }
+
+  window.dismissProBanner = function() {
+    // Dismissed for 30 min; show again after
+    localStorage.setItem(BANNER_KEY, (Date.now() + 30 * 60 * 1000).toString());
+    const b = document.getElementById("proBanner");
+    b.style.opacity = "0";
+    b.style.transform = "translateX(-50%) translateY(120px)";
+    setTimeout(() => b.classList.remove("show"), 400);
+  };
+
+  function pad(n) { return String(n).padStart(2, "0"); }
+
+  function tick() {
+    if (wbIsPro) { return; } // hide for pro users
+    const expiry = getBannerExpiry();
+    const remaining = Math.max(0, expiry - Date.now());
+    const totalSec = Math.floor(remaining / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+
+    const hEl = document.getElementById("cdH");
+    const mEl = document.getElementById("cdM");
+    const sEl = document.getElementById("cdS");
+    if (!hEl) return;
+
+    const prevS = hEl.dataset.prevS;
+    if (prevS !== String(s)) {
+      sEl.classList.add("tick");
+      setTimeout(() => sEl.classList.remove("tick"), 150);
+      hEl.dataset.prevS = s;
+    }
+
+    hEl.textContent = pad(h);
+    mEl.textContent = pad(m);
+    sEl.textContent = pad(s);
+
+    const banner = document.getElementById("proBanner");
+    if (remaining <= 0) {
+      banner.classList.add("expired");
+      document.getElementById("pbnTag").textContent = "Offer Expired";
+    }
+  }
+
+  // Show after 4 seconds (let page settle)
+  setTimeout(() => {
+    if (wbIsPro || isDismissed()) return;
+    const b = document.getElementById("proBanner");
+    b.classList.add("show");
+    tick();
+    setInterval(tick, 1000);
+  }, 4000);
+
+  // If not dismissed, still keep ticking even before show
+  setInterval(() => {
+    if (document.getElementById("proBanner").classList.contains("show")) tick();
+  }, 1000);
+})();
+</script>
+
 <!-- ================= PRO LIMIT MODAL ================= -->
 <div id="wbLimitOverlay" onclick="if(event.target===this)closeWbLimit()">
   <div id="wbLimitBox">
