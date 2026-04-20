@@ -361,6 +361,40 @@
 #proBanner.expired .pbn-digit { color: #f43f5e; border-color: rgba(244,63,94,0.3); background: rgba(244,63,94,0.08); }
 #proBanner.expired .pbn-tag { color: #f43f5e; background: rgba(244,63,94,0.1); border-color: rgba(244,63,94,0.3); }
 
+/* Pro features list */
+.pbn-features {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pbn-feat {
+  font-size: 11px;
+  color: #8892a8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.4;
+}
+.pbn-feat i {
+  color: #10d9a0;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+/* Guarantee line */
+.pbn-guarantee {
+  text-align: center;
+  font-size: 10px;
+  color: #3d4560;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.pbn-guarantee i { color: #6366f1; font-size: 10px; }
+
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -5008,21 +5042,19 @@ panel.style.display="flex";
 <div id="proBanner">
   <button id="proBannerClose" onclick="dismissProBanner()" title="Dismiss"><i class="fa fa-times"></i></button>
   <div class="pbn-inner">
+
+    <!-- LEFT: urgency + countdown + features -->
     <div class="pbn-left">
       <div class="pbn-urgency">
         <span class="pbn-fire">🔥</span>
-        <span class="pbn-tag" id="pbnTag">Limited-Time Offer</span>
+        <span class="pbn-tag" id="pbnTag">10-Min Flash Deal</span>
       </div>
-      <div class="pbn-title">Unlock <span>Pro</span> before this deal vanishes</div>
-      <div class="pbn-sub">Get unlimited images, exports, recordings &amp; PPT export — forever yours.</div>
+      <div class="pbn-title">Grab <span>Pro</span> — deal expires in</div>
+
+      <!-- COUNTDOWN: MM : SS only -->
       <div class="pbn-countdown">
         <div class="pbn-digit-block">
-          <div class="pbn-digit" id="cdH">01</div>
-          <div class="pbn-digit-label">hrs</div>
-        </div>
-        <div class="pbn-colon">:</div>
-        <div class="pbn-digit-block">
-          <div class="pbn-digit" id="cdM">00</div>
+          <div class="pbn-digit" id="cdM">10</div>
           <div class="pbn-digit-label">min</div>
         </div>
         <div class="pbn-colon">:</div>
@@ -5031,35 +5063,50 @@ panel.style.display="flex";
           <div class="pbn-digit-label">sec</div>
         </div>
       </div>
+
+      <!-- PRO FEATURES LIST -->
+      <div class="pbn-features">
+        <div class="pbn-feat"><i class="fa fa-check-circle"></i> Unlimited Images on canvas</div>
+        <div class="pbn-feat"><i class="fa fa-check-circle"></i> Unlimited PNG &amp; PDF Exports</div>
+        <div class="pbn-feat"><i class="fa fa-check-circle"></i> PowerPoint (PPT) Export</div>
+        <div class="pbn-feat"><i class="fa fa-check-circle"></i> Unlimited Video Recordings</div>
+        <div class="pbn-feat"><i class="fa fa-check-circle"></i> Live Collaboration Room</div>
+        <div class="pbn-feat"><i class="fa fa-check-circle"></i> All future Pro features</div>
+      </div>
     </div>
+
+    <!-- RIGHT: pricing cards + CTA -->
     <div class="pbn-right">
       <div class="pbn-plan monthly" onclick="window.open('../dashboard','_self')">
         <div class="pbn-plan-name">Monthly</div>
         <div class="pbn-plan-price">₹199<sub>/mo</sub></div>
+        <div class="pbn-plan-saving" style="color:var(--text-secondary);font-size:10px;">Billed monthly</div>
       </div>
       <div class="pbn-plan yearly" onclick="window.open('../dashboard','_self')">
         <div class="pbn-plan-name">Yearly</div>
         <div class="pbn-plan-price">₹999<sub>/yr</sub></div>
-        <div class="pbn-plan-saving">Save 58% — Best Deal!</div>
+        <div class="pbn-plan-saving">🎉 Save 58% — Best Deal!</div>
       </div>
       <button class="pbn-cta" onclick="window.open('../dashboard','_self')">
         <i class="fa fa-crown"></i>Upgrade to Pro Now
       </button>
+      <div class="pbn-guarantee"><i class="fa fa-shield-halved"></i> Secure payment · Cancel anytime</div>
     </div>
+
   </div>
 </div>
 
 <script>
-/* ── PRO UPGRADE BANNER COUNTDOWN ── */
+/* ── PRO UPGRADE BANNER — 10-MIN COUNTDOWN ── */
 (function() {
-  const BANNER_KEY   = "proBannerDismissedUntil";
-  const EXPIRE_KEY   = "proBannerExpiry";
-  const ONE_HOUR_MS  = 60 * 60 * 1000;
+  const BANNER_KEY  = "proBannerDismissedUntil";
+  const EXPIRE_KEY  = "proBannerExpiry10"; // new key → fresh 10-min timer
+  const TIMER_MS    = 10 * 60 * 1000;      // 10 minutes
 
   function getBannerExpiry() {
     let exp = parseInt(localStorage.getItem(EXPIRE_KEY) || "0", 10);
     if (!exp || exp < Date.now()) {
-      exp = Date.now() + ONE_HOUR_MS;
+      exp = Date.now() + TIMER_MS;
       localStorage.setItem(EXPIRE_KEY, exp.toString());
     }
     return exp;
@@ -5071,8 +5118,7 @@ panel.style.display="flex";
   }
 
   window.dismissProBanner = function() {
-    // Dismissed for 30 min; show again after
-    localStorage.setItem(BANNER_KEY, (Date.now() + 30 * 60 * 1000).toString());
+    localStorage.setItem(BANNER_KEY, (Date.now() + 15 * 60 * 1000).toString()); // re-show after 15 min
     const b = document.getElementById("proBanner");
     b.style.opacity = "0";
     b.style.transform = "translateX(-50%) translateY(120px)";
@@ -5081,51 +5127,56 @@ panel.style.display="flex";
 
   function pad(n) { return String(n).padStart(2, "0"); }
 
+  let intervalId = null;
+
   function tick() {
-    if (wbIsPro) { return; } // hide for pro users
-    const expiry = getBannerExpiry();
+    if (wbIsPro) {
+      const b = document.getElementById("proBanner");
+      if (b) { b.classList.remove("show"); }
+      if (intervalId) clearInterval(intervalId);
+      return;
+    }
+    const expiry    = getBannerExpiry();
     const remaining = Math.max(0, expiry - Date.now());
-    const totalSec = Math.floor(remaining / 1000);
-    const h = Math.floor(totalSec / 3600);
-    const m = Math.floor((totalSec % 3600) / 60);
+    const totalSec  = Math.floor(remaining / 1000);
+    const m = Math.floor(totalSec / 60);
     const s = totalSec % 60;
 
-    const hEl = document.getElementById("cdH");
     const mEl = document.getElementById("cdM");
     const sEl = document.getElementById("cdS");
-    if (!hEl) return;
+    if (!mEl || !sEl) return;
 
-    const prevS = hEl.dataset.prevS;
+    // Tick animation on seconds change
+    const prevS = mEl.dataset.prevS;
     if (prevS !== String(s)) {
       sEl.classList.add("tick");
       setTimeout(() => sEl.classList.remove("tick"), 150);
-      hEl.dataset.prevS = s;
+      // Also animate minutes when they change
+      if (prevS !== undefined && s === 59) {
+        mEl.classList.add("tick");
+        setTimeout(() => mEl.classList.remove("tick"), 150);
+      }
+      mEl.dataset.prevS = s;
     }
 
-    hEl.textContent = pad(h);
     mEl.textContent = pad(m);
     sEl.textContent = pad(s);
 
     const banner = document.getElementById("proBanner");
     if (remaining <= 0) {
       banner.classList.add("expired");
-      document.getElementById("pbnTag").textContent = "Offer Expired";
+      document.getElementById("pbnTag").textContent = "⚡ Offer Expired";
     }
   }
 
-  // Show after 4 seconds (let page settle)
+  // Show after 3 seconds
   setTimeout(() => {
     if (wbIsPro || isDismissed()) return;
     const b = document.getElementById("proBanner");
     b.classList.add("show");
     tick();
-    setInterval(tick, 1000);
-  }, 4000);
-
-  // If not dismissed, still keep ticking even before show
-  setInterval(() => {
-    if (document.getElementById("proBanner").classList.contains("show")) tick();
-  }, 1000);
+    intervalId = setInterval(tick, 1000);
+  }, 3000);
 })();
 </script>
 
