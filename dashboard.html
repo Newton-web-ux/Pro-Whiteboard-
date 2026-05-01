@@ -2918,7 +2918,7 @@ function selectPayPlan(type){
   document.getElementById("planYearlyBtn").classList.toggle("active",  type === "yearly");
 
   const amount = PAY_PLANS[type].price;
-  const upi    = `upi://pay?pa=banerjeearnab.live@oksbi&pn=Pro Whiteboard &am=${amount}&cu=INR`;
+  const upi    = `upi://pay?pa=banerjeearnab.live@oksbi&pn=Newtonian Academy&am=${amount}&cu=INR`;
 
   document.getElementById("payUpiLink").href = upi;
   document.getElementById("payQrImg").src    =
