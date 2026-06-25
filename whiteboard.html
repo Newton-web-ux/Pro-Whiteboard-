@@ -5376,6 +5376,65 @@ _origStartRecordBtn.addEventListener("click", function(e) {
   wbIncrement("recordings");
 }, true);
 
+
+</script>
+<script>
+/* ============ USER TIME TRACKING ============ */
+
+const ANALYTICS_API =
+"https://script.google.com/macros/s/AKfycbzxBs7IGB8-X7UE9SEhF0fd73mT3LrTT6xEdm9P2-UnmSt39KoroGKgqvl-0Amn8dX3/exec";
+
+
+let userID = localStorage.getItem("whiteboard_user");
+
+
+if(!userID){
+
+userID = "USER_" + Date.now();
+
+localStorage.setItem(
+"whiteboard_user",
+userID
+);
+
+}
+
+
+let startTime = Date.now();
+
+
+
+window.addEventListener("beforeunload",()=>{
+
+
+let duration =
+Math.floor(
+(Date.now() - startTime) / 1000
+);
+
+
+// send seconds to Google Sheet
+
+navigator.sendBeacon(
+
+ANALYTICS_API,
+
+JSON.stringify({
+
+sheet:"Sessions",
+
+user_id:userID,
+
+feature:"Time Spent",
+
+value:duration
+
+})
+
+);
+
+
+});
 </script>
 
 </body>
