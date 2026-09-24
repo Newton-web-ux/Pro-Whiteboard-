@@ -1550,6 +1550,13 @@ body.dark .tpl-preview { background: #1a2035; }
       <span class="btn-icon"><i class="fa fa-book-open"></i></span> User Guide
     </button>
     <div class="sidebar-divider"></div>
+    <button class="sidebar-btn" onclick="toggleTermsPanel()">
+      <span class="btn-icon"><i class="fa fa-file-contract"></i></span> Terms of Use
+    </button>
+    <button class="sidebar-btn" onclick="togglePrivacyPanel()">
+      <span class="btn-icon"><i class="fa fa-shield-halved"></i></span> Privacy Policy
+    </button>
+    <div class="sidebar-divider"></div>
     <button class="sidebar-btn" id="upgradeBtn" onclick="openPaymentModal()" style="color:#d97706;font-weight:600;">
       <span class="btn-icon"><i class="fa fa-crown" style="color:#f59e0b;"></i></span>
       <span id="upgradeBtnLabel">⭐ Upgrade to Pro</span>
@@ -1822,6 +1829,269 @@ body.dark .tpl-preview { background: #1a2035; }
       </div>
       <i class="fa fa-chevron-right contact-arrow"></i>
     </a>
+
+  </div>
+</div>
+
+<!-- TERMS OF USE PANEL -->
+<div id="termsPanel" class="side-panel">
+  <div class="panel-header">
+    <div class="panel-header-icon"><i class="fa fa-file-contract"></i></div>
+    <h2>Terms of Use</h2>
+    <button class="panel-close" onclick="toggleTermsPanel()">×</button>
+  </div>
+  <div class="panel-body">
+    <p style="font-size:12px;color:var(--text-subtle);margin:0 0 14px;">Last updated: 24 September 2026</p>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">1</div>
+        <span class="guide-section-title">Acceptance of Terms</span>
+      </div>
+      <div class="guide-content">
+        By accessing or using Pro Whiteboard ("the Service"), you agree to be bound by these Terms of Use. If you do not agree, please do not use the Service. The Service is intended for teachers, students, teams, and individuals who wish to draw, teach, collaborate, and record lessons online.
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">2</div>
+        <span class="guide-section-title">Accounts &amp; Sign-In</span>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li>You sign in using Google Sign-In. You are responsible for keeping your Google account secure.</li>
+          <li>You must provide accurate information and are responsible for all activity under your account.</li>
+          <li>We reserve the right to suspend or terminate accounts that violate these Terms or are used for unlawful, abusive, or fraudulent purposes.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">3</div>
+        <span class="guide-section-title">Free &amp; Pro Plans</span>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li>The Free plan has limits on the number of projects, folders, and boards, and restricts certain export formats.</li>
+          <li>The Pro plan is a paid subscription (monthly or yearly) that unlocks unlimited projects, folders, boards, and additional export/recording features.</li>
+          <li>Pro access is activated after we manually verify your UPI payment transaction ID (UTR). Activation is not instant and may take time.</li>
+          <li>Plan pricing, limits, and included features may change from time to time; we will make reasonable efforts to communicate significant changes.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">4</div>
+        <span class="guide-section-title">Payments &amp; Refunds</span>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li>Payments are made via UPI directly to the account shown at checkout. We do not process or store your card, bank, or UPI credentials — payment happens entirely within your own UPI app.</li>
+          <li>You are responsible for entering a valid and accurate transaction ID (UTR) when submitting payment for verification.</li>
+          <li>Because activation depends on manual verification, refunds are considered on a case-by-case basis for genuine errors (e.g. duplicate payment). Contact us at the email in the Contact panel to request one.</li>
+          <li>Subscriptions do not renew automatically unless you initiate a new payment; there is no automatic recurring billing.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">5</div>
+        <span class="guide-section-title">Your Content</span>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li>You retain ownership of everything you create on your boards — drawings, notes, images, and recordings.</li>
+          <li>You are solely responsible for the content you upload or create, and must not upload content that is illegal, infringing, or harmful.</li>
+          <li>We do not claim ownership of your content and only store it to provide the Service to you (see the Privacy Policy for details).</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">6</div>
+        <span class="guide-section-title">Acceptable Use</span>
+      </div>
+      <div class="guide-content">
+        You agree not to: misuse the Service to distribute malware or spam; attempt to bypass security features (including devtools/inspection blocks); reverse-engineer the app beyond what is permitted by law; or use the Service to harass, defraud, or harm others.
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">7</div>
+        <span class="guide-section-title">Disclaimer &amp; Liability</span>
+      </div>
+      <div class="guide-content">
+        The Service is provided "as is" without warranties of any kind. We do not guarantee uninterrupted or error-free operation, and we are not liable for data loss, service interruptions, or indirect or consequential damages arising from your use of the Service, to the maximum extent permitted by law.
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">8</div>
+        <span class="guide-section-title">Changes &amp; Termination</span>
+      </div>
+      <div class="guide-content">
+        We may update these Terms, modify features, or discontinue the Service (or parts of it) at any time. Continued use after changes take effect means you accept the updated Terms. You may stop using the Service and delete your data at any time.
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">9</div>
+        <span class="guide-section-title">Governing Law</span>
+      </div>
+      <div class="guide-content">
+        These Terms are governed by the laws of India. Any disputes will be subject to the exclusive jurisdiction of the courts of India, unless otherwise required by applicable law.
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">10</div>
+        <span class="guide-section-title">Contact</span>
+      </div>
+      <div class="guide-content">
+        Questions about these Terms? Reach us at <a href="mailto:prowhiteboard1@gmail.com" style="color:var(--accent);">prowhiteboard1@gmail.com</a> or via the Contact panel.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- PRIVACY POLICY PANEL -->
+<div id="privacyPanel" class="side-panel">
+  <div class="panel-header">
+    <div class="panel-header-icon"><i class="fa fa-shield-halved"></i></div>
+    <h2>Privacy Policy</h2>
+    <button class="panel-close" onclick="togglePrivacyPanel()">×</button>
+  </div>
+  <div class="panel-body">
+    <p style="font-size:12px;color:var(--text-subtle);margin:0 0 14px;">Last updated: 24 September 2026</p>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">1</div>
+        <span class="guide-section-title">Information We Collect</span>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li><strong>Account info:</strong> your name, email address, and profile picture, obtained via Google Sign-In.</li>
+          <li><strong>App content:</strong> the projects, folders, boards, drawings, images, and recordings you create.</li>
+          <li><strong>Payment info:</strong> the plan you choose, the amount, and the UPI transaction ID (UTR) you submit for verification. We never collect or see your card number, UPI PIN, or bank credentials.</li>
+          <li><strong>Technical data:</strong> basic usage data such as which features you use, stored locally in your browser (localStorage), and window size signals used only to protect the app from unauthorized inspection.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">2</div>
+        <span class="guide-section-title">How We Use It</span>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li>To let you sign in, sync your boards/projects/folders across sessions, and restore them when you return.</li>
+          <li>To verify and activate your Pro subscription after you submit a payment transaction ID.</li>
+          <li>To respond to feedback and support requests you send us.</li>
+          <li>To maintain and improve the Service, and to protect it against abuse.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">3</div>
+        <span class="guide-section-title">Where Your Data Is Stored</span>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li>Your board/project data is saved in your browser's local storage and synced to a private Google Sheet/Drive backend via Google Apps Script, associated with your Google account ID.</li>
+          <li>Sign-in and payment records are logged to a private Google Sheet solely for verification and support purposes.</li>
+          <li>We do not sell your personal data to third parties.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">4</div>
+        <span class="guide-section-title">Third-Party Services</span>
+      </div>
+      <div class="guide-content">
+        <ul>
+          <li><strong>Google Sign-In</strong> — for authentication, subject to Google's own Privacy Policy.</li>
+          <li><strong>Google Apps Script / Sheets / Drive</strong> — for storing your board data, sign-in log, and payment records.</li>
+          <li><strong>QR code generator (api.qrserver.com)</strong> — used only to render the UPI payment QR code; no personal data is sent to it beyond the payment amount.</li>
+          <li>We do not use these services to sell or trade your information.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">5</div>
+        <span class="guide-section-title">Cookies &amp; Local Storage</span>
+      </div>
+      <div class="guide-content">
+        We use your browser's localStorage (not tracking cookies) to keep you signed in, remember your theme preference, and cache your boards for offline-first loading. Clearing your browser storage will sign you out and remove locally cached copies, though cloud-synced data remains recoverable on next sign-in.
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">6</div>
+        <span class="guide-section-title">Data Retention &amp; Deletion</span>
+      </div>
+      <div class="guide-content">
+        We retain your account and board data for as long as your account is active, and payment records as needed for verification and accounting. You can request deletion of your account and associated data at any time by emailing us — we will remove it within a reasonable timeframe, except where retention is required by law.
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">7</div>
+        <span class="guide-section-title">Children's Privacy</span>
+      </div>
+      <div class="guide-content">
+        Pro Whiteboard is designed to be used by students under the guidance of a teacher or guardian. We do not knowingly collect personal data from children beyond what is provided through a school or guardian-managed Google account. If you believe a child has provided us data without appropriate consent, please contact us so we can remove it.
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">8</div>
+        <span class="guide-section-title">Your Rights</span>
+      </div>
+      <div class="guide-content">
+        You may access, export, or request deletion of your data at any time. You can sign out to stop local syncing, or contact us to request a full account and data deletion.
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">9</div>
+        <span class="guide-section-title">Changes to This Policy</span>
+      </div>
+      <div class="guide-content">
+        We may update this Privacy Policy periodically. Material changes will be reflected here with an updated "Last updated" date. Continued use of the Service after changes constitutes acceptance of the revised policy.
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-badge">10</div>
+        <span class="guide-section-title">Contact</span>
+      </div>
+      <div class="guide-content">
+        For privacy questions or data requests, email <a href="mailto:prowhiteboard1@gmail.com" style="color:var(--accent);">prowhiteboard1@gmail.com</a> or use the Contact panel.
+      </div>
+    </div>
 
   </div>
 </div>
@@ -2536,7 +2806,7 @@ function renderTrash() {
 }
 
 /* ========== PANEL MANAGEMENT ========== */
-const ALL_PANELS = ["trashPanel","formPanel","userGuidePanel","contactPanel"];
+const ALL_PANELS = ["trashPanel","formPanel","userGuidePanel","contactPanel","termsPanel","privacyPanel"];
 
 function closeAllPanels(){
   ALL_PANELS.forEach(id => {
@@ -2572,6 +2842,16 @@ function toggleContactPanel(){
   const panel = document.getElementById("contactPanel");
   if(panel.classList.contains("show")){ closeAllPanels(); return; }
   openPanel("contactPanel");
+}
+function toggleTermsPanel(){
+  const panel = document.getElementById("termsPanel");
+  if(panel.classList.contains("show")){ closeAllPanels(); return; }
+  openPanel("termsPanel");
+}
+function togglePrivacyPanel(){
+  const panel = document.getElementById("privacyPanel");
+  if(panel.classList.contains("show")){ closeAllPanels(); return; }
+  openPanel("privacyPanel");
 }
 
 function openPaymentModal(){
