@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Pro Whiteboard · Admin</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#eef1f6;--card:#fff;--ink:#101828;--mute:#667085;--line:#e1e6ee;--nav:#0f1b2d;--navtx:#9fb0c9;--acc:#0f766e;--accbg:#d9f2ee;--warn:#b45309;--warnbg:#fdf0d8;--bad:#b42318;--badbg:#fde4e1;--ok:#067647;--okbg:#d8f3e3;--blue:#1d4ed8;--bluebg:#e0e9ff}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{font:14px/1.5 'IBM Plex Sans',system-ui,sans-serif;background:var(--paper);color:var(--ink);padding-top:env(safe-area-inset-top,0)}
+.mono{font-family:'IBM Plex Mono',monospace}
+#login{display:grid;place-items:center;height:100%;text-align:center;padding:24px}
+#login .box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:40px 36px;max-width:380px}
+#login h1{font-size:22px;margin-bottom:6px}#login p{color:var(--mute);margin-bottom:24px}
+#err{color:var(--bad);margin-top:16px;min-height:20px}
+#app{display:none;height:100%}
+aside{position:fixed;inset:0 auto 0 0;width:220px;background:var(--nav);color:var(--navtx);display:flex;flex-direction:column;padding:20px 12px}
+aside h2{color:#fff;font-size:15px;padding:0 10px 18px}
+aside h2 small{display:block;color:var(--navtx);font-weight:400;font-size:12px}
+nav button{display:flex;justify-content:space-between;width:100%;background:none;border:0;color:inherit;font:inherit;padding:9px 10px;border-radius:6px;cursor:pointer;text-align:left}
+nav button:hover{background:#18283f}nav button.on{background:var(--acc);color:#fff}
+nav button:focus-visible,.btn:focus-visible,input:focus-visible{outline:2px solid #5eead4;outline-offset:2px}
+nav i{font-style:normal;font-size:12px;opacity:.8}
+.me{margin-top:auto;font-size:12px;padding:10px;border-top:1px solid #1e2f48;word-break:break-all}
+.me button{margin-top:8px;background:none;border:1px solid #2a3d5c;color:var(--navtx);border-radius:6px;padding:4px 10px;cursor:pointer}
+main{margin-left:220px;padding:28px 32px 60px;max-width:1280px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px;flex-wrap:wrap}
+.top h1{font-size:22px;font-weight:600}.top span{color:var(--mute);font-size:12px}
+.btn{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 12px;font:inherit;cursor:pointer}
+.btn:hover{border-color:var(--acc)}.btn.ok{color:var(--ok)}.btn.no{color:var(--bad)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+.k{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.k b{display:block;font:500 26px 'IBM Plex Mono',monospace;margin:2px 0}
+.k small{color:var(--mute)}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:12px}
+.card h3{font-size:14px;margin-bottom:12px}
+.bars{display:flex;align-items:flex-end;gap:6px;height:150px}
+.bars div{flex:1;text-align:center;font-size:10px;color:var(--mute);display:flex;flex-direction:column;justify-content:flex-end;height:100%}
+.bars u{display:block;background:var(--acc);border-radius:3px 3px 0 0;min-height:2px;text-decoration:none}
+.hb{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:13px}
+.hb span:first-child{width:92px;color:var(--mute)}.hb i{height:8px;background:var(--blue);border-radius:4px;display:block}
+.bar{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.bar input{flex:1;max-width:320px;padding:7px 10px;border:1px solid var(--line);border-radius:6px;font:inherit}
+.muted{color:var(--mute);font-size:12px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:500;color:var(--mute);border-bottom:1px solid var(--line);padding:8px 10px;cursor:pointer;white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid #f0f2f6;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+tr:hover td{background:#f8fafc}.ra{text-align:right}
+.tag{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;font-weight:500}
+.t-ok{background:var(--okbg);color:var(--ok)}.t-bad{background:var(--badbg);color:var(--bad)}.t-warn{background:var(--warnbg);color:var(--warn)}.t-blue{background:var(--bluebg);color:var(--blue)}.t-gray{background:#eceff4;color:var(--mute)}
+.more{display:block;margin:12px auto 0}
+.sys{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+.sys li{margin:5px 0 5px 16px;font-size:13px}.sys code{font:12px 'IBM Plex Mono',monospace;background:#f2f4f8;padding:1px 5px;border-radius:4px;word-break:break-all}
+.alert{border-left:3px solid var(--bad);padding:6px 10px;margin:8px 0;background:var(--badbg);font-size:13px;border-radius:0 6px 6px 0}
+.alert.w{border-color:var(--warn);background:var(--warnbg)}
+@media(max-width:860px){aside{position:static;width:auto;flex-direction:row;flex-wrap:wrap;padding:12px}aside h2{padding:0 10px 0 0}nav{display:flex;flex-wrap:wrap}.me{display:none}main{margin:0;padding:18px 14px}.grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:no-preference){.k,.card{transition:border-color .15s}}
+</style>
+</head>
+<body>
+<div id="login"><div class="box">
+  <h1>Pro Whiteboard Admin</h1><p>Sign in with the owner Google account.</p>
+  <div id="gbtn" style="display:inline-block"></div><div id="err"></div>
+</div></div>
+
+<div id="app">
+  <aside><h2>Pro Whiteboard<small>Admin console</small></h2><nav id="nav"></nav>
+    <div class="me"><span id="me"></span><br><button onclick="out()">Sign out</button></div></aside>
+  <main><div class="top"><h1 id="title"></h1><div><span id="stamp"></span> <button class="btn" onclick="load()">Refresh</button></div></div><div id="view"></div></main>
+</div>
+
+<script>
+/* ===== CONFIG ===== */
+const API   = "https://script.google.com/macros/s/AKfycbxq3RP8_wNvPaAUF7Wy83El14bkSlCd6cA16lDvARPWuzDON4Vrk0VGKD0fxl1twDEb/exec";   // /exec URL of admin_backend.gs
+const ADMIN = "banerjeearnab.live@gmail.com";
+const CID   = "104112968849-oehrp6bnkkqvei19vu2v2krbjbscf84p.apps.googleusercontent.com";
+
+let D = null, view = "overview", S = {};
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const dt = v => { const d = new Date(v); return isNaN(d) ? esc(v) : d.toLocaleString("en-IN", {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}); };
+const inr = n => "₹" + Number(n || 0).toLocaleString("en-IN");
+const tag = (t, c) => `<span class="tag t-${c}">${esc(t)}</span>`;
+const stTag = s => tag(s, {success:"ok",active:"ok",pending:"warn",failed:"bad",inactive:"gray",free:"gray"}[s] || "gray");
+
+/* ===== AUTH ===== */
+function jwt(t){const b=t.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");return JSON.parse(decodeURIComponent(atob(b).split("").map(c=>"%"+("00"+c.charCodeAt(0).toString(16)).slice(-2)).join("")))}
+function onCred(r){
+  const u = jwt(r.credential);
+  if ((u.email||"").toLowerCase() !== ADMIN) { $("err").textContent = u.email + " is not the admin account. Sign in with " + ADMIN + "."; return; }
+  sessionStorage.tok = r.credential; sessionStorage.email = u.email; start();
+}
+function out(){ sessionStorage.clear(); google.accounts.id.disableAutoSelect(); location.reload(); }
+window.onload = () => {
+  google.accounts.id.initialize({client_id:CID, callback:onCred, login_hint:ADMIN});
+  google.accounts.id.renderButton($("gbtn"), {theme:"outline", size:"large", width:260});
+  if (sessionStorage.tok) start();
+};
+function start(){ $("login").style.display="none"; $("app").style.display="block"; $("me").textContent=sessionStorage.email; load(); }
+
+/* ===== API ===== */
+async function call(action, extra={}){
+  const r = await fetch(API, {method:"POST", headers:{"Content-Type":"text/plain"}, body:JSON.stringify({token:sessionStorage.tok, action, ...extra})});
+  const j = await r.json();
+  if (j.error === "unauthorized") { alert("Session expired. Please sign in again."); out(); }
+  return j;
+}
+async function load(){
+  $("view").innerHTML = '<p class="muted">Loading data…</p>';
+  try { D = await call("overview"); } catch(e){ $("view").innerHTML = '<div class="alert">Could not reach the Admin API. Check the API URL and deployment access.</div>'; return; }
+  $("stamp").textContent = "Updated " + new Date(D.generated).toLocaleTimeString("en-IN");
+  nav(); render();
+}
+async function act(a, row){
+  if (!confirm((a==="approvePayment"?"Approve":a==="rejectPayment"?"Reject":"Revoke Pro for")+" row "+row+"?")) return;
+  const r = await call(a, {row}); if (r.error) alert(r.error); load();
+}
+
+/* ===== DERIVED STATS ===== */
+function stats(){
+  const now = Date.now();
+  const proUsers = D.users.filter(u => u.status === "active" && new Date(u.expiry) > now);
+  const paid = D.payments.filter(p => p.status === "success");
+  const pend = D.payments.filter(p => p.status === "pending");
+  const devices = new Set(D.installs.map(i => i.device));
+  return {proUsers, paid, pend, devices,
+    revenue: paid.reduce((s,p)=>s+Number(p.amount||0),0),
+    pendAmt: pend.reduce((s,p)=>s+Number(p.amount||0),0),
+    standalone: D.installs.filter(i=>i.mode==="standalone").length,
+    logins: new Set(D.logins.map(l=>l.sub)).size,
+    expiring: proUsers.filter(u => new Date(u.expiry) - now < 7*864e5)};
+}
+const count = (arr, f) => arr.reduce((m,x)=>{const k=f(x)||"unknown";m[k]=(m[k]||0)+1;return m},{});
+const hbars = o => { const e=Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,7),m=Math.max(1,...e.map(x=>x[1]));
+  return e.map(([k,v])=>`<div class="hb"><span>${esc(k)}</span><i style="width:${v/m*100}%"></i><b class="mono">${v}</b></div>`).join("")||'<p class="muted">No data</p>'};
+function daily(rows, f, n=14){
+  const days=[]; for(let i=n-1;i>=0;i--){const d=new Date(Date.now()-i*864e5);days.push(d.toISOString().slice(0,10))}
+  const c=count(rows,f), m=Math.max(1,...days.map(d=>c[d]||0));
+  return `<div class="bars">${days.map(d=>`<div title="${d}: ${c[d]||0}"><u style="height:${(c[d]||0)/m*120}px"></u>${d.slice(8)}</div>`).join("")}</div>`;
+}
+const day = v => { const d=new Date(v); return isNaN(d)?"":d.toISOString().slice(0,10); };
+
+/* ===== TABLE ENGINE ===== */
+function tbl(id, cols, rows, rowAct){
+  S[id] = {cols, rows:[...rows].reverse(), q:"", s:null, d:1, n:50, rowAct};
+  return `<div class="card"><div class="bar"><input aria-label="Search" placeholder="Search…" oninput="S['${id}'].q=this.value.toLowerCase();S['${id}'].n=50;draw('${id}')"><span class="muted" id="c_${id}"></span></div>
+  <div class="tw"><table><thead><tr>${cols.map((c,i)=>`<th onclick="S['${id}'].d*=-1;S['${id}'].s=${i};draw('${id}')">${c.l}</th>`).join("")}${rowAct?"<th></th>":""}</tr></thead><tbody id="b_${id}"></tbody></table></div>
+  <button class="btn more" id="m_${id}" onclick="S['${id}'].n+=50;draw('${id}')">Show more</button></div>`;
+}
+function draw(id){
+  const s=S[id]; let r=s.rows;
+  if(s.q) r=r.filter(x=>Object.values(x).join(" ").toLowerCase().includes(s.q));
+  if(s.s!=null){const k=s.cols[s.s].k; r=[...r].sort((a,b)=>(a[k]>b[k]?1:-1)*s.d)}
+  $("b_"+id).innerHTML = r.slice(0,s.n).map(x=>`<tr>${s.cols.map(c=>`<td>${c.f?c.f(x[c.k],x):esc(x[c.k])}</td>`).join("")}${s.rowAct?`<td class="ra">${s.rowAct(x)}</td>`:""}</tr>`).join("") || '<tr><td colspan="99" class="muted">Nothing here yet.</td></tr>';
+  $("c_"+id).textContent = Math.min(s.n,r.length) + " of " + r.length;
+  $("m_"+id).style.display = r.length > s.n ? "block" : "none";
+}
+const kpi = (l,v,s) => `<div class="k"><small>${l}</small><b>${v}</b><small>${s||"&nbsp;"}</small></div>`;
+
+/* ===== VIEWS ===== */
+const VIEWS = {
+ overview:{t:"Overview", r(){ const s=stats(); return `
+  <div class="kpis">
+   ${kpi("Registered users",D.users.length,s.logins+" unique sign-ins")}
+   ${kpi("Active Pro",s.proUsers.length,s.expiring.length+" expire within 7 days")}
+   ${kpi("Revenue (approved)",inr(s.revenue),s.paid.length+" payments")}
+   ${kpi("Awaiting approval",s.pend.length,inr(s.pendAmt)+" pending")}
+   ${kpi("App installs",s.devices.size,s.standalone+" standalone opens")}
+   ${kpi("Tracked events",D.events.length,"live room & drawing")}
+  </div>
+  <div class="grid"><div class="card"><h3>Events, last 14 days</h3>${daily(D.events,e=>day(e.time))}</div>
+   <div class="card"><h3>Events by action</h3>${hbars(count(D.events,e=>e.action))}</div></div>
+  <div class="grid"><div class="card"><h3>New sign-ins, last 14 days</h3>${daily(D.logins,l=>day(l.time))}</div>
+   <div class="card"><h3>Installs by platform</h3>${hbars(count(D.installs,i=>i.platform))}</div></div>
+  ${s.pend.length?`<div class="alert w">${s.pend.length} payment(s) are waiting for approval. Open Payments to review.</div>`:""}
+  ${Object.keys(D).filter(k=>k.endsWith("_error")).map(k=>`<div class="alert">${esc(k)}: ${esc(D[k])}</div>`).join("")}`}},
+ users:{t:"Users & plans", r(){ return tbl("u",[
+  {k:"email",l:"Email"},{k:"name",l:"Name"},{k:"plan",l:"Plan"},
+  {k:"status",l:"Status",f:v=>stTag(v)},{k:"expiry",l:"Expires",f:v=>v?dt(v):"–"},{k:"utr",l:"Last UTR",f:v=>`<span class="mono">${esc(v)}</span>`}],
+  D.users, x=>x.status==="active"?`<button class="btn no" onclick="act('revokeUser',${x._row})">Revoke</button>`:"")}},
+ payments:{t:"Payments (UPI)", r(){ const s=stats(); return `<div class="kpis">${kpi("Approved",inr(s.revenue),s.paid.length+" payments")}${kpi("Pending",inr(s.pendAmt),s.pend.length+" to review")}${kpi("Rejected",D.payments.filter(p=>p.status==="failed").length,"")}</div>`+
+  tbl("p",[{k:"time",l:"Submitted",f:dt},{k:"email",l:"Email"},{k:"amount",l:"Amount",f:inr},{k:"plan",l:"Plan"},
+  {k:"utr",l:"UTR",f:v=>`<span class="mono">${esc(v)}</span>`},{k:"status",l:"Status",f:stTag}],
+  D.payments, x=>x.status==="pending"?`<button class="btn ok" onclick="act('approvePayment',${x._row})">Approve</button> <button class="btn no" onclick="act('rejectPayment',${x._row})">Reject</button>`:"")}},
+ activity:{t:"Activity & live rooms", r(){ return `<div class="grid"><div class="card"><h3>Actions</h3>${hbars(count(D.events,e=>e.action))}</div><div class="card"><h3>Busiest rooms</h3>${hbars(count(D.events.filter(e=>e.room!=="solo"),e=>e.room))}</div></div>`+
+  tbl("e",[{k:"time",l:"Time",f:dt},{k:"name",l:"Display name"},{k:"user",l:"User ID",f:v=>`<span class="mono">${esc(v)}</span>`},{k:"room",l:"Room"},
+  {k:"action",l:"Action",f:v=>tag(v,{create_room:"ok",join:"blue",leave:"bad",draw:"warn"}[v]||"gray")},{k:"duration",l:"Duration / notes"}],D.events)}},
+ installs:{t:"App installs (PWA)", r(){ return `<div class="grid"><div class="card"><h3>Installs per day</h3>${daily(D.installs.filter(i=>i.event==="visit"),i=>day(i.time))}</div><div class="card"><h3>Mode</h3>${hbars(count(D.installs,i=>i.mode))}</div></div>`+
+  tbl("i",[{k:"time",l:"Time",f:dt},{k:"event",l:"Event"},{k:"mode",l:"Mode"},{k:"platform",l:"Platform"},{k:"version",l:"Ver."},
+  {k:"device",l:"Device ID",f:v=>`<span class="mono">${esc(String(v).slice(0,8))}</span>`},{k:"ua",l:"User agent"}],D.installs)}},
+ logins:{t:"Google sign-ins", r(){ return tbl("l",[{k:"picture",l:"",f:v=>v?`<img src="${esc(v)}" alt="" width="24" height="24" style="border-radius:50%;vertical-align:middle" referrerpolicy="no-referrer">`:""},
+  {k:"name",l:"Name"},{k:"email",l:"Email"},{k:"time",l:"Signed in",f:dt},{k:"sub",l:"Google ID",f:v=>`<span class="mono">${esc(v)}</span>`}],D.logins)}},
+ sessions:{t:"Sessions & time spent", r(){ const t=count(D.sessions,x=>x.user_id); return `<div class="grid"><div class="card"><h3>Sessions</h3><b class="mono" style="font-size:26px">${D.sessions.length}</b><p class="muted">${Object.keys(t).length} unique users</p></div><div class="card"><h3>Most sessions</h3>${hbars(t)}</div></div>`+
+  tbl("s",[{k:"time",l:"Time",f:dt},{k:"user_id",l:"User"},{k:"feature",l:"Feature"},{k:"value",l:"Seconds"}],D.sessions)}},
+ system:{t:"System & code map", r(){ return `<div class="sys">
+  <div class="card"><h3>Pages</h3><ul><li><code>index.html</code> splash/PWA installer → dashboard</li><li><code>dashboard.html</code> projects, folders, boards, templates (24), Pro checkout</li><li><code>whiteboard.html</code> canvas, shapes, graph plotter, recording, live room</li><li><code>admin.html</code> this console</li></ul></div>
+  <div class="card"><h3>Plans</h3><ul><li>Free: 1 project, 3 folders, 5 boards; 10 images, 5 exports, 5 recordings per board</li><li>Pro: monthly ₹199, yearly ₹999 (58% off); UPI to <code>banerjeearnab.live@oksbi</code></li><li>Pro activates after manual UTR approval; banner countdown 10 min</li></ul></div>
+  <div class="card"><h3>Backends</h3><ul><li>Payments script: <code>register · checkAccess · submitPayment · verifyPayment</code> → Users, Payments</li><li>Login logger: <code>doPost</code> → sign-in sheet</li><li>Tracker: visit, create_room, join, leave, draw, session_end → Events</li><li>Install logger → Install_Logs · Analytics → Sessions · Cloud sync script (Drive JSON)</li></ul></div>
+  <div class="card"><h3>Live room</h3><ul><li>Firebase Realtime DB project <code>prowhiteboard-20dc0</code>, anonymous auth</li><li>WebRTC with Google STUN; host admits viewers (knock → admit/deny/kick)</li><li>Viewer canvas is read-only; board snapshot debounced 800 ms</li></ul></div>
+  <div class="card" style="grid-column:1/-1"><h3>Security findings in the current code</h3>
+   <div class="alert">The payments script exposes <code>verifyPayment</code> to anyone. A person who knows or guesses a pending UTR can activate Pro. Remove that action from <code>doPost</code>; this console approves payments instead.</div>
+   <div class="alert">The unlock pattern <code>1729</code> sits in client JavaScript, so it protects nothing. Devtools detection and right-click blocking are easy to bypass; do not rely on them.</div>
+   <div class="alert w"><code>checkAccess</code> trusts a plain email from the browser, so anyone can query another user's plan. Pro limits are enforced only in the browser.</div>
+   <div class="alert w">Cloud save uses a random local ID. Check that Firebase rules limit <code>liverooms</code> writes to authenticated room admins.</div>
+   <div class="alert w"><code>registerUser</code> appends a new row on every login, so Users fills with duplicates and <code>checkAccess</code> reads only the first match. Check for the email before appending.</div></div>
+ </div>`}}
+};
+
+function nav(){
+  const n={users:D.users.length,payments:D.payments.length,activity:D.events.length,installs:D.installs.length,logins:D.logins.length,sessions:D.sessions.length};
+  $("nav").innerHTML = Object.entries(VIEWS).map(([k,v])=>`<button class="${k===view?"on":""}" onclick="view='${k}';nav();render()">${v.t}<i>${n[k]??""}</i></button>`).join("");
+}
+function render(){ S={}; $("title").textContent=VIEWS[view].t; $("view").innerHTML=VIEWS[view].r(); Object.keys(S).forEach(draw); }
+</script>
+</body>
+</html>
