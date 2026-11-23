@@ -73,7 +73,7 @@ const sel = document.createElement("div"); sel.id = "a_sel"; document.body.appen
 const tmr = document.createElement("div"); tmr.id = "a_tmr";
 tmr.innerHTML = `<span id="a_tt">05:00</span><button title="Stop">✕</button>`; document.body.appendChild(tmr);
 const LZ = document.createElement("canvas");
-LZ.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:99997";
+LZ.style.cssText = "position:fixed;left:0;top:0;width:100vw;height:100vh;margin:0;background:transparent;border-radius:0;box-shadow:none;pointer-events:none;z-index:99997";
 document.body.appendChild(LZ);
 const lz = LZ.getContext("2d");
 const fit = () => { LZ.width = innerWidth; LZ.height = innerHeight; }; fit(); addEventListener("resize", fit);
